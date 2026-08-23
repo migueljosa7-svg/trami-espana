@@ -1,0 +1,49 @@
+# Configuración de Supabase para Trami España
+# Documentación: https://supabase.com/docs/guides/cli/config
+
+project_id = "trami-espana"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[local_smtp]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+
+[auth.external.google]
+enabled = false
+client_id = ""
+secret = ""
+
+[auth.external.apple]
+enabled = false
+client_id = ""
+secret = ""
+
+# Asistente IA: se espera acceso ANÓNIMO (el cliente no requiere login para consultar).
+# La seguridad se apoya en: validación de entrada, límite de longitud, CORS restringido
+# (secret CORS_ALLOWED_ORIGINS) y errores sanitizados. El grounding solo devuelve
+# contenido is_published=true AND verification_status='verified'.
+[functions.assistant]
+verify_jwt = false

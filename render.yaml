@@ -1,0 +1,39 @@
+# ============================================================================
+# Render Blueprint — Trami España (web estática + política de privacidad)
+#
+# Despliegue en un clic:
+#   1. Sube este repo a GitHub.
+#   2. En Render: New → Blueprint → selecciona el repo.
+#   3. Render pedirá los valores de las env vars marcadas sync:false
+#      (VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY). Cópialas desde
+#      apps/web/.env.local o del Dashboard de Supabase → Settings → API.
+#   4. La URL final quedará como https://tramiespana-web.onrender.com
+#      (o el nombre que elijas) y la política en:
+#      https://<tu-url>/politica-de-privacidad.html
+#
+# La página /politica-de-privacidad.html se sirve directamente porque existe
+# como fichero físico en apps/web/public/ (Vite lo copia a dist/ sin tocarlo).
+# El rewrite /* → /index.html solo aplica a rutas SIN fichero (SPA fallback),
+# por lo que no interfiere con la política ni con los assets.
+# ============================================================================
+
+services:
+  - type: web
+    name: tramiespana-web
+    runtime: static
+    # Instala el monorepo completo (workspaces) y compila solo apps/web
+    buildCommand: npm install && npm run build --workspace=apps/web
+    staticPublishPath: apps/web/dist
+    pullRequestPreviewsEnabled: false
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false          # p. ej. https://saoclucarvowoarhokjx.supabase.co
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false          # clave pública publishable (sb_publishable_…)
+      - key: NODE_VERSION
+        value: "20"
+    routes:
+      # SPA fallback para React Router (no afecta a ficheros existentes)
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -25,7 +25,7 @@
         "backgroundColor": "#2563eb"
       },
       "package": "es.tramiespana.app",
-      "versionCode": 5,
+      "versionCode": 6,
       "versionName": "1.0.1"
     },
     "web": {
@@ -35,7 +35,17 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "buildToolsVersion": "36.0.0"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

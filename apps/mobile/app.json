@@ -25,7 +25,7 @@
         "backgroundColor": "#2563eb"
       },
       "package": "es.tramiespana.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "versionName": "1.0.1",
       "targetSdkVersion": 36
     },

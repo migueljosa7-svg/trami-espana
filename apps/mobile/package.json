@@ -38,6 +38,7 @@
     "@typescript-eslint/parser": "^6.21.0",
     "eas-cli": "^21.8.0",
     "eslint": "^8.56.0",
+    "expo-module-scripts": "^56.0.3",
     "typescript": "^5.3.3"
   }
 }

@@ -208,11 +208,29 @@ export class AssistantService {
   ): Promise<{ data: AssistantChatMessage | null; error: Error | null }> {
     try {
       let searchResults: Procedure[] = [];
+      let searchError: any = null;
 
       try {
         searchResults = await procedureService.searchProcedures(userQuery);
-      } catch (err) {
+      } catch (err: any) {
         searchResults = [];
+        searchError = err;
+      }
+
+      if (searchError) {
+        const msg = String(searchError?.message || "");
+        const isNetworkFailure =
+          /network|fetch|offline|timeout|abort|econnrefused|enotfound|load failed|connection/i.test(msg) ||
+          (typeof navigator !== "undefined" && navigator.onLine === false);
+
+        if (isNetworkFailure) {
+          return {
+            data: null,
+            error: new Error(
+              "No se ha podido conectar con el servicio de trámites. Comprueba tu conexión a internet e inténtalo de nuevo."
+            ),
+          };
+        }
       }
 
       let answerContent = "";

@@ -44,6 +44,7 @@ export default function FavoritesScreen() {
                 </View>
             ) : favorites.length === 0 ? (
                 <View style={styles.emptyState}>
+                    <Text style={styles.emptyIcon}>💙</Text>
                     <Text style={styles.emptyTitle}>No tienes trámites guardados</Text>
                     <Text style={styles.emptySubtitle}>
                         Guarda tus trámites más consultados para acceder a ellos rápidamente.
@@ -106,6 +107,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 24
+    },
+    emptyIcon: {
+        fontSize: 48,
+        marginBottom: 16,
     },
     emptyTitle: {
         fontSize: 18,

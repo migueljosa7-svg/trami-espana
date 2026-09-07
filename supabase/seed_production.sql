@@ -54,8 +54,8 @@ BEGIN
         'https://sede.policia.gob.es/',
         NOW(),
         'f327b75a-b43a-4be1-a636-68f7c102f682', -- admin: migueljosa7@gmail.com (UUID verificado en prod)
-        '23 € (tasa modelo 790 código 012)',
-        '15-20 días hábiles',
+        '12 € (tasa modelo 790 código 012). Gratuito por cambio de domicilio (con DNI en vigor) o familia numerosa.',
+        'En el acto (cita presencial en oficina de expedición)',
         NOW(),
         NOW()
     ) RETURNING id INTO proc_dni_id;
@@ -66,27 +66,27 @@ BEGIN
     INSERT INTO public.procedure_requirements (procedure_id, title, description, order_index) VALUES
         (proc_dni_id, 'Ser mayor de 14 años', 'Obligatorio para renovación u obtención por primera vez', 1),
         (proc_dni_id, 'Residir en España', 'Empadronamiento en cualquier municipio español', 2),
-        (proc_dni_id, 'DNI anterior caducado o próximo a caducar', 'Caducidad en los últimos 3 meses, o pérdida/robo', 3),
-        (proc_dni_id, 'Fotografía reciente', '32x40mm, fondo blanco, color, tomada en los últimos 2 meses', 4),
-        (proc_dni_id, 'Pago de la tasa', 'Tasa de 23€ (modelo 790 código 012)', 5);
+        (proc_dni_id, 'DNI anterior caducado o próximo a caducar', 'Caducidad en los últimos 180 días, o pérdida/robo', 3),
+        (proc_dni_id, 'Fotografía reciente', '32x40mm, fondo blanco, color, reciente y con rostro despejado', 4),
+        (proc_dni_id, 'Pago de la tasa oficial de 12 €', 'Tasa de 12 € (modelo 790 código 012). Exención gratuita para familia numerosa o cambio de domicilio con DNI en vigor', 5);
 
     -- ===========================================
     -- Documentación
     -- ===========================================
     INSERT INTO public.procedure_documents (procedure_id, name, description, is_required, order_index) VALUES
-        (proc_dni_id, 'DNI anterior', 'DNI que quieres renovar (si aplica)', true, 1),
+        (proc_dni_id, 'DNI anterior', 'DNI que quieres renovar (o denuncia en caso de pérdida o sustracción)', true, 1),
         (proc_dni_id, 'Fotografía de carnet', '32x40mm, fondo blanco, reciente', true, 2),
-        (proc_dni_id, 'Justificante de pago de tasa', 'Resguardo del pago de 23€', true, 3),
-        (proc_dni_id, 'Certificado de empadronamiento', 'Opcional pero recomendado', false, 4);
+        (proc_dni_id, 'Justificante de pago de tasa de 12 €', 'Resguardo del pago de 12 € o acreditación de exención (título de familia numerosa)', true, 3),
+        (proc_dni_id, 'Certificado de empadronamiento', 'Obligatorio únicamente si ha cambiado el domicilio respecto al DNI anterior', false, 4);
 
     -- ===========================================
     -- Pasos
     -- ===========================================
     INSERT INTO public.procedure_steps (procedure_id, title, description, order_index, is_important) VALUES
         (proc_dni_id, 'Solicitar cita previa', 'Pedir cita en la sede electrónica de la Policía Nacional o en https://www.citapreviadnie.es/', 1, true),
-        (proc_dni_id, 'Pagar la tasa', 'Pago telemático o en entidad bancaria del modelo 790', 2, true),
+        (proc_dni_id, 'Pagar la tasa de 12 € o preparar exención', 'Pago telemático en citapreviadnie.es o en efectivo/tarjeta en la oficina de expedición', 2, true),
         (proc_dni_id, 'Acudir a la oficina', 'Presentar documentación el día y hora de la cita', 3, true),
-        (proc_dni_id, 'Recibir el nuevo DNI', 'Enviado al domicilio por correo certificado en 15-20 días hábiles', 4, false);
+        (proc_dni_id, 'Expedición y entrega del DNI', 'El nuevo DNI se imprime y entrega en el acto en la propia oficina', 4, false);
 
     -- ===========================================
     -- Enlaces oficiales

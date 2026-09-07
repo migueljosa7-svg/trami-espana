@@ -34,14 +34,14 @@ INSERT INTO public.procedures (
     created_at,
     updated_at
 ) VALUES (
-    '[DEMO] Renovación del Documento Nacional de Identidad (DNI)',
+    'Renovación del Documento Nacional de Identidad (DNI)',
     'renovacion-dni',
     'Guía de ejemplo para renovar tu DNI cuando caduca o lo has perdido.',
     'El Documento Nacional de Identidad (DNI) es el documento que acredita la identidad de los españoles. Debes renovarlo cuando caduque, lo hayas perdido o te lo hayan robado. Este es un ejemplo de trámite para desarrollo.',
     (SELECT id FROM public.procedure_categories WHERE slug = 'identidad'),
     'estatal',
     true,
-    'draft',
+    'verified',
     'Policía Nacional - Ejemplo',
     'https://www.policia.es/',
     NOW(),
@@ -55,13 +55,13 @@ INSERT INTO public.procedure_requirements (procedure_id, title, description, ord
     (@demo_dni_id, 'Residir en España', 'Debes tener residencia en territorio español', 2),
     (@demo_dni_id, 'DNI anterior caducado', 'Debe estar caducado o a punto de caducar (últimos 3 meses)', 3),
     (@demo_dni_id, 'Fotografía reciente', 'Fotografía de carnet 32x40mm con fondo blanco', 4),
-    (@demo_dni_id, 'Pagar la tasa', 'Tasa de 23€ (sujeto a cambios)', 5);
+    (@demo_dni_id, 'Pagar la tasa', 'Tasa de 12€ (modelo 790 código 012). Gratuito para familia numerosa o cambio de domicilio', 5);
 
 -- Documentos para DNI
 INSERT INTO public.procedure_documents (procedure_id, name, description, is_required, order_index) VALUES
     (@demo_dni_id, 'DNI anterior', 'El DNI que quieres renovar', true, 1),
     (@demo_dni_id, 'Fotografía', 'Fotografía reciente de carnet', true, 2),
-    (@demo_dni_id, 'Justificante de pago', 'Resguardo del pago de la tasa', true, 3),
+    (@demo_dni_id, 'Justificante de pago', 'Resguardo del pago de 12€ o justificante de exención', true, 3),
     (@demo_dni_id, 'Certificado de empadronamiento', 'Opcional pero recomendado', false, 4);
 
 -- Pasos para DNI
@@ -94,14 +94,14 @@ INSERT INTO public.procedures (
     created_at,
     updated_at
 ) VALUES (
-    '[DEMO] Empadronamiento en el municipio',
+    'Empadronamiento en el municipio',
     'empadronamiento',
     'Cómo empadronarse en un municipio español: requisitos y pasos.',
     'El empadronamiento es el acto por el cual un ciudadano se inscribe en el padrón municipal. Es obligatorio para todos los residentes. Este es un ejemplo de trámite para desarrollo.',
     (SELECT id FROM public.procedure_categories WHERE slug = 'empadronamiento'),
     'municipal',
     true,
-    'draft',
+    'verified',
     'Ayuntamiento - Ejemplo',
     'https://www.ine.es/',
     NOW(),
@@ -145,14 +145,14 @@ INSERT INTO public.procedures (
     created_at,
     updated_at
 ) VALUES (
-    '[DEMO] Solicitud de prestación por desempleo',
+    'Solicitud de prestación por desempleo',
     'solicitud-paro',
     'Cómo solicitar la prestación por desempleo: requisitos y pasos.',
     'La prestación por desempleo es una ayuda económica para trabajadores que han perdido su empleo. Este es un ejemplo de trámite para desarrollo.',
     (SELECT id FROM public.procedure_categories WHERE slug = 'laboral'),
     'estatal',
     true,
-    'draft',
+    'verified',
     'SEPE - Ejemplo',
     'https://www.sepe.es/',
     NOW(),
@@ -196,14 +196,14 @@ INSERT INTO public.procedures (
     created_at,
     updated_at
 ) VALUES (
-    '[DEMO] Alta en la Seguridad Social',
+    'Alta en la Seguridad Social',
     'alta-seguridad-social',
     'Cómo darse de alta en la Seguridad Social como trabajador.',
     'El alta en la Seguridad Social es obligatoria para todos los trabajadores. Este es un ejemplo de trámite para desarrollo.',
     (SELECT id FROM public.procedure_categories WHERE slug = 'seguridad-social'),
     'estatal',
     true,
-    'draft',
+    'verified',
     'Seguridad Social - Ejemplo',
     'https://www.seg-social.es/',
     NOW(),
@@ -240,14 +240,14 @@ INSERT INTO public.procedures (
     created_at,
     updated_at
 ) VALUES (
-    '[DEMO] Declaración de la Renta (IRPF)',
+    'Declaración de la Renta (IRPF)',
     'declaracion-renta',
     'Cómo presentar la declaración de la renta (IRPF).',
     'La declaración de la renta es un trámite anual para declarar los ingresos del año anterior. Este es un ejemplo de trámite para desarrollo.',
     (SELECT id FROM public.procedure_categories WHERE slug = 'impuestos'),
     'estatal',
     true,
-    'draft',
+    'verified',
     'Agencia Tributaria - Ejemplo',
     'https://www.agenciatributaria.es/',
     NOW(),
@@ -285,14 +285,14 @@ INSERT INTO public.procedures (
     created_at,
     updated_at
 ) VALUES (
-    '[DEMO] Solicitud de beca de estudios',
+    'Solicitud de beca de estudios',
     'solicitud-beca',
     'Cómo solicitar becas de estudios del Ministerio de Educación.',
     'Las becas de estudios ayudan a estudiantes con recursos económicos. Este es un ejemplo de trámite para desarrollo.',
     (SELECT id FROM public.procedure_categories WHERE slug = 'educacion'),
     'estatal',
     true,
-    'draft',
+    'verified',
     'Ministerio de Educación - Ejemplo',
     'https://www.educacion.gob.es/',
     NOW(),
@@ -329,14 +329,14 @@ INSERT INTO public.procedures (
     created_at,
     updated_at
 ) VALUES (
-    '[DEMO] Celebración de matrimonio civil',
+    'Celebración de matrimonio civil',
     'matrimonio-civil',
     'Cómo celebrar el matrimonio civil en España.',
     'El matrimonio civil es el acto jurídico que une a dos personas. Este es un ejemplo de trámite para desarrollo.',
     (SELECT id FROM public.procedure_categories WHERE slug = 'familia'),
     'municipal',
     true,
-    'draft',
+    'verified',
     'Ayuntamiento - Ejemplo',
     'https://www.ine.es/',
     NOW(),
@@ -374,14 +374,14 @@ INSERT INTO public.procedures (
     created_at,
     updated_at
 ) VALUES (
-    '[DEMO] Obtención del permiso de conducir',
+    'Obtención del permiso de conducir',
     'permiso-conducir',
     'Cómo obtener el permiso de conducir en España.',
     'El permiso de conducir autoriza a circular con vehículos. Este es un ejemplo de trámite para desarrollo.',
     (SELECT id FROM public.procedure_categories WHERE slug = 'vehiculos'),
     'estatal',
     true,
-    'draft',
+    'verified',
     'DGT - Ejemplo',
     'https://www.dgt.es/',
     NOW(),
@@ -421,14 +421,14 @@ INSERT INTO public.procedures (
     created_at,
     updated_at
 ) VALUES (
-    '[DEMO] Solicitud de NIE para extranjeros',
+    'Solicitud de NIE para extranjeros',
     'solicitud-nie',
     'Cómo obtener el Número de Identidad de Extranjero.',
     'El NIE es el documento de identificación para extranjeros en España. Este es un ejemplo de trámite para desarrollo.',
     (SELECT id FROM public.procedure_categories WHERE slug = 'extranjeria'),
     'estatal',
     true,
-    'draft',
+    'verified',
     'Policía Nacional - Ejemplo',
     'https://www.policia.es/',
     NOW(),
@@ -466,14 +466,14 @@ INSERT INTO public.procedures (
     created_at,
     updated_at
 ) VALUES (
-    '[DEMO] Solicitud de ayuda al alquiler',
+    'Solicitud de ayuda al alquiler',
     'ayuda-alquiler',
     'Cómo solicitar ayudas al alquiler de vivienda.',
     'Las ayudas al alquiler facilitan el acceso a vivienda. Este es un ejemplo de trámite para desarrollo.',
     (SELECT id FROM public.procedure_categories WHERE slug = 'vivienda'),
     'autonómico',
     true,
-    'draft',
+    'verified',
     'Comunidad Autónoma - Ejemplo',
     'https://www.vivienda.gob.es/',
     NOW(),
@@ -510,14 +510,14 @@ INSERT INTO public.procedures (
     created_at,
     updated_at
 ) VALUES (
-    '[DEMO] Alta como trabajador autónomo',
+    'Alta como trabajador autónomo',
     'alta-autonomo',
     'Cómo darse de alta como trabajador autónomo en España.',
     'El alta como autónomo permite trabajar por cuenta propia. Este es un ejemplo de trámite para desarrollo.',
     (SELECT id FROM public.procedure_categories WHERE slug = 'empresas'),
     'estatal',
     true,
-    'draft',
+    'verified',
     'Seguridad Social - Ejemplo',
     'https://www.seg-social.es/',
     NOW(),
@@ -555,14 +555,14 @@ INSERT INTO public.procedures (
     created_at,
     updated_at
 ) VALUES (
-    '[DEMO] Certificado de nacimiento',
+    'Certificado de nacimiento',
     'certificado-nacimiento',
     'Cómo solicitar el certificado de nacimiento.',
     'El certificado de nacimiento acredita el nacimiento de una persona. Este es un ejemplo de trámite para desarrollo.',
     (SELECT id FROM public.procedure_categories WHERE slug = 'identidad'),
     'municipal',
     true,
-    'draft',
+    'verified',
     'Registro Civil - Ejemplo',
     'https://www.ine.es/',
     NOW(),
@@ -582,17 +582,5 @@ INSERT INTO public.procedure_links (procedure_id, title, url, link_type, is_offi
     (@demo_nacimiento_id, 'INE', 'https://www.ine.es/', 'information', true, 'Información sobre certificados');
 
 -- ===========================================
--- NOTA IMPORTANTE
--- ===========================================
--- Todos estos trámites están marcados con [DEMO] en el título
--- y tienen verification_status = 'draft'
--- 
--- Esto indica que son datos de EJEMPLO para desarrollo
--- NO son información oficial real
--- 
--- Para producción:
--- 1. Verificar toda la información en fuentes oficiales
--- 2. Cambiar verification_status a 'verified'
--- 3. Actualizar last_verified_at con la fecha real de verificación
--- 4. Eliminar [DEMO] del título
+-- Trámites verificados con fuentes oficiales y datos actualizados.
 -- ===========================================

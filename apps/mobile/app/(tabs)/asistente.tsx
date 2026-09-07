@@ -7,19 +7,23 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Linking,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { authService, assistantService, AssistantChatMessage, ASSISTANT_DISCLAIMER } from "@trami-espana/shared";
 
 const MAX_CHARS = 500;
 const SLOW_THRESHOLD_MS = 6000;
 
-type MessageStatus = "normal" | "partial" | "no-results" | "fallback" | "error";
+type MessageStatus = "normal" | "partial" | "no-results" | "fallback" | "error" | "greeting";
 
 interface EnhancedMessage extends AssistantChatMessage {
   status?: MessageStatus;
   lastQuery?: string;
+  isGreeting?: boolean;
 }
 
 function detectStatus(msg: AssistantChatMessage): MessageStatus {
@@ -56,6 +60,31 @@ function detectStatus(msg: AssistantChatMessage): MessageStatus {
   return "normal";
 }
 
+// Detect if the message is a greeting/salutation
+function isGreeting(query: string): boolean {
+  const greetings = [
+    "hola", "buenos dias", "buenas tardes", "buenas noches", "buenas",
+    "saludos", "hey", "que tal", "como estas", "hi", "hello",
+    "gracias", "gracias por todo", "muchas gracias", "agradecido", "agradecida",
+    "gracias por la ayuda", "muchas gracias por la ayuda"
+  ];
+  const normalized = query.toLowerCase().trim();
+  return greetings.some(g => normalized === g || normalized.startsWith(g + " ") || normalized.endsWith(" " + g));
+}
+
+// Generate a friendly greeting response
+function getGreetingResponse(query: string): string {
+  const normalized = query.toLowerCase().trim();
+  
+  // Check for gratitude
+  if (normalized.includes("gracias") || normalized.includes("agradecid")) {
+    return "¡De nada! 😊 Me alegra poder ayudarte. Si tienes alguna consulta sobre trámites administrativos españoles, no dudes en preguntarme. ¿Hay algún trámite específico del que quieras saber más?";
+  }
+  
+  // General greeting
+  return "¡Hola! 👋 Gracias por escribirme. Estoy aquí para ayudarte con cualquier consulta sobre trámites administrativos en España. Puedes preguntarme sobre trámites como renovar el DNI, empadronamiento, citas previas, prestaciones, y mucho más. ¿En qué puedo ayudarte hoy?";
+}
+
 export default function AssistantScreen() {
   const [conversationId, setConversationId] = useState<string>("");
   const [messages, setMessages] = useState<EnhancedMessage[]>([]);
@@ -63,39 +92,85 @@ export default function AssistantScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSlowResponse, setIsSlowResponse] = useState(false);
   const [lastFailedQuery, setLastFailedQuery] = useState("");
-    const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
+  const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    const init = async () => {
-      const currentUser = await authService.getCurrentUser();
+  const init = useCallback(async () => {
+    let currentUser = null;
+    let isNetworkIssue = false;
 
-      // Sin usuario: no crear conversación, no tocar Supabase. Redirigir a login.
-      if (!currentUser) {
-        router.replace("/login");
-        return;
+    try {
+      currentUser = await authService.getCurrentUser();
+    } catch (err: any) {
+      // Si falla por red, comprobamos la sesión local en caché
+      try {
+        const session = await authService.getSession();
+        currentUser = session?.user ?? null;
+      } catch {
+        currentUser = null;
       }
+      isNetworkIssue = /network|offline|failed to fetch|timeout|connection/i.test(
+        err?.message || "",
+      );
+    }
 
+    if (!currentUser && !isNetworkIssue) {
+      router.replace("/login");
+      return;
+    }
+
+    if (isNetworkIssue) {
+      setIsOffline(true);
+    }
+
+    try {
       const { data } =
         await assistantService.createConversation("Asistente Mobile");
-      if (data) {
-        setConversationId(data.id);
-        setMessages([
-          {
-            id: "welcome-mobile",
-            conversation_id: data.id,
-            role: "assistant",
-            content:
-              "¡Hola! Soy tu asistente de orientación de trámites para España. ¿Qué trámite deseas consultar?",
-            disclaimer: "Trami España es un servicio independiente no oficial.",
-            created_at: new Date().toISOString(),
-            status: "normal",
-          },
-        ]);
-      }
-    };
+      const convId = data?.id || `conv-local-${Date.now()}`;
+      setConversationId(convId);
+      
+      // Set initial greeting message
+      setMessages([
+        {
+          id: "welcome-mobile",
+          conversation_id: convId,
+          role: "assistant",
+          content: "¡Hola! Soy el Asistente IA de Trami España. ¿En qué trámite administrativo necesitas ayuda hoy?",
+          created_at: new Date().toISOString(),
+          isGreeting: true,
+          status: "greeting",
+        },
+      ]);
+    } catch {
+      setIsOffline(true);
+      const convId = `conv-local-${Date.now()}`;
+      setConversationId(convId);
+      setMessages([
+        {
+          id: "welcome-mobile",
+          conversation_id: convId,
+          role: "assistant",
+          content: "¡Hola! Soy el Asistente IA de Trami España. ¿En qué trámite administrativo necesitas ayuda hoy?",
+          created_at: new Date().toISOString(),
+          isGreeting: true,
+          status: "greeting",
+        },
+      ]);
+    }
+  }, [router]);
+
+  useEffect(() => {
     init();
-  }, []);
+  }, [init]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+    }
+  }, [messages]);
 
   const handleSend = useCallback(
     async (textOverride?: string) => {
@@ -121,11 +196,33 @@ export default function AssistantScreen() {
       );
 
       try {
-        const { data, error } = await assistantService.ask(
-          text,
-          conversationId,
-        );
-        if (error) {
+        let response;
+        
+        // Handle greetings gracefully without triggering error
+        if (isGreeting(text)) {
+          const greetingContent = getGreetingResponse(text);
+          response = {
+            data: {
+              id: `msg-${Date.now()}`,
+              conversation_id: conversationId,
+              role: "assistant" as const,
+              content: greetingContent,
+              created_at: new Date().toISOString(),
+              is_fallback: true,
+              result_type: "relevant" as const,
+            } as AssistantChatMessage,
+            error: null,
+          };
+        } else {
+          response = await assistantService.ask(text, conversationId);
+        }
+        
+        if (response.error) {
+          const isNet =
+            /conexión|internet|network|offline|failed to fetch|connection/i.test(
+              response.error.message,
+            );
+          if (isNet) setIsOffline(true);
           setLastFailedQuery(text);
           setMessages((prev) => [
             ...prev,
@@ -134,19 +231,23 @@ export default function AssistantScreen() {
               conversation_id: conversationId,
               role: "assistant",
               content:
-                error.message ||
-                "El asistente no está disponible en este momento.",
+                response.error?.message ||
+                "No se ha podido conectar con el asistente. Comprueba tu conexión a internet.",
               created_at: new Date().toISOString(),
               status: "error",
               lastQuery: text,
             },
           ]);
-        } else if (data) {
-          const status = detectStatus(data);
-          setMessages((prev) => [...prev, { ...data, status }]);
+        } else if (response.data) {
+          setIsOffline(false);
+          const isGreetingResponse = isGreeting(text);
+          const status = isGreetingResponse ? "greeting" : detectStatus(response.data);
+          const enhancedMsg: EnhancedMessage = { ...response.data, status, isGreeting: isGreetingResponse };
+          setMessages((prev) => [...prev, enhancedMsg]);
           setLastFailedQuery("");
         }
       } catch {
+        setIsOffline(true);
         setLastFailedQuery(text);
         setMessages((prev) => [
           ...prev,
@@ -155,9 +256,10 @@ export default function AssistantScreen() {
             conversation_id: conversationId,
             role: "assistant",
             content:
-              "No se ha podido conectar con el asistente. Comprueba tu conexión.",
+              "No se ha podido conectar con el asistente. Comprueba tu conexión a internet e inténtalo de nuevo.",
             created_at: new Date().toISOString(),
             status: "error",
+            lastQuery: text,
           },
         ]);
       } finally {
@@ -170,25 +272,65 @@ export default function AssistantScreen() {
   );
 
   const handleRetry = () => {
-    if (lastFailedQuery) handleSend(lastFailedQuery);
+    setIsOffline(false);
+    if (lastFailedQuery) {
+      handleSend(lastFailedQuery);
+    } else {
+      init();
+    }
   };
 
   const charsLeft = MAX_CHARS - inputQuery.length;
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+    >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Asistente IA Grounded</Text>
+        <View style={styles.headerContent}>
+          <View style={styles.headerIcon}>
+            <Ionicons name="sparkles" size={24} color="#ffffff" />
+          </View>
+          <View>
+            <Text style={styles.headerTitle}>Asistente IA</Text>
+            <Text style={styles.headerSubtitle}>Trami España</Text>
+          </View>
+        </View>
         <Text style={styles.disclaimerText}>
           {ASSISTANT_DISCLAIMER}
         </Text>
       </View>
 
+      {/* Offline Warning Banner */}
+      {isOffline && (
+        <View style={styles.offlineBanner}>
+          <Ionicons name="cloud-offline-outline" size={20} color="#92400e" />
+          <View style={styles.offlineTextContainer}>
+            <Text style={styles.offlineTitle}>Problemas de conexión a internet</Text>
+            <Text style={styles.offlineSubtitle}>
+              Las respuestas y búsquedas de trámites requieren conexión activa.
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.offlineRetryBtn}
+            onPress={handleRetry}
+            disabled={isLoading}
+          >
+            <Text style={styles.offlineRetryText}>Reconectar</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Chat list */}
       <ScrollView
+        ref={scrollViewRef}
         style={styles.chatArea}
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={styles.chatContent}
+        keyboardShouldPersistTaps="handled"
+        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
       >
         {messages.map((msg) => (
           <View
@@ -340,6 +482,10 @@ export default function AssistantScreen() {
             placeholder="Escribe tu consulta sobre un trámite..."
             placeholderTextColor="#94a3b8"
             maxLength={MAX_CHARS}
+            multiline
+            returnKeyType="send"
+            onSubmitEditing={() => handleSend()}
+            blurOnSubmit={false}
             accessibilityLabel="Campo de consulta al asistente"
           />
           {inputQuery.length > 0 && (
@@ -356,16 +502,21 @@ export default function AssistantScreen() {
         <TouchableOpacity
           style={[
             styles.sendButton,
-            !inputQuery.trim() && styles.sendButtonDisabled,
+            (!inputQuery.trim() || isLoading) && styles.sendButtonDisabled,
           ]}
           onPress={() => handleSend()}
           disabled={!inputQuery.trim() || isLoading}
           accessibilityLabel="Enviar consulta"
+          activeOpacity={0.7}
         >
-          <Text style={styles.sendButtonText}>Enviar</Text>
+          {isLoading ? (
+            <ActivityIndicator color="#ffffff" size="small" />
+          ) : (
+            <Ionicons name="send" size={22} color="#ffffff" />
+          )}
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -379,13 +530,41 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e2e8f0",
   },
-  headerTitle: { fontSize: 20, fontWeight: "bold", color: "#0f172a" },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 8,
+  },
+  headerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#2563eb",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#2563eb",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#0f172a",
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: "#64748b",
+  },
   disclaimerText: { fontSize: 11, color: "#b45309", marginTop: 4, lineHeight: 15 },
   chatArea: { flex: 1 },
+  chatContent: { padding: 16, paddingBottom: 8 },
   messageContainer: { marginBottom: 12 },
   userContainer: { alignItems: "flex-end" },
   assistantContainer: { alignItems: "flex-start" },
-  messageBubble: { maxWidth: "85%", borderRadius: 14, padding: 12 },
+  messageBubble: { maxWidth: "88%", borderRadius: 16, padding: 14 },
   userBubble: { backgroundColor: "#2563eb" },
   assistantBubble: {
     backgroundColor: "#ffffff",
@@ -420,7 +599,7 @@ const styles = StyleSheet.create({
     color: "#b45309",
     marginBottom: 6,
   },
-  messageText: { fontSize: 14, lineHeight: 20 },
+  messageText: { fontSize: 15, lineHeight: 22 },
   userText: { color: "#ffffff" },
   assistantText: { color: "#1e293b" },
   badge: {
@@ -448,34 +627,34 @@ const styles = StyleSheet.create({
   retryButton: {
     marginTop: 8,
     alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     backgroundColor: "#fee2e2",
-    borderRadius: 6,
-  },
-  retryText: { fontSize: 12, fontWeight: "600", color: "#dc2626" },
-  proceduresBox: {
-    marginTop: 8,
-    backgroundColor: "#eff6ff",
-    padding: 8,
     borderRadius: 8,
+  },
+  retryText: { fontSize: 13, fontWeight: "600", color: "#dc2626" },
+  proceduresBox: {
+    marginTop: 10,
+    backgroundColor: "#eff6ff",
+    padding: 10,
+    borderRadius: 10,
   },
   sourcesBox: {
-    marginTop: 6,
+    marginTop: 8,
     backgroundColor: "#f1f5f9",
-    padding: 8,
-    borderRadius: 8,
+    padding: 10,
+    borderRadius: 10,
   },
   boxTitle: {
     fontSize: 11,
     fontWeight: "bold",
     color: "#475569",
-    marginBottom: 4,
+    marginBottom: 6,
   },
-  procLink: { marginVertical: 2 },
-  procTitle: { fontSize: 12, fontWeight: "600", color: "#2563eb" },
+  procLink: { marginVertical: 3 },
+  procTitle: { fontSize: 13, fontWeight: "600", color: "#2563eb" },
   sourceUrl: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#0284c7",
     textDecorationLine: "underline",
     marginVertical: 2,
@@ -484,56 +663,148 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#94a3b8",
     fontStyle: "italic",
-    marginTop: 6,
+    marginTop: 8,
   },
   loadingBubble: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 8,
+    gap: 10,
     alignSelf: "flex-start",
     backgroundColor: "#ffffff",
-    padding: 10,
-    borderRadius: 12,
+    padding: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "#e2e8f0",
   },
-  loadingText: { fontSize: 12, color: "#64748b" },
+  loadingText: { fontSize: 13, color: "#64748b" },
   loadingSlowText: { fontSize: 11, color: "#94a3b8", marginTop: 2 },
   inputContainer: {
     flexDirection: "row",
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: Platform.OS === "ios" ? 28 : 12,
     backgroundColor: "#ffffff",
     borderTopWidth: 1,
     borderTopColor: "#e2e8f0",
-    gap: 8,
+    gap: 12,
+    alignItems: "flex-end",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 4,
   },
   inputWrapper: { flex: 1, position: "relative" },
   input: {
-    flex: 1,
     backgroundColor: "#f1f5f9",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    paddingRight: 36,
-    fontSize: 14,
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    paddingRight: 50,
+    fontSize: 17,
     color: "#0f172a",
+    maxHeight: 120,
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+  },
+  inputFocused: {
+    borderColor: "#2563eb",
+    backgroundColor: "#ffffff",
   },
   charCounter: {
     position: "absolute",
-    right: 8,
-    bottom: 6,
-    fontSize: 10,
+    right: 12,
+    bottom: 12,
+    fontSize: 11,
     fontFamily: "monospace",
     color: "#94a3b8",
   },
   charCounterWarning: { color: "#ef4444" },
   sendButton: {
     backgroundColor: "#2563eb",
-    borderRadius: 10,
+    borderRadius: 24,
+    width: 52,
+    height: 52,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#2563eb",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  sendButtonDisabled: { backgroundColor: "#cbd5e1", shadowOpacity: 0 },
+  offlineBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fffbeb",
+    borderBottomWidth: 1,
+    borderBottomColor: "#fde68a",
     paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  offlineIcon: {
+    fontSize: 20,
+  },
+  offlineTextContainer: {
+    flex: 1,
+  },
+  offlineTitle: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#92400e",
+  },
+  offlineSubtitle: {
+    fontSize: 11,
+    color: "#b45309",
+    marginTop: 2,
+  },
+  offlineRetryBtn: {
+    backgroundColor: "#fef3c7",
+    borderWidth: 1,
+    borderColor: "#f59e0b",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  offlineRetryText: {
+    fontSize: 11,
+    fontWeight: "bold",
+    color: "#b45309",
+  },
+  // Avatar styles
+  avatarContainer: {
+    marginRight: 8,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#2563eb",
     justifyContent: "center",
     alignItems: "center",
   },
-  sendButtonDisabled: { backgroundColor: "#94a3b8" },
-  sendButtonText: { color: "#ffffff", fontWeight: "600", fontSize: 13 },
+  avatarGreeting: {
+    backgroundColor: "#7c3aed",
+  },
+  avatarUser: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#475569",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 8,
+  },
+  // Greeting bubble
+  greetingBubble: {
+    backgroundColor: "#f5f3ff",
+    borderWidth: 1,
+    borderColor: "#ddd6fe",
+  },
+  greetingText: {
+    color: "#4c1d95",
+    fontStyle: "italic",
+  },
 });

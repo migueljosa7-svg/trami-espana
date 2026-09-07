@@ -4,7 +4,7 @@ import { PROCEDURE_CATEGORIES } from '@trami-espana/shared';
 
 export default function HomeScreen() {
     return (
-        <ScrollView style={styles.container}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
             <View style={styles.content}>
                 {/* Banner Disclaimer */}
                 <View style={styles.disclaimerBanner}>
@@ -22,7 +22,7 @@ export default function HomeScreen() {
                         Guía clara y sencilla para entender trámites con la administración pública española
                     </Text>
                     <Link href="/(tabs)/buscar" asChild>
-                        <TouchableOpacity style={styles.heroButton}>
+                        <TouchableOpacity style={styles.heroButton} activeOpacity={0.8}>
                             <Text style={styles.heroButtonText}>
                                 Buscar trámites
                             </Text>
@@ -40,7 +40,7 @@ export default function HomeScreen() {
                                 href={`/(tabs)/buscar?categoria=${category.slug}`}
                                 asChild
                             >
-                                <TouchableOpacity style={styles.categoryCard}>
+                                <TouchableOpacity style={styles.categoryCard} activeOpacity={0.7}>
                                     <Text style={styles.categoryIcon}>{category.icon}</Text>
                                     <Text style={styles.categoryName}>
                                         {category.name}
@@ -58,7 +58,7 @@ export default function HomeScreen() {
                         Pregunta a nuestro Asistente de IA. Orientación rápida con información oficial validada.
                     </Text>
                     <Link href="/(tabs)/asistente" asChild>
-                        <TouchableOpacity style={styles.assistantButton}>
+                        <TouchableOpacity style={styles.assistantButton} activeOpacity={0.8}>
                             <Text style={styles.assistantButtonText}>Abrir Asistente</Text>
                         </TouchableOpacity>
                     </Link>
@@ -73,9 +73,13 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#f8fafc'
     },
+    scrollContent: {
+        flexGrow: 1,
+    },
     content: {
         padding: 16,
-        paddingTop: 48
+        paddingTop: 48,
+        paddingBottom: 80,
     },
     disclaimerBanner: {
         backgroundColor: '#fef3c7',
@@ -138,14 +142,16 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffffff',
         borderWidth: 1,
         borderColor: '#e2e8f0',
-        borderRadius: 12,
-        padding: 14,
+        borderRadius: 16,
+        padding: 16,
         width: '48%',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 2,
+        minHeight: 100,
+        justifyContent: 'center',
     },
     categoryIcon: {
         fontSize: 24,

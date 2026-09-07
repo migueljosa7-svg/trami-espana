@@ -2,6 +2,11 @@
   "expo": {
     "android": {
       "package": "com.migueljosa7.tramiespana"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e2f6d28e-90e4-433b-99a4-145d311b219a"
+      }
     }
   }
 }

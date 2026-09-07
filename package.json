@@ -18,7 +18,9 @@
     "test": "npm run test --workspaces --if-present",
     "db:migrate": "npx supabase migration up",
     "db:status": "npx supabase migration list",
-    "postinstall": "node scripts/postinstall-expo-cli-win-fix.js"
+    "postinstall": "node scripts/postinstall-expo-cli-win-fix.js",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "engines": {
     "node": ">=18.0.0",
@@ -47,5 +49,9 @@
     "react-native": "0.73.6",
     "vitest": "^4.1.10"
   },
-  "dependencies": {}
+  "dependencies": {
+    "expo": "~50.0.17",
+    "react": "18.2.0",
+    "react-native": "0.73.6"
+  }
 }

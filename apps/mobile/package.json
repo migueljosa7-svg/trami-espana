@@ -1,6 +1,6 @@
 {
   "name": "@trami-espana/mobile",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -18,11 +18,11 @@
     "@supabase/supabase-js": "^2.39.0",
     "@trami-espana/shared": "*",
     "expo": "~50.0.0",
-    "expo-calendar": "^57.0.2",
+    "expo-calendar": "~12.2.1",
     "expo-constants": "~15.4.6",
     "expo-font": "~11.10.3",
     "expo-linking": "~6.2.0",
-    "expo-notifications": "^57.0.17",
+    "expo-notifications": "~0.27.8",
     "expo-router": "~3.4.0",
     "expo-status-bar": "~1.11.0",
     "expo-system-ui": "~2.9.4",

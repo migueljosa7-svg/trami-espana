@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Link, useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { authService, favoriteService, FavoriteWithProcedure } from '@trami-espana/shared';
 import { cacheFavorites } from '../../src/localCache';
 
@@ -9,32 +10,44 @@ export default function FavoritesScreen() {
     const [favorites, setFavorites] = useState<FavoriteWithProcedure[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        const loadFavs = async () => {
-            setIsLoading(true);
-            try {
-                const currentUser = await authService.getCurrentUser();
+    const loadFavs = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const currentUser = await authService.getCurrentUser();
 
-                // Sin usuario: no tocar Supabase ni servicios. Redirigir a login.
-                if (!currentUser) {
-                    router.replace('/login');
-                    return;
-                }
-
-                const data = await favoriteService.getFavorites();
-                if (data) {
-                    setFavorites(data);
-                    // Copia local (aislada por usuario) para acceso offline.
-                    await cacheFavorites(data);
-                }
-            } catch {
-                // Error controlado.
-            } finally {
-                setIsLoading(false);
+            // Sin usuario: no tocar Supabase ni servicios. Redirigir a login.
+            if (!currentUser) {
+                router.replace('/login');
+                return;
             }
-        };
-        loadFavs();
-    }, []);
+
+            const data = await favoriteService.getFavorites();
+            if (data) {
+                setFavorites(data);
+                // Copia local (aislada por usuario) para acceso offline.
+                await cacheFavorites(data);
+            } else {
+                setFavorites([]);
+            }
+        } catch {
+            // Error controlado.
+        } finally {
+            setIsLoading(false);
+        }
+    }, [router]);
+
+    // Carga inicial
+    useEffect(() => {
+        void loadFavs();
+    }, [loadFavs]);
+
+    // Sincronización en tiempo real: recargar al recibir foco la pantalla.
+    // Así refleja inmediatamente los cambios hechos en detalle.tsx o buscar.tsx.
+    useFocusEffect(
+        useCallback(() => {
+            void loadFavs();
+        }, [loadFavs])
+    );
 
     return (
         <View style={styles.container}>

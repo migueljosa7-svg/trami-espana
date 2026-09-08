@@ -203,9 +203,6 @@ export default function ProfileScreen() {
                                     activeOpacity={0.7}
                                 >
                                     <Ionicons name={item.icon} size={18} color="#64748b" style={styles.menuIcon} />
-                                    {/* Texto con flex:1 + marginRight: el chevron queda
-                                        SIEMPRE fijado y centrado en el extremo derecho,
-                                        nunca en una línea inferior. */}
                                     <Text
                                         style={[styles.menuLabel, { flex: 1, marginRight: 8, color: colors.text }]}
                                         numberOfLines={1}
@@ -213,7 +210,9 @@ export default function ProfileScreen() {
                                     >
                                         {item.label}
                                     </Text>
-                                    <Ionicons name="chevron-forward" size={18} color="#cbd5e1" style={styles.menuChevronFixed} />
+                                    <View style={styles.menuChevronFixed}>
+                                        <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
+                                    </View>
                                 </TouchableOpacity>
                             </Link>
                         ))}
@@ -239,11 +238,13 @@ export default function ProfileScreen() {
                                 accessibilityLabel={`${lang.flag} ${lang.label}`}
                             >
                                 <Text style={styles.langFlag}>{lang.flag}</Text>
-                                <Text style={[styles.menuLabel, { flex: 1, marginRight: 8, color: colors.text }]}>
+                                <Text style={[styles.menuLabel, { color: colors.text }]}>
                                     {lang.label}
                                 </Text>
                                 {language === lang.code && (
-                                    <Ionicons name="checkmark" size={18} color="#2563eb" />
+                                    <View style={styles.menuChevronFixed}>
+                                        <Ionicons name="checkmark" size={18} color="#2563eb" />
+                                    </View>
                                 )}
                             </TouchableOpacity>
                         ))}
@@ -265,11 +266,13 @@ export default function ProfileScreen() {
                                 accessibilityLabel={`${lang.flag} ${lang.label}`}
                             >
                                 <Text style={styles.langFlag}>{lang.flag}</Text>
-                                <Text style={[styles.menuLabel, { flex: 1, marginRight: 8, color: colors.text }]}>
+                                <Text style={[styles.menuLabel, { color: colors.text }]}>
                                     {lang.label}
                                 </Text>
                                 {language === lang.code && (
-                                    <Ionicons name="checkmark" size={18} color="#2563eb" />
+                                    <View style={styles.menuChevronFixed}>
+                                        <Ionicons name="checkmark" size={18} color="#2563eb" />
+                                    </View>
                                 )}
                             </TouchableOpacity>
                         ))}
@@ -295,11 +298,13 @@ export default function ProfileScreen() {
                                 accessibilityLabel={option.label}
                             >
                                 <Ionicons name={option.icon} size={18} color="#64748b" style={styles.menuIcon} />
-                                <Text style={[styles.menuLabel, { flex: 1, marginRight: 8, color: colors.text }]}>
+                                <Text style={[styles.menuLabel, { color: colors.text }]}>
                                     {option.label}
                                 </Text>
                                 {preference === option.key && (
-                                    <Ionicons name="checkmark" size={18} color="#2563eb" />
+                                    <View style={styles.menuChevronFixed}>
+                                        <Ionicons name="checkmark" size={18} color="#2563eb" />
+                                    </View>
                                 )}
                             </TouchableOpacity>
                         ))}
@@ -541,10 +546,11 @@ const styles = StyleSheet.create({
     },
     menuRow: {
         flexDirection: 'row',
+        flexWrap: 'nowrap',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start',
         width: '100%',
-        paddingVertical: 15,
+        paddingVertical: 14,
         paddingHorizontal: 16,
     },
     menuRowBorder: {
@@ -555,7 +561,9 @@ const styles = StyleSheet.create({
         marginRight: 12,
     },
     menuLabel: {
-        fontSize: 15,
+        flex: 1,
+        marginRight: 8,
+        fontSize: 16,
         color: '#0f172a',
     },
     // Chevron de fila: nunca se encoge ni salta de línea; con el texto en

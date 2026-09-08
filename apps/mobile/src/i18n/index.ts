@@ -8,4 +8,7 @@ export { ar } from './ar';
 export { fr } from './fr';
 export { uk } from './uk';
 export { ro } from './ro';
+export { ru } from './ru';
+export { zh } from './zh';
+export { ja } from './ja';
 export { loadStoredLanguage, persistLanguage, LANGUAGE_STORAGE_KEY } from './storage';

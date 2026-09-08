@@ -11,6 +11,9 @@ import { ar } from './ar';
 import { fr } from './fr';
 import { uk } from './uk';
 import { ro } from './ro';
+import { ru } from './ru';
+import { zh } from './zh';
+import { ja } from './ja';
 import { loadStoredLanguage, persistLanguage } from './storage';
 
 /**
@@ -18,8 +21,9 @@ import { loadStoredLanguage, persistLanguage } from './storage';
  *  - Nacionales/regionales de España: español, inglés, catalán, euskera y gallego.
  *  - Comunidades extranjeras residentes en España: árabe (RTL), francés,
  *    ucraniano y rumano.
+ *  - Nuevos idiomas v1.0.1: ruso, chino simplificado y japonés.
  */
-export type AppLanguage = 'es' | 'en' | 'ca' | 'eu' | 'gl' | 'ar' | 'fr' | 'uk' | 'ro';
+export type AppLanguage = 'es' | 'en' | 'ca' | 'eu' | 'gl' | 'ar' | 'fr' | 'uk' | 'ro' | 'ru' | 'zh' | 'ja';
 
 export type LanguageGroup = 'spain' | 'international';
 
@@ -40,6 +44,9 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
   { code: 'fr', label: 'Français', flag: '🇫🇷', group: 'international' },
   { code: 'uk', label: 'Українська', flag: '🇺🇦', group: 'international' },
   { code: 'ro', label: 'Română', flag: '🇷🇴', group: 'international' },
+  { code: 'ru', label: 'Русский', flag: '🇷🇺', group: 'international' },
+  { code: 'zh', label: '简体中文', flag: '🇨🇳', group: 'international' },
+  { code: 'ja', label: '日本語', flag: '🇯🇵', group: 'international' },
 ];
 
 /** Idiomas que se escriben de derecha a izquierda. */
@@ -88,6 +95,9 @@ export const initI18n = (): void => {
       fr: { translation: fr },
       uk: { translation: uk },
       ro: { translation: ro },
+      ru: { translation: ru },
+      zh: { translation: zh },
+      ja: { translation: ja },
     },
     lng: getDefaultLanguage(),
     fallbackLng: 'es',

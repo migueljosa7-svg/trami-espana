@@ -257,7 +257,7 @@ export const gl = {
     pdfReady: 'PDF listo. Podes gardalo ou compartilo.',
   },
   exitApp: {
-    title: 'Seguro que queres saír da aplicación?',
+    title: 'Seguro que queres saír de Trami España?',
     subtitle: 'Os teus favoritos e recordatorios gardados estarán aquí cando volvas.',
     cancel: 'Cancelar',
     exit: 'Saír',

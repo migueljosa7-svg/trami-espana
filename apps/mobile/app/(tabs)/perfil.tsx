@@ -13,7 +13,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { authService, accountService, LEGAL_DISCLAIMER } from '@trami-espana/shared';
-import ExitAppModal from '../../components/ExitAppModal';
 import {
     changeLanguage,
     getCurrentLanguage,
@@ -33,7 +32,6 @@ export default function ProfileScreen() {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [deleting, setDeleting] = useState(false);
-    const [exitVisible, setExitVisible] = useState(false);
     const [language, setLanguage] = useState(getCurrentLanguage());
 
     useEffect(() => {
@@ -204,13 +202,18 @@ export default function ProfileScreen() {
                                     accessibilityRole="button"
                                     activeOpacity={0.7}
                                 >
-                                    <View style={styles.menuRowLeft}>
-                                        <Ionicons name={item.icon} size={18} color="#64748b" style={styles.menuIcon} />
-                                        <Text style={[styles.menuLabel, { color: colors.text }]} numberOfLines={1} ellipsizeMode="tail">{item.label}</Text>
-                                    </View>
-                                    <View style={styles.menuChevron}>
-                                        <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
-                                    </View>
+                                    <Ionicons name={item.icon} size={18} color="#64748b" style={styles.menuIcon} />
+                                    {/* Texto con flex:1 + marginRight: el chevron queda
+                                        SIEMPRE fijado y centrado en el extremo derecho,
+                                        nunca en una línea inferior. */}
+                                    <Text
+                                        style={[styles.menuLabel, { flex: 1, marginRight: 8, color: colors.text }]}
+                                        numberOfLines={1}
+                                        ellipsizeMode="tail"
+                                    >
+                                        {item.label}
+                                    </Text>
+                                    <Ionicons name="chevron-forward" size={18} color="#cbd5e1" style={styles.menuChevronFixed} />
                                 </TouchableOpacity>
                             </Link>
                         ))}
@@ -235,10 +238,10 @@ export default function ProfileScreen() {
                                 accessibilityRole="button"
                                 accessibilityLabel={`${lang.flag} ${lang.label}`}
                             >
-                                <View style={styles.menuRowLeft}>
-                                    <Text style={styles.langFlag}>{lang.flag}</Text>
-                                    <Text style={[styles.menuLabel, { color: colors.text }]}>{lang.label}</Text>
-                                </View>
+                                <Text style={styles.langFlag}>{lang.flag}</Text>
+                                <Text style={[styles.menuLabel, { flex: 1, marginRight: 8, color: colors.text }]}>
+                                    {lang.label}
+                                </Text>
                                 {language === lang.code && (
                                     <Ionicons name="checkmark" size={18} color="#2563eb" />
                                 )}
@@ -261,10 +264,10 @@ export default function ProfileScreen() {
                                 accessibilityRole="button"
                                 accessibilityLabel={`${lang.flag} ${lang.label}`}
                             >
-                                <View style={styles.menuRowLeft}>
-                                    <Text style={styles.langFlag}>{lang.flag}</Text>
-                                    <Text style={[styles.menuLabel, { color: colors.text }]}>{lang.label}</Text>
-                                </View>
+                                <Text style={styles.langFlag}>{lang.flag}</Text>
+                                <Text style={[styles.menuLabel, { flex: 1, marginRight: 8, color: colors.text }]}>
+                                    {lang.label}
+                                </Text>
                                 {language === lang.code && (
                                     <Ionicons name="checkmark" size={18} color="#2563eb" />
                                 )}
@@ -291,10 +294,10 @@ export default function ProfileScreen() {
                                 accessibilityRole="button"
                                 accessibilityLabel={option.label}
                             >
-                                <View style={styles.menuRowLeft}>
-                                    <Ionicons name={option.icon} size={18} color="#64748b" style={styles.menuIcon} />
-                                    <Text style={[styles.menuLabel, { color: colors.text }]}>{option.label}</Text>
-                                </View>
+                                <Ionicons name={option.icon} size={18} color="#64748b" style={styles.menuIcon} />
+                                <Text style={[styles.menuLabel, { flex: 1, marginRight: 8, color: colors.text }]}>
+                                    {option.label}
+                                </Text>
                                 {preference === option.key && (
                                     <Ionicons name="checkmark" size={18} color="#2563eb" />
                                 )}
@@ -324,18 +327,6 @@ export default function ProfileScreen() {
                         </>
                     )}
 
-                    {/* ===== APP SECTION (all users) ===== */}
-                    <Text style={styles.sectionTitle}>{t('profile.sections.app')}</Text>
-                    <TouchableOpacity
-                        style={styles.exitAppButton}
-                        onPress={() => setExitVisible(true)}
-                        activeOpacity={0.85}
-                        accessibilityRole="button"
-                        accessibilityLabel={t('profile.appSection.exitApp')}
-                    >
-                        <Ionicons name="exit-outline" size={18} color="#334155" />
-                        <Text style={styles.exitAppText}>{t('profile.appSection.exitApp')}</Text>
-                    </TouchableOpacity>
                 </View>
             )}
 
@@ -344,9 +335,6 @@ export default function ProfileScreen() {
                 <View style={styles.footerDivider} />
                 <Text style={styles.legalText}>{LEGAL_DISCLAIMER}</Text>
             </View>
-
-            {/* Modal de confirmación de salida */}
-            <ExitAppModal visible={exitVisible} onClose={() => setExitVisible(false)} />
         </ScrollView>
     );
 }
@@ -555,6 +543,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        width: '100%',
         paddingVertical: 15,
         paddingHorizontal: 16,
     },
@@ -562,27 +551,17 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#f1f5f9',
     },
-    menuRowLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
     menuIcon: {
         marginRight: 12,
     },
     menuLabel: {
         fontSize: 15,
         color: '#0f172a',
-        flex: 1,
     },
-    // Flecha que cierra cada fila del menú: se mantiene siempre en la misma
-    // línea a la derecha del texto gracias a flexDirection row + space-between
-    // en menuRow y a que este contenedor no se encoge ni envuelve.
-    menuChevron: {
+    // Chevron de fila: nunca se encoge ni salta de línea; con el texto en
+    // flex:1 queda fijado en el extremo derecho de la fila.
+    menuChevronFixed: {
         flexShrink: 0,
-        marginLeft: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     // Selector de idioma
     langFlag: {
@@ -632,25 +611,6 @@ const styles = StyleSheet.create({
     },
     deleteText: {
         color: '#b91c1c',
-        fontWeight: '600',
-        fontSize: 15,
-    },
-
-    // Exit app
-    exitAppButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        backgroundColor: '#ffffff',
-        borderRadius: 14,
-        paddingVertical: 14,
-        borderWidth: 1.5,
-        borderColor: '#e2e8f0',
-        marginBottom: 12,
-    },
-    exitAppText: {
-        color: '#334155',
         fontWeight: '600',
         fontSize: 15,
     },

@@ -1,4 +1,7 @@
+import { useCallback } from 'react';
 import { Tabs } from 'expo-router';
+import { BackHandler, Alert, Platform } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../../constants/theme';
@@ -12,6 +15,31 @@ export default function TabsLayout() {
     // queda SIEMPRE elevada y 100 % accesible en cualquier fabricante
     // (Samsung, Xiaomi, Pixel...) y en Android 15/16 edge-to-edge.
     const bottomInset = useBottomInset(); // Math.max(insets.bottom, 16)
+
+    // ============================================================
+    // Intercepción del botón físico / gesto "atrás" de Android.
+    // Todas las tabs son pantallas raíz (sin stacks internos), así
+    // que "atrás" aquí significa "salir de la app": se muestra una
+    // confirmación nativa antes de BackHandler.exitApp().
+    // ============================================================
+    useFocusEffect(
+        useCallback(() => {
+            if (Platform.OS !== 'android') return undefined;
+            const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+                Alert.alert(t('exitApp.title'), t('exitApp.subtitle'), [
+                    { text: t('exitApp.cancel'), style: 'cancel' },
+                    {
+                        text: t('exitApp.exit'),
+                        style: 'destructive',
+                        onPress: () => BackHandler.exitApp(),
+                    },
+                ]);
+                // true = evento consumido; no se cierra la app directamente.
+                return true;
+            });
+            return () => subscription.remove();
+        }, [t])
+    );
 
     return (
         <Tabs screenOptions={{

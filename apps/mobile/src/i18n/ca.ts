@@ -257,7 +257,7 @@ export const ca = {
     pdfReady: 'PDF llest. El pots guardar o compartir.',
   },
   exitApp: {
-    title: 'Segur que vols sortir de l\u2019aplicació?',
+    title: 'Segur que vols sortir de Trami España?',
     subtitle: 'Els teus preferits i recordatoris desats estaran aquí quan tornis.',
     cancel: 'Cancel·lar',
     exit: 'Sortir',

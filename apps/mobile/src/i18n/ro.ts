@@ -257,7 +257,7 @@ export const ro = {
     pdfReady: 'PDF gata. Îl poți salva sau partaja.',
   },
   exitApp: {
-    title: 'Sigur vrei să ieși din aplicație?',
+    title: 'Sigur vrei să ieși din Trami España?',
     subtitle: 'Favoritele și memento-urile tale salvate vor fi aici când te întorci.',
     cancel: 'Anulare',
     exit: 'Ieșire',

@@ -1,11 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { I18nextProvider } from 'react-i18next';
 import { authService, initializeSupabase } from '@trami-espana/shared';
 import { initI18n, getI18nInstance } from '../src/i18n';
-import { clearUserCaches } from '../src/localCache';
+import { clearUserCaches, runLocalStorageMigration } from '../src/localCache';
 import { ENV, validateEnv } from '../config/env';
 import { useAppTheme } from '../constants/theme';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -33,6 +33,24 @@ export default function RootLayout() {
     // Tema dinámico: sigue useColorScheme() del sistema o la preferencia
     // guardada por el usuario (constants/theme.ts).
     const { colors, isDark } = useAppTheme();
+    // La navegación NO se monta hasta que la migración versionada de
+    // AsyncStorage haya terminado: evita el crash en caliente al actualizar
+    // la app leyendo estructuras antiguas (ver src/localCache.ts).
+    const [storageReady, setStorageReady] = useState(false);
+
+    useEffect(() => {
+        let mounted = true;
+        void runLocalStorageMigration()
+            .catch(() => {
+                // Nunca debe bloquear el arranque.
+            })
+            .finally(() => {
+                if (mounted) setStorageReady(true);
+            });
+        return () => {
+            mounted = false;
+        };
+    }, []);
 
     useEffect(() => {
         const { data: subscription } = authService.onAuthStateChange((event) => {
@@ -43,6 +61,12 @@ export default function RootLayout() {
 
         return () => subscription.subscription.unsubscribe();
     }, []);
+
+    // Pantalla en blanco durante la migración (milisegundos en arranques
+    // normales; solo dura más la primera vez tras actualizar la app).
+    if (!storageReady) {
+        return null;
+    }
 
     return (
         <ErrorBoundary>

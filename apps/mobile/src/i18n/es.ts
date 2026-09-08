@@ -272,7 +272,7 @@ export const es = {
 
   // Salida de la app
   exitApp: {
-    title: '¿Seguro que quieres salir de la aplicación?',
+    title: '¿Estás seguro de que quieres salir de Trami España?',
     subtitle: 'Tus favoritos y recordatorios guardados estarán aquí cuando vuelvas.',
     cancel: 'Cancelar',
     exit: 'Salir',

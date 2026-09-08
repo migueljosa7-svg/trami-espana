@@ -257,7 +257,7 @@ export const eu = {
     pdfReady: 'PDFa prest. Gorde edo partekatu dezakezu.',
   },
   exitApp: {
-    title: 'Ziur zaude aplikaziotik irten nahi duzula?',
+    title: 'Ziur zaude Trami España-tik irten nahi duzula?',
     subtitle: 'Gordetako gogokoak eta oroigarriak hemen egongo dira itzultzean.',
     cancel: 'Utzi',
     exit: 'Irten',

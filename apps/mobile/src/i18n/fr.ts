@@ -257,7 +257,7 @@ export const fr = {
     pdfReady: 'PDF prêt. Vous pouvez l\u2019enregistrer ou le partager.',
   },
   exitApp: {
-    title: 'Voulez-vous vraiment quitter l\u2019application ?',
+    title: 'Voulez-vous vraiment quitter Trami España ?',
     subtitle: 'Vos favoris et rappels enregistrés seront là à votre retour.',
     cancel: 'Annuler',
     exit: 'Quitter',

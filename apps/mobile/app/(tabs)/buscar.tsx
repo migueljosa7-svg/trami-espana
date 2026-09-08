@@ -60,6 +60,88 @@ const isFreeProcedure = (procedure: ProcedureWithDetails): boolean => {
     );
 };
 
+// ===========================================
+// RESOLUCIÓN TOLERANTE DE CATEGORÍAS
+// ===========================================
+// El slug de la UI puede no coincidir EXACTAMENTE con el de la base de
+// datos (p. ej. 'transporte' vs 'coches-y-transporte', 'empleo' vs
+// 'trabajo'). Antes de filtrar, se resuelve contra el catálogo de
+// categorías de Supabase usando slugs normalizados y sinónimos; así la
+// categoría nunca llega cruda a `category_id` (que espera un UUID) y
+// las respuestas vacías NO se tratan como error global.
+const normalizeSlug = (text: string): string =>
+    normalizeText(text)
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+
+/** Sinónimos/variantes conocidas de slugs de categoría en la base de datos. */
+const CATEGORY_SYNONYMS: Record<string, string[]> = {
+    transporte: ['transporte', 'coches-y-transporte', 'coches', 'vehiculos', 'movilidad', 'transporte-y-vehiculos'],
+    empleo: ['empleo', 'trabajo', 'laboral', 'empleo-y-trabajo', 'desempleo'],
+    identidad: ['identidad', 'documentacion-e-identidad', 'documentos', 'dni'],
+    impuestos: ['impuestos', 'hacienda', 'taxes'],
+    extranjeria: ['extranjeria', 'inmigracion', 'extranjeria-e-inmigracion'],
+    vivienda: ['vivienda', 'vivienda-y-obras'],
+};
+
+/** Caché en memoria del catálogo de categorías (una petición por sesión). */
+let categoriesCache: Array<{ id: string; name: string; slug: string }> | null = null;
+
+async function loadCategories(): Promise<Array<{ id: string; name: string; slug: string }>> {
+    if (categoriesCache) return categoriesCache;
+    const categories = await procedureService.getCategories();
+    categoriesCache = categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug }));
+    return categoriesCache;
+}
+
+/**
+ * Resuelve un slug de categoría de la UI al UUID real de la base de datos.
+ * Devuelve null si no se encuentra ninguna coincidencia tolerante.
+ */
+async function resolveCategoryUuid(slug: string): Promise<string | null> {
+    const target = normalizeSlug(slug);
+    const synonyms = CATEGORY_SYNONYMS[target] ?? [target];
+    try {
+        const categories = await loadCategories();
+        // 1) Coincidencia directa por slug sinónimo.
+        const bySlug = categories.find((c) => synonyms.includes(normalizeSlug(c.slug)));
+        if (bySlug) return bySlug.id;
+        // 2) Coincidencia por nombre normalizado ("Vehículos y transporte").
+        const byName = categories.find((c) => {
+            const name = normalizeSlug(c.name);
+            return synonyms.some((syn) => name.includes(syn) || syn.includes(name));
+        });
+        if (byName) return byName.id;
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Carga los trámites de una categoría con estrategia tolerante:
+ *  1) intento directo con el slug tal cual (comportamiento previo);
+ *  2) si falla o viene vacío, resuelve el UUID vía catálogo y reintenta.
+ * Una lista VACÍA es un resultado válido, no un error.
+ */
+async function fetchProceduresByCategory(
+    slug: string
+): Promise<ProcedureWithDetails[]> {
+    // 1) Intento directo (el servicio resuelve UUIDs exactos por sí solo).
+    try {
+        const response = await procedureService.getProcedures({ category_id: slug });
+        if (response.data.length > 0) return response.data;
+    } catch {
+        // Slug no reconocido por el servicio: continuamos con la
+        // resolución tolerante en lugar de propagar el error.
+    }
+    // 2) Resolución tolerante contra el catálogo de categorías.
+    const uuid = await resolveCategoryUuid(slug);
+    if (!uuid) return [];
+    const response = await procedureService.getProcedures({ category_id: uuid });
+    return response.data;
+}
+
 export default function SearchScreen() {
     const { t } = useTranslation();
     // Insets: garantiza que los resultados no queden bajo la barra del sistema.
@@ -115,8 +197,12 @@ export default function SearchScreen() {
                 setProcedures(results);
                 setIsFromCache(false);
             } else if (selectedCategory) {
-                const response = await procedureService.getProcedures({ category_id: selectedCategory });
-                setProcedures(response.data);
+                // Resolución tolerante: prueba el slug directo y, si la base
+                // de datos usa otro identificador ('coches-y-transporte',
+                // 'trabajo'...), resuelve vía catálogo de categorías. Una
+                // respuesta VACÍA es válida y muestra el estado vacío.
+                const data = await fetchProceduresByCategory(selectedCategory);
+                setProcedures(data);
                 setIsFromCache(false);
             } else {
                 // Vista inicial: catálogo completo (hasta 100 trámites) que se
@@ -313,13 +399,11 @@ export default function SearchScreen() {
                         </Link>
                     ))}
 
-                    {procedures.length === 0 && !isLoading && (
+                    {visibleProcedures.length === 0 && !isLoading && (
                         <View style={styles.emptyState}>
                             <Text style={styles.emptyIcon}>🔍</Text>
-                            <Text style={styles.emptyTitle}>Sin resultados</Text>
-                            <Text style={styles.emptySubtitle}>
-                                Prueba con términos como «DNI», «Empadronamiento» o «SEPE».
-                            </Text>
+                            <Text style={styles.emptyTitle}>{t('search.noResults')}</Text>
+                            <Text style={styles.emptySubtitle}>{t('search.noResultsMsg')}</Text>
                         </View>
                     )}
                 </ScrollView>

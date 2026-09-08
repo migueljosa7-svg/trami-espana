@@ -26,7 +26,7 @@
       },
       "package": "es.tramiespana.app",
       "versionCode": 13,
-      "versionName": "1.1.0"
+      "versionName": "1.0.1"
     },
     "web": {
       "bundler": "metro",

@@ -13,7 +13,7 @@
       "backgroundColor": "#2563eb"
     },
     "assetBundlePatterns": [
-      "**/*"
+      "assets/*"
     ],
     "ios": {
       "supportsTablet": true,
@@ -25,7 +25,7 @@
         "backgroundColor": "#2563eb"
       },
       "package": "es.tramiespana.app",
-      "versionCode": 7,
+      "versionCode": 9,
       "versionName": "1.0.1"
     },
     "web": {
@@ -42,10 +42,19 @@
           "android": {
             "compileSdkVersion": 36,
             "targetSdkVersion": 36,
-            "buildToolsVersion": "36.0.0"
+            "buildToolsVersion": "36.0.0",
+            "minSdkVersion": 23,
+            "largeScreens": true,
+            "normalScreens": true,
+            "smallScreens": true,
+            "resizeableActivity": true,
+            "extractNativeLibs": false,
+            "enableProguardInReleaseBuilds": true,
+            "newArchEnabled": false
           }
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true

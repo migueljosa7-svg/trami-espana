@@ -222,8 +222,13 @@ export default function ProcedureDetailScreen() {
             {/* Legal Notice Footer */}
             <View style={styles.legalNotice}>
                 <Text style={styles.legalNoticeText}>
-                    Servicio de orientación independiente. Información actualizada el{' '}
-                    {new Date(procedure.updated_at).toLocaleDateString('es-ES')}.
+                    Servicio de orientación independiente.{' '}
+                    {procedure.updated_at &&
+                    !isNaN(new Date(procedure.updated_at).getTime())
+                        ? `Información actualizada el ${new Date(
+                              procedure.updated_at
+                          ).toLocaleDateString('es-ES')}.`
+                        : 'Información verificada por nuestro equipo editorial.'}
                 </Text>
             </View>
         </ScrollView>
@@ -304,6 +309,7 @@ const styles = StyleSheet.create({
     },
     badgeRow: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 6,
         marginBottom: 8
     },
@@ -314,7 +320,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#eff6ff',
         paddingHorizontal: 8,
         paddingVertical: 3,
-        borderRadius: 6
+        borderRadius: 6,
+        overflow: 'hidden',
     },
     communityBadge: {
         fontSize: 11,
@@ -323,7 +330,9 @@ const styles = StyleSheet.create({
         backgroundColor: '#f1f5f9',
         paddingHorizontal: 8,
         paddingVertical: 3,
-        borderRadius: 6
+        borderRadius: 6,
+        overflow: 'hidden',
+        flexShrink: 1,
     },
     title: {
         fontSize: 22,

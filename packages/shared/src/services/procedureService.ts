@@ -53,6 +53,44 @@ const normalizeEs = (text: string): string =>
         .replace(/[^a-z0-9\s]/g, " ");
 
 /**
+ * Sinónimos de categorías para las consultas más frecuentes.
+ * "empleo/trabajo/paro" → categoría laboral.
+ * "coche/carros/vehículo/automóvil" → categoría vehículos.
+ * Corrige fallos de parsing devolviendo resultados limpios sin excepciones.
+ */
+const SEARCH_SYNONYMS: Record<string, string[]> = {
+    empleo: ["trabajo", "desempleo", "paro", "laboral", "contratacion", "contratado"],
+    trabajo: ["empleo", "laboral", "desempleo", "paro", "contratacion", "contratado"],
+    desempleo: ["paro", "empleo", "prestacion", "subsidio"],
+    paro: ["desempleo", "empleo", "prestacion", "subsidio"],
+    coche: ["coches", "vehiculo", "vehiculos", "carro", "carros", "automovil"],
+    coches: ["coche", "vehiculo", "vehiculos", "carro", "carros", "automovil"],
+    carro: ["coche", "coches", "vehiculo", "vehiculos", "carros", "automovil"],
+    carros: ["coche", "coches", "vehiculo", "vehiculos", "carro", "automovil"],
+    vehiculo: ["vehiculos", "coche", "coches", "carro", "carros", "automovil"],
+    vehiculos: ["vehiculo", "coche", "coches", "carro", "carros", "automovil"],
+};
+
+/**
+ * Expande los tokens de la consulta con sinónimos normalizados (sin acentos)
+ * para que "coches" encuentre resultados de la categoría "Vehículos" y
+ * "empleo/trabajo/paro" encuentre la categoría "Laboral".
+ */
+const expandTokens = (tokens: string[]): string[] => {
+    const expanded = new Set<string>();
+    for (const token of tokens) {
+        expanded.add(token);
+        const synonyms = SEARCH_SYNONYMS[token];
+        if (synonyms) {
+            for (const synonym of synonyms) {
+                expanded.add(synonym);
+            }
+        }
+    }
+    return Array.from(expanded);
+};
+
+/**
  * Resuelve un identificador de categoría (UUID o slug) a su UUID.
  * La UI usa slugs (ej. 'identidad'), pero la columna category_id es UUID.
  * Si ya es un UUID, lo devuelve tal cual.
@@ -222,13 +260,23 @@ async searchProcedures(
                 .split(/\s+/)
                 .filter((t) => t.length > 2);
 
+            // Expansión de sinónimos: "coches"→vehículos, "paro"→desempleo, etc.
+            const expandedTokens = expandTokens(tokens);
+
             // 1ª pasada: coincidencia literal normalizada (sin acentos) del texto completo.
             const candidates = await this.getSearchCandidates(normalizedQuery, filters);
 
-            // 2ª pasada: si no hay coincidencia literal, buscar por cualquier palabra clave (OR).
+            // 2ª pasada: si no hay coincidencia literal, buscar por cualquier palabra clave (OR)
+            // usando los tokens expandidos con sinónimos.
             let results = candidates;
-            if (results.length === 0 && tokens.length > 0) {
-                results = await this.searchByKeywords(tokens, filters);
+            if (results.length === 0 && expandedTokens.length > 0) {
+                results = await this.searchByKeywords(expandedTokens, filters);
+
+                // 3ª pasada (solo si sigue vacío): buscar con los tokens originales,
+                // para no ensuciar resultados con sinónimos demasiado genéricos.
+                if (results.length === 0 && tokens.length > 0) {
+                    results = await this.searchByKeywords(tokens, filters);
+                }
             }
 
             return results;

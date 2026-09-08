@@ -2,6 +2,42 @@ import { supabase } from "../supabase";
 import { procedureService } from "./procedureService";
 import { Procedure } from "../types";
 
+/**
+ * Tiempo máximo de espera para la Edge Function del asistente.
+ * Si no responde en tiempo (redes lentas o saturación), conmutamos al motor
+ * de búsqueda local en BD para nunca dejar la conversación bloqueada.
+ */
+const EDGE_FUNCTION_TIMEOUT_MS = 12000;
+
+/**
+ * Ejecuta una promesa con timeout. Si no resuelve antes de `ms`, lanza un
+ * error de red descriptivo para que el flujo de `ask` conmute al fallback
+ * local o muestre un mensaje amigable (nunca congela la UI).
+ */
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> {
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Timeout al conectar con el servicio (${label}).`));
+    }, ms);
+  });
+  return Promise.race([promise, timeoutPromise]);
+}
+
+/** True si el mensaje de error proviene de una falla de red/timeout/offline. */
+export function isNetworkError(err: unknown): boolean {
+  const msg = String(err instanceof Error ? err.message : "");
+  return (
+    /network|offline|timeout|failed to fetch|connection|econnrefused|enotfound|load failed|abort/i.test(
+      msg,
+    ) ||
+    (typeof navigator !== "undefined" && navigator.onLine === false)
+  );
+}
+
 export interface AssistantSource {
   title: string;
   url: string;
@@ -132,6 +168,7 @@ export class AssistantService {
   /**
    * Método principal para consultar al Asistente IA a través de la Edge Function seguro.
    * Si la Edge Function falla o no responde, conmuta de forma transparente al motor de búsqueda local en BD.
+   * Incluye timeout (redes lentas) y un reintento único para fallos transitorios.
    */
   public async ask(
     userQuery: string,
@@ -154,51 +191,70 @@ export class AssistantService {
       };
     }
 
-    try {
-      // Intentar invocar la Supabase Edge Function 'assistant'
-      const { data, error } = await supabase.functions.invoke("assistant", {
-        body: { query: trimmed, conversationId },
-      });
+    // Hasta 2 intentos (1 + 1 reintento) ante fallos de red/timeout.
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        // Intentar invocar la Supabase Edge Function 'assistant' con timeout.
+        const result = await withTimeout(
+          supabase.functions.invoke("assistant", {
+            body: { query: trimmed, conversationId },
+          }),
+          EDGE_FUNCTION_TIMEOUT_MS,
+          "asistente",
+        );
+        const { data, error } = result;
 
-      if (!error && data && data.answer) {
-        let fullProcedures: Procedure[] = [];
-        if (data.procedures && Array.isArray(data.procedures)) {
-          for (const procRef of data.procedures) {
-            try {
-              const procData = await procedureService.getProcedureBySlug(
-                procRef.slug,
-              );
-              if (procData) fullProcedures.push(procData);
-            } catch (err) {
-              // Silencioso
+        if (!error && data && data.answer) {
+          let fullProcedures: Procedure[] = [];
+          if (data.procedures && Array.isArray(data.procedures)) {
+            for (const procRef of data.procedures) {
+              try {
+                const procData = await procedureService.getProcedureBySlug(
+                  procRef.slug,
+                );
+                if (procData) fullProcedures.push(procData);
+              } catch (err) {
+                // Silencioso
+              }
             }
           }
+
+          const responseMsg: AssistantChatMessage = {
+            id: `edge-msg-${Date.now()}`,
+            conversation_id: conversationId,
+            role: "assistant",
+            content: data.answer,
+            referenced_procedures: fullProcedures,
+            sources: data.sources || [],
+            disclaimer:
+              data.disclaimer || "Trami España es un servicio independiente.",
+            is_demo: Boolean(data.is_demo),
+            is_fallback: Boolean(data.is_fallback),
+            result_type: data.result_type,
+            created_at: new Date().toISOString(),
+          };
+
+          return { data: responseMsg, error: null };
         }
 
-        const responseMsg: AssistantChatMessage = {
-          id: `edge-msg-${Date.now()}`,
-          conversation_id: conversationId,
-          role: "assistant",
-          content: data.answer,
-          referenced_procedures: fullProcedures,
-          sources: data.sources || [],
-          disclaimer:
-            data.disclaimer || "Trami España es un servicio independiente.",
-          is_demo: Boolean(data.is_demo),
-          is_fallback: Boolean(data.is_fallback),
-          result_type: data.result_type,
-          created_at: new Date().toISOString(),
-        };
-
-        return { data: responseMsg, error: null };
+        // Error transitorio de red: reintentar una vez antes del fallback local.
+        if (error && isNetworkError(error) && attempt === 1) {
+          continue;
+        }
+        // Sin respuesta de la Edge Function → fallback local
+        return this.sendMessage(conversationId, trimmed);
+      } catch (err) {
+        // Timeout o fallo de red: reintentar una vez antes del fallback local.
+        if (isNetworkError(err) && attempt === 1) {
+          continue;
+        }
+        return this.sendMessage(conversationId, trimmed);
       }
-      // Sin respuesta de la Edge Function → fallback local
-      return this.sendMessage(conversationId, trimmed);
-    } catch (err) {
-      return this.sendMessage(conversationId, trimmed);
     }
-  }
 
+    // Línea de seguridad (no debería alcanzarse): fallback local.
+    return this.sendMessage(conversationId, trimmed);
+  }
   /**
    * Responde a una consulta del usuario basándose EXCLUSIVAMENTE en trámites validados de la BD (Fallback local).
    */

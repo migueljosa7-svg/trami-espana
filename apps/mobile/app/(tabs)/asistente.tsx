@@ -82,7 +82,39 @@ function getGreetingResponse(query: string): string {
   }
   
   // General greeting
+
+
+
   return "¡Hola! 👋 Gracias por escribirme. Estoy aquí para ayudarte con cualquier consulta sobre trámites administrativos en España. Puedes preguntarme sobre trámites como renovar el DNI, empadronamiento, citas previas, prestaciones, y mucho más. ¿En qué puedo ayudarte hoy?";
+}
+
+/**
+ * Flujo directo: detecta si el usuario indica su nombre y el trámite que
+ * desea gestionar en un único mensaje.
+ *
+ * Ejemplos que SÍ aplican:
+ *   "Hola, me llamo Ana y quiero renovar el DNI"
+ *   "Me llamo Luis, necesito cita previa para el paro"
+ *   "Soy Marta y quiero saber cómo empadronarme"
+ *
+ * Devuelve la porción del mensaje relativa al trámite para responder de
+ * inmediato con la guía/pasos sin volver a preguntar qué trámite desea.
+ */
+function extractDirectProcedureQuery(query: string): string | null {
+  const normalized = query.trim();
+  const match = normalized.match(
+    /(?:me llamo|soy|mi nombre es)\s+[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s.]{2,40}?(?:\s+y\s+|\s*[,;:]+\s*|\s+)(?:quiero|necesito|me gustaría|me gustaria|quisiera|me interesa|quería|queria|deseo)\s+([\s\S]+)/i
+  );
+  if (!match) return null;
+
+  const procedure = match[1]?.trim() || match[match.length - 1]?.trim();
+  if (!procedure || procedure.length < 4 || procedure.length > 500) return null;
+
+  // Evita peticiones de cortesía vacías sin un trámite concreto.
+  const junk = /^(ayuda|informaci[oó]n|saber|preguntar|hablar|consultar|saber más|más información)\s*[.!?¿?]*$/i;
+  if (junk.test(procedure)) return null;
+
+  return procedure;
 }
 
 export default function AssistantScreen() {
@@ -103,7 +135,7 @@ export default function AssistantScreen() {
 
     try {
       currentUser = await authService.getCurrentUser();
-    } catch (err: any) {
+    } catch (err) {
       // Si falla por red, comprobamos la sesión local en caché
       try {
         const session = await authService.getSession();
@@ -111,8 +143,9 @@ export default function AssistantScreen() {
       } catch {
         currentUser = null;
       }
+      const errMsg = err instanceof Error ? err.message : "";
       isNetworkIssue = /network|offline|failed to fetch|timeout|connection/i.test(
-        err?.message || "",
+        errMsg,
       );
     }
 
@@ -195,11 +228,19 @@ export default function AssistantScreen() {
         SLOW_THRESHOLD_MS,
       );
 
+      // Flujo directo: si el primer mensaje ya indica nombre y trámite
+      // (ej. "Hola, me llamo X y quiero renovar el DNI"), respondemos de
+      // inmediato con la guía sin volver a preguntar qué trámite desea.
+      const directQuery = extractDirectProcedureQuery(text);
+
       try {
         let response;
-        
+
         // Handle greetings gracefully without triggering error
-        if (isGreeting(text)) {
+        if (directQuery) {
+          // La consulta ya incluye el trámite concreto: devolver la guía directa.
+          response = await assistantService.ask(directQuery, conversationId);
+        } else if (isGreeting(text)) {
           const greetingContent = getGreetingResponse(text);
           response = {
             data: {

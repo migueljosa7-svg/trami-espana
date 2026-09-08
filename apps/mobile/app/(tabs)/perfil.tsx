@@ -10,13 +10,22 @@ import {
 } from 'react-native';
 import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { authService, accountService, LEGAL_DISCLAIMER } from '@trami-espana/shared';
+import ExitAppModal from '../../components/ExitAppModal';
+import { changeLanguage, getCurrentLanguage, SUPPORTED_LANGUAGES } from '../../src/i18n';
+import { clearUserCaches } from '../../src/localCache';
 import type { User } from '@supabase/supabase-js';
 
 export default function ProfileScreen() {
+    const { t } = useTranslation();
+    const insets = useSafeAreaInsets();
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [deleting, setDeleting] = useState(false);
+    const [exitVisible, setExitVisible] = useState(false);
+    const [language, setLanguage] = useState(getCurrentLanguage());
 
     useEffect(() => {
         const loadProfile = async () => {
@@ -33,32 +42,44 @@ export default function ProfileScreen() {
         loadProfile();
     }, []);
 
+    const handleSwitchLanguage = (lang: 'es' | 'en') => {
+        if (lang === language) return;
+        changeLanguage(lang);
+        setLanguage(lang);
+    };
+
     const handleSignOut = async () => {
+        // Aislamiento estricto: al cerrar sesión se purgan de inmediato la
+        // caché local de favoritos y recordatorios (AsyncStorage) para que un
+        // usuario invitado o distinto no vea datos de una sesión anterior.
+        await clearUserCaches();
         await authService.logout();
         setUser(null);
     };
 
     const confirmDeleteAccount = () => {
         Alert.alert(
-            'Eliminar cuenta',
-            '¿Seguro que quieres eliminar tu cuenta y todos tus datos? Esta acción no se puede deshacer.',
+            t('profile.auth.deleteAccount'),
+            t('profile.auth.deleteAccountConfirm'),
             [
-                { text: 'Cancelar', style: 'cancel' },
+                { text: t('profile.auth.cancel'), style: 'cancel' },
                 {
-                    text: 'Eliminar',
+                    text: t('profile.auth.delete'),
                     style: 'destructive',
                     onPress: async () => {
                         setDeleting(true);
                         const result = await accountService.deleteAccount();
                         if (result.error) {
                             setDeleting(false);
-                            Alert.alert('Error', 'No se pudo eliminar la cuenta. Inténtalo más tarde o contacta con nosotros.');
+                            Alert.alert(t('common.error'), t('profile.auth.deleteAccountError'));
                             return;
                         }
+                        // Purga de la caché local antes de cerrar sesión.
+                        await clearUserCaches();
                         await authService.logout();
                         setUser(null);
                         setDeleting(false);
-                        Alert.alert('Cuenta eliminada', 'Tu cuenta y tus datos se han eliminado.');
+                        Alert.alert(t('profile.auth.accountDeleted'), t('profile.auth.accountDeletedMsg'));
                     },
                 },
             ]
@@ -66,19 +87,19 @@ export default function ProfileScreen() {
     };
 
     const legalItems = [
-        { label: 'Política de privacidad', href: '/legal/politica-privacidad', icon: 'shield-checkmark-outline' as const },
-        { label: 'Términos y condiciones', href: '/legal/terminos', icon: 'document-text-outline' as const },
-        { label: 'Política de cookies', href: '/legal/cookies', icon: 'eye-outline' as const },
-        { label: 'Aviso de servicio independiente', href: '/legal/aviso', icon: 'information-circle-outline' as const },
-        { label: 'Información sobre datos y privacidad', href: '/legal/datos', icon: 'lock-closed-outline' as const },
-        { label: 'Contacto', href: '/legal/contacto', icon: 'mail-outline' as const },
+        { label: t('profile.legalItems.privacy'), href: '/legal/politica-privacidad', icon: 'shield-checkmark-outline' as const },
+        { label: t('profile.legalItems.terms'), href: '/legal/terminos', icon: 'document-text-outline' as const },
+        { label: t('profile.legalItems.cookies'), href: '/legal/cookies', icon: 'eye-outline' as const },
+        { label: t('profile.legalItems.disclaimer'), href: '/legal/aviso', icon: 'information-circle-outline' as const },
+        { label: t('profile.legalItems.data'), href: '/legal/datos', icon: 'lock-closed-outline' as const },
+        { label: t('profile.legalItems.contact'), href: '/legal/contacto', icon: 'mail-outline' as const },
     ];
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
             {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Mi Perfil</Text>
+            <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+                <Text style={styles.headerTitle}>{t('profile.title')}</Text>
             </View>
 
             {isLoading ? (
@@ -100,7 +121,7 @@ export default function ProfileScreen() {
                             <Text style={styles.email}>{user.email}</Text>
                             <View style={styles.verifiedBadge}>
                                 <Ionicons name="checkmark-circle" size={14} color="#10b981" />
-                                <Text style={styles.verifiedText}>Cuenta verificada</Text>
+                                <Text style={styles.verifiedText}>{t('profile.verified')}</Text>
                             </View>
                         </View>
                     ) : (
@@ -109,20 +130,20 @@ export default function ProfileScreen() {
                             <View style={styles.guestIconContainer}>
                                 <Ionicons name="person-outline" size={36} color="#2563eb" />
                             </View>
-                            <Text style={styles.guestTitle}>Modo Invitado</Text>
+                            <Text style={styles.guestTitle}>{t('profile.guest.title')}</Text>
                             <Text style={styles.guestSubtitle}>
-                                Inicia sesión para sincronizar tus favoritos y recordar fechas clave de tus trámites.
+                                {t('profile.guest.subtitle')}
                             </Text>
                             <View style={styles.guestActions}>
                                 <Link href="/login" asChild>
                                     <TouchableOpacity style={styles.loginBtn} activeOpacity={0.85}>
                                         <Ionicons name="log-in-outline" size={18} color="#ffffff" />
-                                        <Text style={styles.loginBtnText}>Iniciar sesión</Text>
+                                        <Text style={styles.loginBtnText}>{t('profile.guest.login')}</Text>
                                     </TouchableOpacity>
                                 </Link>
-                                <Link href="/login" asChild>
+                                <Link href="/registro" asChild>
                                     <TouchableOpacity style={styles.registerBtn} activeOpacity={0.85}>
-                                        <Text style={styles.registerBtnText}>Registrarse</Text>
+                                        <Text style={styles.registerBtnText}>{t('profile.guest.register')}</Text>
                                     </TouchableOpacity>
                                 </Link>
                             </View>
@@ -135,26 +156,26 @@ export default function ProfileScreen() {
                             <Link href="/(tabs)/favoritos" asChild>
                                 <TouchableOpacity style={styles.statCard} activeOpacity={0.8}>
                                     <Ionicons name="heart" size={22} color="#ef4444" />
-                                    <Text style={styles.statLabel}>Favoritos</Text>
+                                    <Text style={styles.statLabel}>{t('profile.stats.favorites')}</Text>
                                 </TouchableOpacity>
                             </Link>
                             <Link href="/(tabs)/recordatorios" asChild>
                                 <TouchableOpacity style={styles.statCard} activeOpacity={0.8}>
                                     <Ionicons name="notifications" size={22} color="#f59e0b" />
-                                    <Text style={styles.statLabel}>Recordatorios</Text>
+                                    <Text style={styles.statLabel}>{t('profile.stats.reminders')}</Text>
                                 </TouchableOpacity>
                             </Link>
                             <Link href="/(tabs)/asistente" asChild>
                                 <TouchableOpacity style={styles.statCard} activeOpacity={0.8}>
                                     <Ionicons name="chatbubbles" size={22} color="#2563eb" />
-                                    <Text style={styles.statLabel}>Asistente</Text>
+                                    <Text style={styles.statLabel}>{t('profile.stats.assistant')}</Text>
                                 </TouchableOpacity>
                             </Link>
                         </View>
                     )}
 
                     {/* ===== LEGAL SECTION ===== */}
-                    <Text style={styles.sectionTitle}>Legal y privacidad</Text>
+                    <Text style={styles.sectionTitle}>{t('profile.sections.legal')}</Text>
                     <View style={styles.menuCard}>
                         {legalItems.map((item, index) => (
                             <Link key={item.href} href={item.href} asChild>
@@ -168,11 +189,39 @@ export default function ProfileScreen() {
                                 >
                                     <View style={styles.menuRowLeft}>
                                         <Ionicons name={item.icon} size={18} color="#64748b" style={styles.menuIcon} />
-                                        <Text style={styles.menuLabel}>{item.label}</Text>
+                                        <Text style={styles.menuLabel} numberOfLines={1} ellipsizeMode="tail">{item.label}</Text>
                                     </View>
-                                    <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
+                                    <View style={styles.menuChevron}>
+                                        <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
+                                    </View>
                                 </TouchableOpacity>
                             </Link>
+                        ))}
+                    </View>
+
+                    {/* ===== LANGUAGES SECTION (all users) ===== */}
+                    <Text style={styles.sectionTitle}>{t('profile.language')}</Text>
+                    <View style={styles.menuCard}>
+                        {SUPPORTED_LANGUAGES.map((lang) => (
+                            <TouchableOpacity
+                                key={lang.code}
+                                style={[
+                                    styles.menuRow,
+                                    lang.code !== SUPPORTED_LANGUAGES[SUPPORTED_LANGUAGES.length - 1].code && styles.menuRowBorder,
+                                ]}
+                                onPress={() => handleSwitchLanguage(lang.code)}
+                                activeOpacity={0.7}
+                                accessibilityRole="button"
+                                accessibilityLabel={`${lang.flag} ${lang.label}`}
+                            >
+                                <View style={styles.menuRowLeft}>
+                                    <Text style={styles.langFlag}>{lang.flag}</Text>
+                                    <Text style={styles.menuLabel}>{lang.label}</Text>
+                                </View>
+                                {language === lang.code && (
+                                    <Ionicons name="checkmark" size={18} color="#2563eb" />
+                                )}
+                            </TouchableOpacity>
                         ))}
                     </View>
 
@@ -181,7 +230,7 @@ export default function ProfileScreen() {
                         <>
                             <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut} activeOpacity={0.85}>
                                 <Ionicons name="log-out-outline" size={18} color="#ffffff" />
-                                <Text style={styles.signOutText}>Cerrar sesión</Text>
+                                <Text style={styles.signOutText}>{t('profile.auth.signOutConfirm')}</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -192,11 +241,24 @@ export default function ProfileScreen() {
                             >
                                 <Ionicons name="trash-outline" size={16} color="#b91c1c" />
                                 <Text style={styles.deleteText}>
-                                    {deleting ? 'Eliminando...' : 'Eliminar cuenta'}
+                                    {deleting ? t('profile.auth.signOut') : t('profile.auth.deleteAccount')}
                                 </Text>
                             </TouchableOpacity>
                         </>
                     )}
+
+                    {/* ===== APP SECTION (all users) ===== */}
+                    <Text style={styles.sectionTitle}>{t('profile.sections.app')}</Text>
+                    <TouchableOpacity
+                        style={styles.exitAppButton}
+                        onPress={() => setExitVisible(true)}
+                        activeOpacity={0.85}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('profile.appSection.exitApp')}
+                    >
+                        <Ionicons name="exit-outline" size={18} color="#334155" />
+                        <Text style={styles.exitAppText}>{t('profile.appSection.exitApp')}</Text>
+                    </TouchableOpacity>
                 </View>
             )}
 
@@ -205,6 +267,9 @@ export default function ProfileScreen() {
                 <View style={styles.footerDivider} />
                 <Text style={styles.legalText}>{LEGAL_DISCLAIMER}</Text>
             </View>
+
+            {/* Modal de confirmación de salida */}
+            <ExitAppModal visible={exitVisible} onClose={() => setExitVisible(false)} />
         </ScrollView>
     );
 }
@@ -218,7 +283,6 @@ const styles = StyleSheet.create({
         paddingBottom: 48,
     },
     header: {
-        paddingTop: 48,
         paddingHorizontal: 16,
         paddingBottom: 16,
         backgroundColor: '#ffffff',
@@ -434,6 +498,20 @@ const styles = StyleSheet.create({
         color: '#0f172a',
         flex: 1,
     },
+    // Flecha que cierra cada fila del menú: se mantiene siempre en la misma
+    // línea a la derecha del texto gracias a flexDirection row + space-between
+    // en menuRow y a que este contenedor no se encoge ni envuelve.
+    menuChevron: {
+        flexShrink: 0,
+        marginLeft: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    // Selector de idioma
+    langFlag: {
+        fontSize: 16,
+        marginRight: 12,
+    },
 
     // Account buttons
     signOutButton: {
@@ -464,6 +542,25 @@ const styles = StyleSheet.create({
     },
     deleteText: {
         color: '#b91c1c',
+        fontWeight: '600',
+        fontSize: 15,
+    },
+
+    // Exit app
+    exitAppButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#ffffff',
+        borderRadius: 14,
+        paddingVertical: 14,
+        borderWidth: 1.5,
+        borderColor: '#e2e8f0',
+        marginBottom: 12,
+    },
+    exitAppText: {
+        color: '#334155',
         fontWeight: '600',
         fontSize: 15,
     },

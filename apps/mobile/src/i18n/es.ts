@@ -1,0 +1,280 @@
+export const es = {
+  // Navegación y pestañas
+  nav: {
+    home: 'Inicio',
+    search: 'Buscar',
+    assistant: 'Asistente',
+    favorites: 'Favoritos',
+    reminders: 'Recordatorios',
+    profile: 'Perfil',
+  },
+
+  // Pantalla de perfil
+  profile: {
+    title: 'Mi Perfil',
+    loading: 'Cargando...',
+    verified: 'Cuenta verificada',
+    guest: {
+      title: 'Modo Invitado',
+      subtitle: 'Inicia sesión para sincronizar tus favoritos y recordar fechas clave de tus trámites.',
+      login: 'Iniciar sesión',
+      register: 'Registrarse',
+    },
+    stats: {
+      favorites: 'Favoritos',
+      reminders: 'Recordatorios',
+      assistant: 'Asistente',
+    },
+    sections: {
+      legal: 'Legal y privacidad',
+      app: 'Aplicación',
+    },
+    legalItems: {
+      privacy: 'Política de privacidad',
+      terms: 'Términos y condiciones',
+      cookies: 'Política de cookies',
+      disclaimer: 'Aviso de servicio independiente',
+      data: 'Información sobre datos y privacidad',
+      contact: 'Contacto',
+    },
+    auth: {
+      signOut: 'Cerrando sesión',
+      signOutConfirm: 'Cerrar sesión',
+      deleteAccount: 'Eliminar cuenta',
+      deleteAccountConfirm: '¿Seguro que quieres eliminar tu cuenta y todos tus datos? Esta acción no se puede deshacer.',
+      deleteAccountError: 'No se pudo eliminar la cuenta. Inténtalo más tarde o contacta con nosotros.',
+      accountDeleted: 'Cuenta eliminada',
+      accountDeletedMsg: 'Tu cuenta y tus datos se han eliminado.',
+      cancel: 'Cancelar',
+      delete: 'Eliminar',
+    },
+    appSection: {
+      exitApp: 'Salir de la aplicación',
+    },
+    language: 'Idioma',
+    logoutConfirmTitle: '¿Cerrar sesión?',
+    logoutConfirmMsg: 'Se borrarán tus favoritos y recordatorios locales. Inicia sesión de nuevo para recuperarlos.',
+  },
+
+  // Asistente IA
+  assistant: {
+    title: 'Asistente IA',
+    subtitle: 'Trami España',
+    placeholder: 'Escribe tu consulta sobre un trámite...',
+    send: 'Enviar',
+    sending: 'Enviando...',
+    sendingLong: 'El asistente está tardando más de lo esperado...',
+    consulting: 'Consultando base de datos y respondiendo...',
+    offline: {
+      title: 'Problemas de conexión a internet',
+      subtitle: 'Las respuestas y búsquedas de trámites requieren conexión activa.',
+      retry: 'Reconectar',
+    },
+    greeting: {
+      response: '¡Hola! 👋 Gracias por escribirme. Estoy aquí para ayudarte con cualquier consulta sobre trámites administrativos en España. Puedes preguntarme sobre trámites como renovar el DNI, empadronamiento, citas previas, prestaciones, y mucho más. ¿En qué puedo ayudarte hoy?',
+      thanks: '¡De nada! 😊 Me alegra poder ayudarte. Si tienes alguna consulta sobre trámites administrativos españoles, no dudes en preguntarme. ¿Hay algún trámite específico del que quieras saber más?',
+    },
+    status: {
+      error: '¡ Error de conexión',
+      noResults: 'Sin resultados en base de datos',
+      partial: 'Resultados parciales (por palabras clave)',
+      fallback: 'Respuesta desde base de datos local',
+      verified: 'Verificado por Trami',
+      demo: 'Contenido Demo / Draft',
+    },
+    retry: 'Reintentar',
+    references: {
+      procedures: 'Trámites relacionados:',
+      sources: 'Fuentes oficiales:',
+    },
+        welcomeMessage: '¡Hola! Soy el Asistente IA de Trami España. ¿En qué trámite administrativo necesitas ayuda hoy?',
+  },
+
+  // Login
+  login: {
+    title: 'Iniciar sesión',
+    subtitle: 'Accede con tu email y contraseña',
+    email: 'Email',
+    password: 'Contraseña',
+    showPassword: 'Mostrar contraseña',
+    hidePassword: 'Ocultar contraseña',
+    forgotPassword: '¿Olvidaste tu contraseña?',
+    loginBtn: 'Entrar',
+    noAccount: '¿No tienes cuenta todavía?',
+    registerLink: 'Crear una cuenta',
+    emailPlaceholder: 'tu@email.com',
+    passwordPlaceholder: 'Tu contraseña',
+    emailConfirmed: '¡Email confirmado con éxito! Ya puedes iniciar sesión con tu cuenta.',
+    resendConfirmation: 'Reenviar email de confirmación',
+    unexpectedError: 'Error inesperado al iniciar sesión. Inténtalo de nuevo.',
+  },
+
+  // Registro
+  register: {
+    title: 'Crear cuenta',
+    subtitle: 'Regístrate gratis en pocos pasos',
+    fullName: 'Nombre completo',
+    fullNamePlaceholder: 'Tu nombre y apellidos',
+    email: 'Email',
+    password: 'Contraseña',
+    confirmPassword: 'Confirmar contraseña',
+    showPassword: 'Mostrar contraseña',
+    hidePassword: 'Ocultar contraseña',
+    registerBtn: 'Crear cuenta',
+    hasAccount: '¿Ya tienes cuenta?',
+    loginLink: 'Iniciar sesión',
+    fullNameRequired: 'Introduce tu nombre para personalizar tu cuenta.',
+    emailPlaceholder: 'tu@email.com',
+    passwordPlaceholder: 'Tu contraseña',
+    passwordMinLength: 'La contraseña debe tener al menos 6 caracteres.',
+    passwordsMismatch: 'Las contraseñas no coinciden.',
+    checkEmail: '¡Revisa tu correo!',
+    checkEmailMsg: 'Hemos enviado un email de confirmación a {{email}}. Sigue el enlace para activar tu cuenta.',
+    checkEmailHint: 'No olvides revisar la carpeta de spam o publicidad. El enlace caduca a las 24 horas.',
+    backToLogin: 'Volver a iniciar sesión',
+        unexpectedError: 'Error inesperado durante el registro. Inténtalo de nuevo.',
+  },
+
+  // Recuperar contraseña
+  forgotPassword: {
+    title: 'Recuperar contraseña',
+    subtitle: 'Introduce tu email y te enviaremos un enlace para crear una nueva contraseña',
+    email: 'Email',
+    emailPlaceholder: 'tu@email.com',
+    sendBtn: 'Enviar enlace de recuperación',
+    sentTitle: 'Email enviado',
+    sentMsg: 'Si {{email}} está registrado, recibirás un enlace para crear una nueva contraseña en unos minutos.',
+    sentHint: 'No olvides revisar la carpeta de spam o publicidad. El enlace caduca a las 24 horas.',
+    backToLogin: 'Volver a iniciar sesión',
+    emailInvalid: 'Introduce un email válido (ej. nombre@dominio.com).',
+    unexpectedError: 'Error inesperado. Inténtalo de nuevo en unos minutos.',
+  },
+
+  // Favoritos
+  favorites: {
+    title: 'Mis Favoritos',
+    subtitle: 'Trámites guardados para acceso rápido',
+    empty: {
+      title: 'No tienes trámites guardados',
+      subtitle: 'Guarda tus trámites más consultados para acceder a ellos rápidamente.',
+      button: 'Explorar trámites',
+    },
+    scope: 'Ámbito',
+  },
+
+  // Recordatorios
+  reminders: {
+    title: 'Mis Recordatorios',
+    subtitle: 'Trámites con fechas límite próximas',
+    empty: {
+      title: 'No tienes recordatorios',
+      subtitle: 'Crea recordatorios para no olvidar fechas clave de tus trámites.',
+    },
+    fab: 'Añadir recordatorio',
+    modal: {
+      title: 'Nuevo recordatorio',
+      titleLabel: 'Título',
+      titlePlaceholder: 'Ej. Renovar el DNI',
+      dateLabel: 'Fecha',
+      notesLabel: 'Notas (opcional)',
+      notesPlaceholder: 'Añade notas...',
+      cancel: 'Cancelar',
+      save: 'Guardar',
+      saveError: 'No se pudo guardar el recordatorio. Asegúrate de estar conectado a internet e iniciado sesión.',
+      saved: '¡Recordatorio guardado!',
+      savedWithCalendar: '¡Recordatorio guardado.\n Añadido a tu calendario.',
+      savedWithNotification: '¡Recordatorio guardado.\n Notificación programada.',
+    },
+    today: 'Hoy',
+    overdue: 'Vencido',
+    upcoming: 'Próximos',
+    completed: 'Completados',
+    reminder: 'RECORDATORIO',
+    tapMark: 'Toca para marcar como completado',
+    titleLabel: 'Trámite',
+    dateLabel: 'Fecha',
+    notesLabel: 'Notas',
+  },
+// Buscar
+  search: {
+    title: 'Buscar trámites',
+    placeholder: 'Ej: DNI, NIE, empadronamiento, prestación...',
+    noResults: 'No se han encontrado trámites',
+    noResultsMsg: 'Intenta con otros términos o explora las categorías.',
+    filters: {
+      category: 'Categoría',
+      scope: 'Ámbito',
+      community: 'Comunidad',
+    },
+    results: 'resultados',
+    perPage: 'por página',
+    allCategories: 'Todas las categorías',
+  },
+
+  // Pantalla de detalle de trámite
+  procedure: {
+    loading: 'Cargando trámite...',
+    notFound: 'No se ha encontrado el trámite solicitado.',
+    back: 'Atrás',
+    addToFavorites: 'Añadir a favoritos',
+    removeFromFavorites: 'Eliminar de favoritos',
+    favoriteAdded: '¡Guardado! 💙',
+    favoriteRemoved: 'Eliminado',
+    favoriteAddedMsg: 'Trámite añadido a tus favoritos.',
+    favoriteRemovedMsg: 'Trámite eliminado de tus favoritos.',
+    favoriteError: 'No se pudo actualizar favoritos. Inicia sesión e inténtalo de nuevo.',
+    sections: {
+      description: 'Descripción',
+      requirements: 'Requisitos',
+      documents: 'Documentación necesaria',
+      steps: 'Pasos a seguir',
+      links: 'Enlaces oficiales',
+      metadata: 'Información adicional',
+    },
+    meta: {
+      scope: 'Ámbito',
+      community: 'Comunidad autónoma',
+      province: 'Provincia',
+      municipality: 'Municipio',
+      cost: 'Coste',
+      duration: 'Duración estimada',
+      source: 'Fuente',
+      verified: 'Verificado',
+      draft: 'Borrador',
+    },
+    required: 'Obligatorio',
+    openLink: 'Abrir enlace oficial',
+  },
+
+  // Salida de la app
+  exitApp: {
+    title: '¿Seguro que quieres salir de la aplicación?',
+    subtitle: 'Tus favoritos y recordatorios guardados estarán aquí cuando vuelvas.',
+    cancel: 'Cancelar',
+    exit: 'Salir',
+  },
+
+  // Legal
+  legal: {
+    privacy: 'Política de privacidad',
+    privacySubtitle: 'Cómo recopilamos, utilizamos y protegemos tu información personal.',
+    terms: 'Términos y condiciones',
+    cookies: 'Política de cookies',
+    disclaimer: 'Aviso de servicio independiente',
+    data: 'Información sobre datos y privacidad',
+    contact: 'Contacto',
+    back: 'Atrás',
+  },
+
+  // Mensajes generales
+  common: {
+    save: 'Guardar',
+    cancel: 'Cancelar',
+    close: 'Cerrar',
+    done: 'Hecho',
+    error: 'Error',
+    retry: 'Reintentar',
+    networkError: 'No se ha podido conectar. Comprueba tu conexión a internet.',
+    tryAgain: 'Inténtalo de nuevo',
+  },
+};

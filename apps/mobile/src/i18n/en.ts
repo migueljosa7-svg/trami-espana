@@ -1,0 +1,280 @@
+export const en = {
+  // Navegación y pestañas
+  nav: {
+    home: 'Home',
+    search: 'Search',
+    assistant: 'Assistant',
+    favorites: 'Favorites',
+    reminders: 'Reminders',
+    profile: 'Profile',
+  },
+
+  // Pantalla de perfil
+  profile: {
+    title: 'My Profile',
+    loading: 'Loading...',
+    verified: 'Verified account',
+    guest: {
+      title: 'Guest Mode',
+      subtitle: 'Sign in to sync your favorites and keep track of key dates for your procedures.',
+      login: 'Sign in',
+      register: 'Create account',
+    },
+    stats: {
+      favorites: 'Favorites',
+      reminders: 'Reminders',
+      assistant: 'Assistant',
+    },
+    sections: {
+      legal: 'Legal & privacy',
+      app: 'Application',
+    },
+    legalItems: {
+      privacy: 'Privacy Policy',
+      terms: 'Terms & Conditions',
+      cookies: 'Cookie Policy',
+      disclaimer: 'Independent service notice',
+      data: 'Data & privacy information',
+      contact: 'Contact',
+    },
+    auth: {
+      signOut: 'Signing out',
+      signOutConfirm: 'Sign out',
+      deleteAccount: 'Delete account',
+      deleteAccountConfirm: 'Are you sure you want to delete your account and all your data? This action cannot be undone.',
+      deleteAccountError: 'Could not delete the account. Try again later or contact us.',
+      accountDeleted: 'Account deleted',
+      accountDeletedMsg: 'Your account and your data have been deleted.',
+      cancel: 'Cancel',
+      delete: 'Delete',
+    },
+    appSection: {
+      exitApp: 'Exit application',
+    },
+    language: 'Language',
+    logoutConfirmTitle: 'Sign out?',
+    logoutConfirmMsg: 'Your local favorites and reminders will be cleared. Sign in again to restore them.',
+  },
+
+  // Asistente IA
+  assistant: {
+    title: 'AI Assistant',
+    subtitle: 'Trami España',
+    placeholder: 'Ask about a procedure...',
+    send: 'Send',
+    sending: 'Sending...',
+    sendingLong: 'The assistant is taking longer than expected...',
+    consulting: 'Searching the database and replying...',
+    offline: {
+      title: 'Internet connection problems',
+      subtitle: 'Answers and procedure searches require an active connection.',
+      retry: 'Reconnect',
+    },
+    greeting: {
+      response: 'Hello! 👋 Thank you for writing. I am here to help you with any questions about administrative procedures in Spain. You can ask me about procedures such as renewing your ID card, municipal registration, prior appointments, benefits, and much more. How can I help you today?',
+      thanks: 'You are welcome! 😊 I am glad to help. If you have any questions about Spanish administrative procedures, do not hesitate to ask. Is there any specific procedure you would like to know more about?',
+    },
+    status: {
+      error: '⚠ Connection error',
+      noResults: 'No results in database',
+      partial: 'Partial results (keyword based)',
+      fallback: 'Answer from local database',
+      verified: 'Verified by Trami',
+      demo: 'Demo / Draft content',
+    },
+    retry: 'Retry',
+    references: {
+      procedures: 'Related procedures:',
+      sources: 'Official sources:',
+    },
+    welcomeMessage: 'Hello! I am the Trami España AI Assistant. Which administrative procedure do you need help with today?',
+  },
+
+  // Login
+  login: {
+    title: 'Sign in',
+    subtitle: 'Access with your email and password',
+    email: 'Email',
+    password: 'Password',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
+    forgotPassword: 'Forgot your password?',
+    loginBtn: 'Sign in',
+    noAccount: 'Do not have an account yet?',
+    registerLink: 'Create an account',
+    emailPlaceholder: 'you@email.com',
+    passwordPlaceholder: 'Your password',
+    emailConfirmed: 'Email confirmed successfully! You can now sign in with your account.',
+    resendConfirmation: 'Resend confirmation email',
+    unexpectedError: 'Unexpected error while signing in. Try again.',
+  },
+
+  // Registro
+  register: {
+    title: 'Create account',
+    subtitle: 'Sign up for free in a few steps',
+    fullName: 'Full name',
+    fullNamePlaceholder: 'Your first and last name',
+    email: 'Email',
+    password: 'Password',
+    confirmPassword: 'Confirm password',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
+    registerBtn: 'Create account',
+    hasAccount: 'Already have an account?',
+    loginLink: 'Sign in',
+    fullNameRequired: 'Enter your name to personalise your account.',
+    emailPlaceholder: 'you@email.com',
+    passwordPlaceholder: 'Your password',
+    passwordMinLength: 'The password must be at least 6 characters long.',
+    passwordsMismatch: 'Passwords do not match.',
+    checkEmail: 'Check your email!',
+    checkEmailMsg: 'We have sent a confirmation email to {{email}}. Follow the link to activate your account.',
+    checkEmailHint: 'Do not forget to check your spam or promotions folder. The link expires after 24 hours.',
+    backToLogin: 'Back to sign in',
+    unexpectedError: 'Unexpected error during registration. Try again.',
+  },
+
+  // Recuperar contraseña
+  forgotPassword: {
+    title: 'Reset password',
+    subtitle: 'Enter your email and we will send you a link to create a new password',
+    email: 'Email',
+    emailPlaceholder: 'you@email.com',
+    sendBtn: 'Send recovery link',
+    sentTitle: 'Email sent',
+    sentMsg: 'If {{email}} is registered, you will receive a link to create a new password within a few minutes.',
+    sentHint: 'Do not forget to check your spam or promotions folder. The link expires after 24 hours.',
+    backToLogin: 'Back to sign in',
+    emailInvalid: 'Enter a valid email (e.g. name@domain.com).',
+    unexpectedError: 'Unexpected error. Try again in a few minutes.',
+    // Favoritos
+    favorites: {
+      title: 'My Favorites',
+      subtitle: 'Saved procedures for quick access',
+      empty: {
+        title: 'You have no saved procedures',
+        subtitle: 'Save your most consulted procedures to access them quickly.',
+        button: 'Explore procedures',
+      },
+      scope: 'Scope',
+    },
+
+    // Recordatorios
+    reminders: {
+      title: 'My Reminders',
+      subtitle: 'Procedures with upcoming deadlines',
+      empty: {
+        title: 'You have no reminders',
+        subtitle: 'Create reminders so you do not forget key dates of your procedures.',
+      },
+      fab: 'Add reminder',
+      modal: {
+        title: 'New reminder',
+        titleLabel: 'Title',
+        titlePlaceholder: 'E.g. Renew the ID card',
+        dateLabel: 'Date',
+        notesLabel: 'Notes (optional)',
+        notesPlaceholder: 'Add notes...',
+        cancel: 'Cancel',
+        save: 'Save',
+        saveError: 'Could not save the reminder. Make sure you are connected to the internet and signed in.',
+        saved: 'Reminder saved!',
+        savedWithCalendar: 'Reminder saved.\n Added to your calendar.',
+        savedWithNotification: 'Reminder saved.\n Notification scheduled.',
+      },
+      today: 'Today',
+      overdue: 'Overdue',
+      upcoming: 'Upcoming',
+      completed: 'Completed',
+      reminder: 'REMINDER',
+      tapMark: 'Tap to mark as completed',
+      titleLabel: 'Procedure',
+      dateLabel: 'Date',
+      notesLabel: 'Notes',
+    },
+
+    // Buscar
+    search: {
+      title: 'Search procedures',
+      placeholder: 'E.g. ID card, NIE, registration, benefit...',
+      noResults: 'No procedures found',
+      noResultsMsg: 'Try different terms or explore the categories.',
+      filters: {
+        category: 'Category',
+        scope: 'Scope',
+        community: 'Region',
+      },
+      results: 'results',
+      perPage: 'per page',
+      allCategories: 'All categories',
+    },
+
+    // Pantalla de detalle de trámite
+    procedure: {
+      loading: 'Loading procedure...',
+      notFound: 'The requested procedure was not found.',
+      back: 'Back',
+      addToFavorites: 'Add to favorites',
+      removeFromFavorites: 'Remove from favorites',
+      favoriteAdded: 'Saved! 💙',
+      favoriteRemoved: 'Removed',
+      favoriteAddedMsg: 'Procedure added to your favorites.',
+      favoriteRemovedMsg: 'Procedure removed from your favorites.',
+      favoriteError: 'Could not update favorites. Sign in and try again.',
+      sections: {
+        description: 'Description',
+        requirements: 'Requirements',
+        documents: 'Required documentation',
+        steps: 'Steps to follow',
+        links: 'Official links',
+        metadata: 'Additional information',
+      },
+      meta: {
+        scope: 'Scope',
+        community: 'Region',
+        province: 'Province',
+        municipality: 'Municipality',
+        cost: 'Cost',
+        duration: 'Estimated duration',
+        source: 'Source',
+        verified: 'Verified',
+        draft: 'Draft',
+      },
+      required: 'Required',
+      openLink: 'Open official link',
+    },
+
+    // Salida de la app
+    exitApp: {
+      title: 'Are you sure you want to exit the application?',
+      subtitle: 'Your saved favorites and reminders will be here when you come back.',
+      cancel: 'Cancel',
+      exit: 'Exit',
+    },
+
+    // Legal
+    legal: {
+      privacy: 'Privacy Policy',
+      privacySubtitle: 'How we collect, use and protect your personal information.',
+      terms: 'Terms & Conditions',
+      cookies: 'Cookie Policy',
+      disclaimer: 'Independent service notice',
+      data: 'Data & privacy information',
+      contact: 'Contact',
+      back: 'Back',
+    },
+
+    // Mensajes generales
+    common: {
+      save: 'Save',
+      cancel: 'Cancel',
+      close: 'Close',
+      done: 'Done',
+      error: 'Error',
+      retry: 'Retry',
+      networkError: 'Could not connect. Check your internet connection.',
+      tryAgain: 'Try again',
+    },
+  },
+};

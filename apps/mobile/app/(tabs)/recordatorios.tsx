@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { authService, reminderService, ReminderWithProcedure } from '@trami-espana/shared';
+import { cacheReminders } from '../../src/localCache';
 
 // Lazy-load expo-calendar and expo-notifications to handle missing permissions gracefully
 let Calendar: typeof import('expo-calendar') | null = null;
@@ -60,16 +61,20 @@ async function addToDeviceCalendar(title: string, date: Date, notes?: string): P
 }
 
 // Helper: schedule local push notification
+type NotificationTriggerInput = NonNullable<
+    Parameters<NonNullable<typeof Notifications>['scheduleNotificationAsync']>[0]
+>['trigger'];
+
 async function scheduleNotification(title: string, body: string, date: Date): Promise<boolean> {
     if (!Notifications) return false;
     try {
         const permissionResult = await Notifications.requestPermissionsAsync();
-        if ((permissionResult as any).status !== 'granted') return false;
+        if (permissionResult.status !== 'granted') return false;
         const trigger = date.getTime() - Date.now();
         if (trigger <= 0) return false;
         await Notifications.scheduleNotificationAsync({
             content: { title, body, sound: true },
-            trigger: { seconds: Math.floor(trigger / 1000), repeats: false } as any,
+            trigger: { seconds: Math.floor(trigger / 1000), repeats: false } as NotificationTriggerInput,
         });
         return true;
     } catch {
@@ -112,7 +117,11 @@ export default function RemindersScreen() {
                 return;
             }
             const data = await reminderService.getReminders();
-            if (data) setReminders(data);
+            if (data) {
+                setReminders(data);
+                // Copia local (aislada por usuario) para acceso offline.
+                await cacheReminders(data);
+            }
         } catch {
             // Error controlado.
         } finally {
@@ -175,7 +184,7 @@ export default function RemindersScreen() {
             setFormNotes('');
             setFormDate(formatDateForInput(new Date(Date.now() + 7 * 86400000)));
             Alert.alert('¡Recordatorio creado!', successMsg);
-        } catch (err: any) {
+        } catch {
             // If it's a "procedure_id required" error, create without it
             Alert.alert('Error', 'No se pudo guardar el recordatorio. Asegúrate de estar conectado a internet e iniciado sesión.');
         } finally {

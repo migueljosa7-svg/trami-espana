@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { authService, favoriteService, FavoriteWithProcedure } from '@trami-espana/shared';
+import { cacheFavorites } from '../../src/localCache';
 
 export default function FavoritesScreen() {
     const router = useRouter();
@@ -21,7 +22,11 @@ export default function FavoritesScreen() {
                 }
 
                 const data = await favoriteService.getFavorites();
-                if (data) setFavorites(data);
+                if (data) {
+                    setFavorites(data);
+                    // Copia local (aislada por usuario) para acceso offline.
+                    await cacheFavorites(data);
+                }
             } catch {
                 // Error controlado.
             } finally {

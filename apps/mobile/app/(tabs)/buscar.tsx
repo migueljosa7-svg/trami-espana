@@ -288,6 +288,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 6,
         marginBottom: 8
     },
     cardScope: {
@@ -297,13 +299,16 @@ const styles = StyleSheet.create({
         backgroundColor: '#eff6ff',
         paddingHorizontal: 8,
         paddingVertical: 3,
-        borderRadius: 6
+        borderRadius: 6,
+        flexShrink: 1,
     },
     costTag: {
         backgroundColor: '#fef9c3',
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 6,
+        maxWidth: '55%',
+        flexShrink: 1,
     },
     costTagFree: {
         backgroundColor: '#dcfce7',

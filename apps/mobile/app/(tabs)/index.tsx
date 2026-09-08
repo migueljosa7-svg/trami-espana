@@ -160,7 +160,10 @@ const styles = StyleSheet.create({
     categoryName: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#334155'
+        color: '#334155',
+        lineHeight: 18,
+        textAlign: 'center',
+        flexWrap: 'wrap',
     },
     assistantCallout: {
         backgroundColor: '#eff6ff',

@@ -3,6 +3,8 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { procedureService, favoriteService, ProcedureWithDetails } from '@trami-espana/shared';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { exportProcedureToPdf } from '../../src/utils/exportPdf';
 
 export default function ProcedureDetailScreen() {
     const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -11,6 +13,9 @@ export default function ProcedureDetailScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [isFavorite, setIsFavorite] = useState(false);
     const [favLoading, setFavLoading] = useState(false);
+    const [exportingPdf, setExportingPdf] = useState(false);
+    // Insets para que el contenido nunca quede bajo la barra del sistema.
+    const insets = useSafeAreaInsets();
 
     useEffect(() => {
         const fetchProcedure = async () => {
@@ -62,6 +67,39 @@ export default function ProcedureDetailScreen() {
         }
     };
 
+    /** Genera un PDF con el resumen del trámite y lo comparte con el sistema. */
+    const handleExportPdf = async () => {
+        if (!procedure || exportingPdf) return;
+        setExportingPdf(true);
+        try {
+            const result = await exportProcedureToPdf({
+                title: procedure.title,
+                scope: procedure.scope,
+                community: procedure.autonomous_community,
+                cost: procedure.cost,
+                duration: procedure.estimated_duration,
+                source: procedure.source,
+                sourceUrl: procedure.source_url,
+                description: procedure.description,
+                requirements: procedure.requirements?.map((r) => ({ title: r.title, description: r.description })),
+                documents: procedure.documents?.map((d) => ({
+                    title: d.name,
+                    description: d.description,
+                    isRequired: d.is_required,
+                })),
+                steps: procedure.steps?.map((s) => ({ title: s.title, description: s.description })),
+                links: procedure.links?.map((l) => ({ title: l.title, url: l.url })),
+            });
+            if (result === 'failed') {
+                Alert.alert('Error', 'No se pudo generar el PDF. Inténtalo de nuevo.');
+            } else {
+                Alert.alert('PDF listo', 'Puedes guardarlo o compartirlo.');
+            }
+        } finally {
+            setExportingPdf(false);
+        }
+    };
+
     if (isLoading) {
         return (
             <View style={styles.center}>
@@ -83,12 +121,25 @@ export default function ProcedureDetailScreen() {
     }
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
+        <ScrollView style={styles.container} contentContainerStyle={{ padding: 16, paddingBottom: 60 + insets.bottom }}>
             {/* Back + Bookmark header row */}
             <View style={styles.topBar}>
                 <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.7}>
                     <Ionicons name="chevron-back" size={20} color="#2563eb" />
                     <Text style={styles.backButtonText}>Volver</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.pdfButton}
+                    onPress={handleExportPdf}
+                    disabled={exportingPdf}
+                    activeOpacity={0.75}
+                    accessibilityLabel="Exportar trámite a PDF"
+                >
+                    {exportingPdf ? (
+                        <ActivityIndicator size="small" color="#2563eb" />
+                    ) : (
+                        <Ionicons name="download-outline" size={22} color="#2563eb" />
+                    )}
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={styles.bookmarkButton}
@@ -293,6 +344,21 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         borderWidth: 1,
         borderColor: '#e2e8f0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    pdfButton: {
+        width: 44,
+        height: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#ffffff',
+        borderRadius: 22,
+        borderWidth: 1,
+        borderColor: '#bfdbfe',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,

@@ -14,13 +14,22 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { authService, accountService, LEGAL_DISCLAIMER } from '@trami-espana/shared';
 import ExitAppModal from '../../components/ExitAppModal';
-import { changeLanguage, getCurrentLanguage, SUPPORTED_LANGUAGES } from '../../src/i18n';
+import {
+    changeLanguage,
+    getCurrentLanguage,
+    isRTLLanguage,
+    SUPPORTED_LANGUAGES,
+    type AppLanguage,
+} from '../../src/i18n';
 import { clearUserCaches } from '../../src/localCache';
+import { useAppTheme, type ThemePreference } from '../../constants/theme';
 import type { User } from '@supabase/supabase-js';
 
 export default function ProfileScreen() {
     const { t } = useTranslation();
     const insets = useSafeAreaInsets();
+    // Tema dinámico (sistema/claro/oscuro) de constants/theme.ts
+    const { colors, preference, setPreference } = useAppTheme();
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [deleting, setDeleting] = useState(false);
@@ -42,10 +51,15 @@ export default function ProfileScreen() {
         loadProfile();
     }, []);
 
-    const handleSwitchLanguage = (lang: 'es' | 'en') => {
+    const handleSwitchLanguage = (lang: AppLanguage) => {
         if (lang === language) return;
+        const wasRTL = isRTLLanguage(language);
         changeLanguage(lang);
         setLanguage(lang);
+        // Los idiomas RTL (árabe) requieren reinicio para reordenar el layout.
+        if (isRTLLanguage(lang) !== wasRTL) {
+            Alert.alert(t('profile.rtlNoticeTitle'), t('profile.rtlNoticeMsg'));
+        }
     };
 
     const handleSignOut = async () => {
@@ -96,10 +110,13 @@ export default function ProfileScreen() {
     ];
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+            style={[styles.container, { backgroundColor: colors.background }]}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 16) + 32 }]}
+        >
             {/* Header */}
-            <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-                <Text style={styles.headerTitle}>{t('profile.title')}</Text>
+            <View style={[styles.header, { paddingTop: insets.top + 16, backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>{t('profile.title')}</Text>
             </View>
 
             {isLoading ? (
@@ -175,8 +192,8 @@ export default function ProfileScreen() {
                     )}
 
                     {/* ===== LEGAL SECTION ===== */}
-                    <Text style={styles.sectionTitle}>{t('profile.sections.legal')}</Text>
-                    <View style={styles.menuCard}>
+                    <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('profile.sections.legal')}</Text>
+                    <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                         {legalItems.map((item, index) => (
                             <Link key={item.href} href={item.href} asChild>
                                 <TouchableOpacity
@@ -189,7 +206,7 @@ export default function ProfileScreen() {
                                 >
                                     <View style={styles.menuRowLeft}>
                                         <Ionicons name={item.icon} size={18} color="#64748b" style={styles.menuIcon} />
-                                        <Text style={styles.menuLabel} numberOfLines={1} ellipsizeMode="tail">{item.label}</Text>
+                                        <Text style={[styles.menuLabel, { color: colors.text }]} numberOfLines={1} ellipsizeMode="tail">{item.label}</Text>
                                     </View>
                                     <View style={styles.menuChevron}>
                                         <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
@@ -200,14 +217,18 @@ export default function ProfileScreen() {
                     </View>
 
                     {/* ===== LANGUAGES SECTION (all users) ===== */}
-                    <Text style={styles.sectionTitle}>{t('profile.language')}</Text>
-                    <View style={styles.menuCard}>
-                        {SUPPORTED_LANGUAGES.map((lang) => (
+                    <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('profile.language')}</Text>
+                    <Text style={styles.languageSubtitle}>{t('profile.languageSubtitle')}</Text>
+
+                    {/* Idiomas nacionales y regionales de España */}
+                    <Text style={styles.languageGroupTitle}>{t('profile.languageSpain')}</Text>
+                    <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        {SUPPORTED_LANGUAGES.filter((lang) => lang.group === 'spain').map((lang, index, arr) => (
                             <TouchableOpacity
                                 key={lang.code}
                                 style={[
                                     styles.menuRow,
-                                    lang.code !== SUPPORTED_LANGUAGES[SUPPORTED_LANGUAGES.length - 1].code && styles.menuRowBorder,
+                                    index < arr.length - 1 && styles.menuRowBorder,
                                 ]}
                                 onPress={() => handleSwitchLanguage(lang.code)}
                                 activeOpacity={0.7}
@@ -216,9 +237,65 @@ export default function ProfileScreen() {
                             >
                                 <View style={styles.menuRowLeft}>
                                     <Text style={styles.langFlag}>{lang.flag}</Text>
-                                    <Text style={styles.menuLabel}>{lang.label}</Text>
+                                    <Text style={[styles.menuLabel, { color: colors.text }]}>{lang.label}</Text>
                                 </View>
                                 {language === lang.code && (
+                                    <Ionicons name="checkmark" size={18} color="#2563eb" />
+                                )}
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    {/* Comunidades extranjeras residentes en España */}
+                    <Text style={styles.languageGroupTitle}>{t('profile.languageInternational')}</Text>
+                    <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        {SUPPORTED_LANGUAGES.filter((lang) => lang.group === 'international').map((lang, index, arr) => (
+                            <TouchableOpacity
+                                key={lang.code}
+                                style={[
+                                    styles.menuRow,
+                                    index < arr.length - 1 && styles.menuRowBorder,
+                                ]}
+                                onPress={() => handleSwitchLanguage(lang.code)}
+                                activeOpacity={0.7}
+                                accessibilityRole="button"
+                                accessibilityLabel={`${lang.flag} ${lang.label}`}
+                            >
+                                <View style={styles.menuRowLeft}>
+                                    <Text style={styles.langFlag}>{lang.flag}</Text>
+                                    <Text style={[styles.menuLabel, { color: colors.text }]}>{lang.label}</Text>
+                                </View>
+                                {language === lang.code && (
+                                    <Ionicons name="checkmark" size={18} color="#2563eb" />
+                                )}
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    {/* ===== APPEARANCE SECTION (tema) ===== */}
+                    <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('profile.sections.appearance')}</Text>
+                    <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        {([
+                            { key: 'system' as ThemePreference, label: t('profile.themeSystem'), icon: 'contrast-outline' as const },
+                            { key: 'light' as ThemePreference, label: t('profile.themeLight'), icon: 'sunny-outline' as const },
+                            { key: 'dark' as ThemePreference, label: t('profile.themeDark'), icon: 'moon-outline' as const },
+                        ]).map((option, index, arr) => (
+                            <TouchableOpacity
+                                key={option.key}
+                                style={[
+                                    styles.menuRow,
+                                    index < arr.length - 1 && styles.menuRowBorder,
+                                ]}
+                                onPress={() => setPreference(option.key)}
+                                activeOpacity={0.7}
+                                accessibilityRole="button"
+                                accessibilityLabel={option.label}
+                            >
+                                <View style={styles.menuRowLeft}>
+                                    <Ionicons name={option.icon} size={18} color="#64748b" style={styles.menuIcon} />
+                                    <Text style={[styles.menuLabel, { color: colors.text }]}>{option.label}</Text>
+                                </View>
+                                {preference === option.key && (
                                     <Ionicons name="checkmark" size={18} color="#2563eb" />
                                 )}
                             </TouchableOpacity>
@@ -511,6 +588,19 @@ const styles = StyleSheet.create({
     langFlag: {
         fontSize: 16,
         marginRight: 12,
+    },
+    languageSubtitle: {
+        fontSize: 13,
+        color: '#64748b',
+        marginBottom: 12,
+    },
+    languageGroupTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#2563eb',
+        marginBottom: 8,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
 
     // Account buttons

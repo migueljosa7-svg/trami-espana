@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Link, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { procedureService, ProcedureWithDetails } from '@trami-espana/shared';
+import { useTranslation } from 'react-i18next';
+import { useBottomInset } from '../../src/hooks/useBottomInset';
+import { cacheProcedures, readCachedProcedures } from '../../src/localCache';
 
 const FILTER_CHIPS = [
     { label: 'Todos', slug: '' },
@@ -14,12 +17,61 @@ const FILTER_CHIPS = [
     { label: '🚗 Transporte', slug: 'transporte' },
 ];
 
+// ===========================================
+// BUSCADOR AVANZADO: normalización y filtros
+// ===========================================
+/** Minúsculas sin acentos para matching tolerante (igual que el servicio). */
+const normalizeText = (text: string): string =>
+    text
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+/** Palabras clave por administración, buscadas en título/descripción/fuente. */
+const ADMINISTRATION_KEYWORDS: Record<string, string[]> = {
+    dgt: ['dgt', 'trafico', 'direccion general de trafico'],
+    taxes: ['agencia tributaria', 'aeat', 'hacienda'],
+    socialSecurity: ['seguridad social', 'sepe', 'inss', 'tgss'],
+};
+
+const matchesAdministration = (
+    procedure: ProcedureWithDetails,
+    adminKey: string
+): boolean => {
+    const keywords = ADMINISTRATION_KEYWORDS[adminKey];
+    if (!keywords) return true;
+    const haystack = normalizeText(
+        `${procedure.title} ${procedure.short_description} ${procedure.source} ${procedure.scope}`
+    );
+    return keywords.some((keyword) => haystack.includes(keyword));
+};
+
+/** Un trámite es gratuito si su campo cost lo indica (gratuito/gratis/0 €). */
+const isFreeProcedure = (procedure: ProcedureWithDetails): boolean => {
+    const cost = normalizeText(procedure.cost ?? '');
+    return (
+        cost.includes('gratuit') ||
+        cost.includes('gratis') ||
+        cost.includes('sin coste') ||
+        cost.includes('no tiene coste') ||
+        cost === '0' ||
+        cost === '0 €' ||
+        cost === '0 eur'
+    );
+};
+
 export default function SearchScreen() {
+    const { t } = useTranslation();
+    // Insets: garantiza que los resultados no queden bajo la barra del sistema.
+    const bottomInset = useBottomInset();
     const params = useLocalSearchParams<{ categoria?: string }>();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(params.categoria || '');
+    const [selectedAdmin, setSelectedAdmin] = useState('all');
+    const [selectedCost, setSelectedCost] = useState<'all' | 'free' | 'paid'>('all');
     const [procedures, setProcedures] = useState<ProcedureWithDetails[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [isFromCache, setIsFromCache] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Keep selectedCategory in sync if navigated from home category card
@@ -29,6 +81,31 @@ export default function SearchScreen() {
         }
     }, [params.categoria]);
 
+    // Carga instantánea offline: si hay catálogo en caché se pinta al
+    // instante mientras llega la respuesta de red.
+    useEffect(() => {
+        let mounted = true;
+        void readCachedProcedures<ProcedureWithDetails[]>({ allowExpired: true }).then((cached) => {
+            if (mounted && cached && cached.data.length > 0) {
+                setProcedures((prev) => (prev.length > 0 ? prev : cached.data));
+                setIsFromCache(true);
+            }
+        });
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    /** Aplica los filtros avanzados (administración + coste) en cliente. */
+    const visibleProcedures = useMemo(() => {
+        return procedures.filter((proc) => {
+            if (selectedAdmin !== 'all' && !matchesAdministration(proc, selectedAdmin)) return false;
+            if (selectedCost === 'free' && !isFreeProcedure(proc)) return false;
+            if (selectedCost === 'paid' && isFreeProcedure(proc)) return false;
+            return true;
+        });
+    }, [procedures, selectedAdmin, selectedCost]);
+
     const fetchProcedures = useCallback(async () => {
         setIsLoading(true);
         setError(null);
@@ -36,15 +113,31 @@ export default function SearchScreen() {
             if (searchQuery.trim()) {
                 const results = await procedureService.searchProcedures(searchQuery);
                 setProcedures(results);
+                setIsFromCache(false);
             } else if (selectedCategory) {
                 const response = await procedureService.getProcedures({ category_id: selectedCategory });
                 setProcedures(response.data);
+                setIsFromCache(false);
             } else {
-                const recent = await procedureService.getRecentProcedures(20);
-                setProcedures(recent);
+                // Vista inicial: catálogo completo (hasta 100 trámites) que se
+                // cachea para carga instantánea y modo offline.
+                const response = await procedureService.getProcedures({ limit: 100 });
+                setProcedures(response.data);
+                setIsFromCache(false);
+                if (response.data.length > 0) {
+                    void cacheProcedures(response.data);
+                }
             }
         } catch {
-            setError('No se pudieron cargar los trámites. Comprueba tu conexión e inténtalo de nuevo.');
+            // Sin conexión: caemos a la caché del catálogo si existe.
+            const cached = await readCachedProcedures<ProcedureWithDetails[]>({ allowExpired: true });
+            if (cached && cached.data.length > 0) {
+                setProcedures(cached.data);
+                setIsFromCache(true);
+                setError(null);
+            } else {
+                setError('No se pudieron cargar los trámites. Comprueba tu conexión e inténtalo de nuevo.');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -111,6 +204,57 @@ export default function SearchScreen() {
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
+
+                {/* Filtro por Administración (buscador avanzado) */}
+                <Text style={styles.filterLabel}>{t('search.filters.administration')}</Text>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.chipsContainer}
+                >
+                    {[
+                        { key: 'all', label: t('search.allAdministrations') },
+                        { key: 'dgt', label: t('search.adminDgt') },
+                        { key: 'taxes', label: t('search.adminTaxes') },
+                        { key: 'socialSecurity', label: t('search.adminSocialSecurity') },
+                    ].map((chip) => (
+                        <TouchableOpacity
+                            key={chip.key}
+                            style={[styles.chip, selectedAdmin === chip.key && styles.chipActive]}
+                            onPress={() => setSelectedAdmin(chip.key)}
+                            activeOpacity={0.75}
+                        >
+                            <Text style={[styles.chipText, selectedAdmin === chip.key && styles.chipTextActive]}>
+                                {chip.label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+
+                {/* Filtro por Coste (Gratis / De pago) */}
+                <Text style={styles.filterLabel}>{t('search.filters.cost')}</Text>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.chipsContainer}
+                >
+                    {[
+                        { key: 'all' as const, label: t('search.costAll') },
+                        { key: 'free' as const, label: t('search.costFree') },
+                        { key: 'paid' as const, label: t('search.costPaid') },
+                    ].map((chip) => (
+                        <TouchableOpacity
+                            key={chip.key}
+                            style={[styles.chip, selectedCost === chip.key && styles.chipActive]}
+                            onPress={() => setSelectedCost(chip.key)}
+                            activeOpacity={0.75}
+                        >
+                            <Text style={[styles.chipText, selectedCost === chip.key && styles.chipTextActive]}>
+                                {chip.label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
             </View>
 
             {isLoading ? (
@@ -126,12 +270,18 @@ export default function SearchScreen() {
                     </TouchableOpacity>
                 </View>
             ) : (
-                <ScrollView style={styles.resultsList} contentContainerStyle={styles.resultsContent}>
+                <ScrollView style={styles.resultsList} contentContainerStyle={[styles.resultsContent, { paddingBottom: 32 + bottomInset }]}>
+                    {isFromCache && (
+                        <View style={styles.offlineBanner}>
+                            <Ionicons name="cloud-offline-outline" size={14} color="#92400e" />
+                            <Text style={styles.offlineBannerText}>{t('search.offlineBanner')}</Text>
+                        </View>
+                    )}
                     <Text style={styles.resultsCount}>
-                        {procedures.length} trámite{procedures.length !== 1 ? 's' : ''} encontrado{procedures.length !== 1 ? 's' : ''}
+                        {visibleProcedures.length} trámite{visibleProcedures.length !== 1 ? 's' : ''} encontrado{visibleProcedures.length !== 1 ? 's' : ''}
                     </Text>
 
-                    {procedures.map((proc) => (
+                    {visibleProcedures.map((proc) => (
                         <Link
                             key={proc.id}
                             href={`/procedure/${proc.slug}`}
@@ -224,6 +374,33 @@ const styles = StyleSheet.create({
     chipsContainer: {
         paddingBottom: 12,
         gap: 8,
+    },
+    filterLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#94a3b8',
+        textTransform: 'uppercase',
+        letterSpacing: 0.8,
+        marginTop: 6,
+        marginBottom: 2,
+    },
+    offlineBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#fef9c3',
+        borderWidth: 1,
+        borderColor: '#fde68a',
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginBottom: 12,
+    },
+    offlineBannerText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#92400e',
+        flex: 1,
     },
     chip: {
         backgroundColor: '#f1f5f9',

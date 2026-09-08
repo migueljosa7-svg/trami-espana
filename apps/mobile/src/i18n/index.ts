@@ -1,3 +1,11 @@
 export * from './config';
 export { es } from './es';
 export { en } from './en';
+export { ca } from './ca';
+export { eu } from './eu';
+export { gl } from './gl';
+export { ar } from './ar';
+export { fr } from './fr';
+export { uk } from './uk';
+export { ro } from './ro';
+export { loadStoredLanguage, persistLanguage, LANGUAGE_STORAGE_KEY } from './storage';

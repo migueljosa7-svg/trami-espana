@@ -8,6 +8,8 @@
     "include": [
         "app/**/*",
         "components/**/*",
+        "config/**/*",
+        "constants/**/*",
         "src/**/*",
         "*.ts",
         "*.tsx"

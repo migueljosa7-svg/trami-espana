@@ -15,12 +15,13 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { authService, reminderService, ReminderWithProcedure } from '@trami-espana/shared';
 import { cacheReminders } from '../../src/localCache';
+import { scheduleOneShotNotification, syncUpcomingDeadlineNotifications } from '../../src/services/notifications';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// Lazy-load expo-calendar and expo-notifications to handle missing permissions gracefully
+// Lazy-load expo-calendar (permisos gestionados al usarlo). Las
+// notificaciones locales se centralizan en src/services/notifications.ts.
 let Calendar: typeof import('expo-calendar') | null = null;
-let Notifications: typeof import('expo-notifications') | null = null;
 try { Calendar = require('expo-calendar'); } catch { /* not available */ }
-try { Notifications = require('expo-notifications'); } catch { /* not available */ }
 
 // Helper: get default calendar id on device
 async function getDefaultCalendarId(): Promise<string | null> {
@@ -60,26 +61,10 @@ async function addToDeviceCalendar(title: string, date: Date, notes?: string): P
     }
 }
 
-// Helper: schedule local push notification
-type NotificationTriggerInput = NonNullable<
-    Parameters<NonNullable<typeof Notifications>['scheduleNotificationAsync']>[0]
->['trigger'];
-
+// Helper: programa la notificación local usando el servicio centralizado
+// (permisos, canal de Android y triggers gestionados allí).
 async function scheduleNotification(title: string, body: string, date: Date): Promise<boolean> {
-    if (!Notifications) return false;
-    try {
-        const permissionResult = await Notifications.requestPermissionsAsync();
-        if (permissionResult.status !== 'granted') return false;
-        const trigger = date.getTime() - Date.now();
-        if (trigger <= 0) return false;
-        await Notifications.scheduleNotificationAsync({
-            content: { title, body, sound: true },
-            trigger: { seconds: Math.floor(trigger / 1000), repeats: false } as NotificationTriggerInput,
-        });
-        return true;
-    } catch {
-        return false;
-    }
+    return scheduleOneShotNotification(date, title, body);
 }
 
 // Simple date string formatter for the input (YYYY-MM-DD)
@@ -98,6 +83,8 @@ function parseDateInput(value: string): Date | null {
 
 export default function RemindersScreen() {
     const router = useRouter();
+    // Insets para que el FAB y el modal nunca queden bajo la barra del sistema.
+    const insets = useSafeAreaInsets();
     const [reminders, setReminders] = useState<ReminderWithProcedure[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -132,6 +119,14 @@ export default function RemindersScreen() {
     useEffect(() => {
         loadReminders();
     }, [loadReminders]);
+
+    // Notificaciones locales de trámites próximos a vencer: al cargar o
+    // cambiar los recordatorios se re-programan los avisos (24 h antes y
+    // el día del vencimiento) de los NO completados con fecha futura.
+    useEffect(() => {
+        if (reminders.length === 0) return;
+        void syncUpcomingDeadlineNotifications(reminders);
+    }, [reminders]);
 
     const handleCreateReminder = async () => {
         const trimTitle = formTitle.trim();
@@ -303,7 +298,7 @@ export default function RemindersScreen() {
             {/* FAB — Add reminder */}
             {!isLoading && (
                 <TouchableOpacity
-                    style={styles.fab}
+                    style={[styles.fab, { bottom: Math.max(insets.bottom, 16) + 16 }]}
                     onPress={() => setShowModal(true)}
                     activeOpacity={0.85}
                     accessibilityLabel="Añadir recordatorio"
@@ -320,7 +315,7 @@ export default function RemindersScreen() {
                 onRequestClose={() => setShowModal(false)}
             >
                 <View style={styles.modalOverlay}>
-                    <View style={styles.modalSheet}>
+                    <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 24) + 16 }]}>
                         <View style={styles.modalHandle} />
                         <Text style={styles.modalTitle}>Nuevo Recordatorio</Text>
 

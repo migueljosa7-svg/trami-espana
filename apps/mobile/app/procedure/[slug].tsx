@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Alert, Modal } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { procedureService, favoriteService, ProcedureWithDetails } from '@trami-espana/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { exportProcedureToPdf } from '../../src/utils/exportPdf';
+import { generateProcedurePdf, sharePdf } from '../../src/utils/exportPdf';
+import { authService } from '@trami-espana/shared';
+import { cacheFavorites, readCachedFavorites } from '../../src/localCache';
 
 export default function ProcedureDetailScreen() {
     const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -14,7 +16,9 @@ export default function ProcedureDetailScreen() {
     const [isFavorite, setIsFavorite] = useState(false);
     const [favLoading, setFavLoading] = useState(false);
     const [exportingPdf, setExportingPdf] = useState(false);
-    // Insets para que el contenido nunca quede bajo la barra del sistema.
+    const [isGuest, setIsGuest] = useState(false);
+    const [pdfUri, setPdfUri] = useState<string | null>(null);
+    const [showPdfPreview, setShowPdfPreview] = useState(false);
     const insets = useSafeAreaInsets();
 
     useEffect(() => {
@@ -25,13 +29,26 @@ export default function ProcedureDetailScreen() {
                 const data = await procedureService.getProcedureBySlug(slug);
                 setProcedure(data);
 
-                // Check favorite status for this procedure
+                // Check if user is logged in
+                const currentUser = await authService.getCurrentUser();
+                const guest = !currentUser;
+                setIsGuest(guest);
+
+                // Check favorite status
                 if (data) {
-                    try {
-                        const favs = await favoriteService.getFavorites();
-                        setIsFavorite(favs.some((f) => f.procedure?.id === data.id));
-                    } catch {
-                        // User may not be logged in — just leave isFavorite = false
+                    if (guest) {
+                        // Modo invitado: verificar en caché local
+                        type CachedFav = { procedure?: { id: string }; id: string };
+                        const cached = await readCachedFavorites<CachedFav[]>([]);
+                        setIsFavorite(Array.isArray(cached) ? cached.some((f) => f.procedure?.id === data.id || f.id === data.id) : false);
+                    } else {
+                        // Usuario autenticado: verificar en Supabase
+                        try {
+                            const favs = await favoriteService.getFavorites();
+                            setIsFavorite(favs.some((f) => f.procedure?.id === data.id));
+                        } catch {
+                            // Error silencioso
+                        }
                     }
                 }
             } catch {
@@ -43,36 +60,72 @@ export default function ProcedureDetailScreen() {
         fetchProcedure();
     }, [slug]);
 
-    const toggleFavorite = async () => {
-        if (!procedure) return;
+    const toggleFavorite = async (proc: ProcedureWithDetails) => {
+        console.log('[FAVORITES] Clic en favorito:', proc.slug, 'Estado previo:', isFavorite);
+
+        if (favLoading) return;
         setFavLoading(true);
+
+        const wasFavorite = isFavorite;
+
+        // Optimistic UI update: invertir el estado inmediatamente
+        setIsFavorite(!wasFavorite);
+
         try {
-            if (isFavorite) {
-                const result = await favoriteService.removeFavorite(procedure.id);
-                if (result.success) {
-                    setIsFavorite(false);
+            if (isGuest) {
+                // Modo invitado: guardar en AsyncStorage local
+                type CachedFav = { procedure?: { id: string }; id: string };
+                const cached = await readCachedFavorites<CachedFav[]>([]);
+                const favs: CachedFav[] = Array.isArray(cached) ? cached : [];
+
+                if (wasFavorite) {
+                    // Quitar de favoritos
+                    const updated = favs.filter((f) => f.procedure?.id !== proc.id && f.id !== proc.id);
+                    await cacheFavorites(updated);
                     Alert.alert('Eliminado', 'Trámite eliminado de tus favoritos.');
+                } else {
+                    // Añadir a favoritos
+                    const newFav = {
+                        id: `guest_${Date.now()}`,
+                        procedure_id: proc.id,
+                        created_at: new Date().toISOString(),
+                        procedure: proc,
+                    };
+                    favs.unshift(newFav);
+                    await cacheFavorites(favs);
+                    Alert.alert('¡Guardado! 💙', 'Trámite añadido a tus favoritos.');
                 }
             } else {
-                const result = await favoriteService.addFavorite(procedure.id);
-                if (result.success) {
-                    setIsFavorite(true);
+                // Usuario autenticado: usar Supabase
+                if (wasFavorite) {
+                    const result = await favoriteService.removeFavorite(proc.id);
+                    if (!result.success) {
+                        throw new Error('No se pudo eliminar de favoritos');
+                    }
+                    Alert.alert('Eliminado', 'Trámite eliminado de tus favoritos.');
+                } else {
+                    const result = await favoriteService.addFavorite(proc.id);
+                    if (!result.success) {
+                        throw new Error('No se pudo añadir a favoritos');
+                    }
                     Alert.alert('¡Guardado! 💙', 'Trámite añadido a tus favoritos.');
                 }
             }
         } catch {
-            Alert.alert('Error', 'No se pudo actualizar favoritos. Inicia sesión e inténtalo de nuevo.');
+            // Revertir el cambio optimista en caso de error
+            setIsFavorite(wasFavorite);
+            Alert.alert('Error', 'No se pudo actualizar favoritos. Inténtalo de nuevo.');
         } finally {
             setFavLoading(false);
         }
     };
 
-    /** Genera un PDF con el resumen del trámite y lo comparte con el sistema. */
+    /** Genera el PDF y muestra la vista previa con opciones de descargar/compartir */
     const handleExportPdf = async () => {
         if (!procedure || exportingPdf) return;
         setExportingPdf(true);
         try {
-            const result = await exportProcedureToPdf({
+            const uri = await generateProcedurePdf({
                 title: procedure.title,
                 scope: procedure.scope,
                 community: procedure.autonomous_community,
@@ -90,13 +143,27 @@ export default function ProcedureDetailScreen() {
                 steps: procedure.steps?.map((s) => ({ title: s.title, description: s.description })),
                 links: procedure.links?.map((l) => ({ title: l.title, url: l.url })),
             });
-            if (result === 'failed') {
-                Alert.alert('Error', 'No se pudo generar el PDF. Inténtalo de nuevo.');
+            if (uri) {
+                setPdfUri(uri);
+                setShowPdfPreview(true);
             } else {
-                Alert.alert('PDF listo', 'Puedes guardarlo o compartirlo.');
+                Alert.alert('Error', 'No se pudo generar el PDF. Inténtalo de nuevo.');
             }
+        } catch {
+            Alert.alert('Error', 'No se pudo generar el PDF. Inténtalo de nuevo.');
         } finally {
             setExportingPdf(false);
+        }
+    };
+
+    /** Comparte el PDF desde la vista previa */
+    const handleSharePdf = async () => {
+        if (!pdfUri) return;
+        try {
+            await sharePdf(pdfUri);
+            setShowPdfPreview(false);
+        } catch {
+            Alert.alert('Error', 'No se pudo compartir el PDF.');
         }
     };
 
@@ -121,6 +188,7 @@ export default function ProcedureDetailScreen() {
     }
 
     return (
+        <>
         <ScrollView style={styles.container} contentContainerStyle={{ padding: 16, paddingBottom: 60 + insets.bottom }}>
             {/* Back + Bookmark header row */}
             <View style={styles.topBar}>
@@ -143,20 +211,16 @@ export default function ProcedureDetailScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={styles.bookmarkButton}
-                    onPress={toggleFavorite}
+                    onPress={() => toggleFavorite(procedure)}
                     disabled={favLoading}
                     activeOpacity={0.75}
                     accessibilityLabel={isFavorite ? 'Eliminar de favoritos' : 'Añadir a favoritos'}
                 >
-                    {favLoading ? (
-                        <ActivityIndicator size="small" color="#2563eb" />
-                    ) : (
-                        <Ionicons
-                            name={isFavorite ? 'heart' : 'heart-outline'}
-                            size={26}
-                            color={isFavorite ? '#ef4444' : '#64748b'}
-                        />
-                    )}
+                    <Ionicons
+                        name={isFavorite ? 'heart' : 'heart-outline'}
+                        size={26}
+                        color={isFavorite ? '#ef4444' : '#64748b'}
+                    />
                 </TouchableOpacity>
             </View>
 
@@ -256,15 +320,19 @@ export default function ProcedureDetailScreen() {
             {/* Guardar en favoritos banner */}
             <TouchableOpacity
                 style={[styles.favBanner, isFavorite && styles.favBannerActive]}
-                onPress={toggleFavorite}
+                onPress={() => toggleFavorite(procedure)}
                 disabled={favLoading}
                 activeOpacity={0.8}
             >
-                <Ionicons
-                    name={isFavorite ? 'heart' : 'heart-outline'}
-                    size={20}
-                    color={isFavorite ? '#ef4444' : '#2563eb'}
-                />
+                {favLoading ? (
+                    <ActivityIndicator size="small" color={isFavorite ? '#ef4444' : '#2563eb'} />
+                ) : (
+                    <Ionicons
+                        name={isFavorite ? 'heart' : 'heart-outline'}
+                        size={20}
+                        color={isFavorite ? '#ef4444' : '#2563eb'}
+                    />
+                )}
                 <Text style={[styles.favBannerText, isFavorite && styles.favBannerTextActive]}>
                     {isFavorite ? 'Guardado en favoritos' : 'Guardar en favoritos'}
                 </Text>
@@ -283,13 +351,45 @@ export default function ProcedureDetailScreen() {
                 </Text>
             </View>
         </ScrollView>
+
+        {/* PDF Preview Modal */}
+        <Modal
+            visible={showPdfPreview}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={() => setShowPdfPreview(false)}
+        >
+            <View style={styles.pdfModalContainer}>
+                <View style={styles.pdfModalHeader}>
+                    <Text style={styles.pdfModalTitle}>Vista previa del PDF</Text>
+                    <TouchableOpacity onPress={() => setShowPdfPreview(false)} style={styles.pdfCloseButton}>
+                        <Ionicons name="close" size={24} color="#64748b" />
+                    </TouchableOpacity>
+                </View>
+                <View style={styles.pdfPreviewPlaceholder}>
+                    <Ionicons name="document-text" size={64} color="#2563eb" />
+                    <Text style={styles.pdfPreviewText}>PDF generado correctamente</Text>
+                    <Text style={styles.pdfPreviewSubtext}>Usa los botones para guardar o compartir</Text>
+                </View>
+                <View style={styles.pdfModalActions}>
+                    <TouchableOpacity style={styles.pdfShareButton} onPress={handleSharePdf}>
+                        <Ionicons name="share-outline" size={20} color="#ffffff" />
+                        <Text style={styles.pdfShareButtonText}>Compartir</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.pdfDownloadButton} onPress={handleSharePdf}>
+                        <Ionicons name="download-outline" size={20} color="#2563eb" />
+                        <Text style={styles.pdfDownloadButtonText}>Guardar</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    </>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8fafc'
     },
     center: {
         flex: 1,
@@ -300,22 +400,18 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 8,
         fontSize: 14,
-        color: '#64748b'
     },
     errorText: {
         fontSize: 15,
-        color: '#ef4444',
         textAlign: 'center',
         marginBottom: 16,
     },
     backBtn: {
         paddingHorizontal: 20,
         paddingVertical: 10,
-        backgroundColor: '#eff6ff',
         borderRadius: 8,
     },
     backBtnText: {
-        color: '#2563eb',
         fontWeight: '600',
     },
     topBar: {
@@ -331,7 +427,6 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     backButtonText: {
-        color: '#2563eb',
         fontSize: 15,
         fontWeight: '600',
     },
@@ -340,10 +435,8 @@ const styles = StyleSheet.create({
         height: 44,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#ffffff',
         borderRadius: 22,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
@@ -355,10 +448,8 @@ const styles = StyleSheet.create({
         height: 44,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#ffffff',
         borderRadius: 22,
         borderWidth: 1,
-        borderColor: '#bfdbfe',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
@@ -366,12 +457,10 @@ const styles = StyleSheet.create({
         elevation: 1,
     },
     headerCard: {
-        backgroundColor: '#ffffff',
         borderRadius: 16,
         padding: 20,
         marginBottom: 16,
         borderWidth: 1,
-        borderColor: '#e2e8f0'
     },
     badgeRow: {
         flexDirection: 'row',
@@ -382,8 +471,6 @@ const styles = StyleSheet.create({
     scopeBadge: {
         fontSize: 11,
         fontWeight: '700',
-        color: '#2563eb',
-        backgroundColor: '#eff6ff',
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 6,
@@ -392,8 +479,6 @@ const styles = StyleSheet.create({
     communityBadge: {
         fontSize: 11,
         fontWeight: '600',
-        color: '#475569',
-        backgroundColor: '#f1f5f9',
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 6,
@@ -403,20 +488,17 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#0f172a',
         marginBottom: 8,
         lineHeight: 28,
     },
     shortDesc: {
         fontSize: 14,
-        color: '#475569',
         lineHeight: 20,
         marginBottom: 16
     },
     metaGrid: {
         flexDirection: 'row',
         borderTopWidth: 1,
-        borderTopColor: '#f1f5f9',
         paddingTop: 12,
         gap: 16
     },
@@ -425,31 +507,26 @@ const styles = StyleSheet.create({
     },
     metaLabel: {
         fontSize: 11,
-        color: '#94a3b8',
         fontWeight: '600',
         textTransform: 'uppercase'
     },
     metaValue: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#0f172a',
         marginTop: 2
     },
     metaValueFree: {
         color: '#15803d',
     },
     section: {
-        backgroundColor: '#ffffff',
         borderRadius: 16,
         padding: 20,
         marginBottom: 16,
         borderWidth: 1,
-        borderColor: '#e2e8f0'
     },
     sectionTitle: {
         fontSize: 17,
         fontWeight: 'bold',
-        color: '#0f172a',
         marginBottom: 12
     },
     listItem: {
@@ -460,22 +537,18 @@ const styles = StyleSheet.create({
     },
     bullet: {
         fontSize: 14,
-        color: '#2563eb'
     },
     listText: {
         fontSize: 14,
-        color: '#334155',
         flex: 1,
         lineHeight: 20
     },
     listTextBold: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#0f172a'
     },
     listSubtext: {
         fontSize: 12,
-        color: '#64748b',
         marginTop: 2
     },
     stepItem: {
@@ -487,42 +560,34 @@ const styles = StyleSheet.create({
         width: 30,
         height: 30,
         borderRadius: 15,
-        backgroundColor: '#eff6ff',
         justifyContent: 'center',
         alignItems: 'center'
     },
     stepNumberText: {
         fontSize: 13,
         fontWeight: 'bold',
-        color: '#2563eb'
     },
     stepTitle: {
         fontSize: 15,
         fontWeight: '600',
-        color: '#0f172a'
     },
     stepDesc: {
         fontSize: 13,
-        color: '#475569',
         marginTop: 2,
         lineHeight: 18
     },
     linkButton: {
-        backgroundColor: '#eff6ff',
         borderRadius: 12,
         padding: 14,
         marginBottom: 8,
         borderWidth: 1,
-        borderColor: '#bfdbfe'
     },
     linkButtonText: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#1e40af'
     },
     linkSub: {
         fontSize: 12,
-        color: '#3b82f6',
         marginTop: 2
     },
     favBanner: {
@@ -530,12 +595,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 10,
-        backgroundColor: '#eff6ff',
         borderRadius: 14,
         paddingVertical: 14,
         marginBottom: 16,
         borderWidth: 1,
-        borderColor: '#bfdbfe',
     },
     favBannerActive: {
         backgroundColor: '#fef2f2',
@@ -544,7 +607,6 @@ const styles = StyleSheet.create({
     favBannerText: {
         fontSize: 15,
         fontWeight: '600',
-        color: '#2563eb',
     },
     favBannerTextActive: {
         color: '#dc2626',
@@ -556,7 +618,87 @@ const styles = StyleSheet.create({
     },
     legalNoticeText: {
         fontSize: 11,
-        color: '#94a3b8',
         textAlign: 'center'
-    }
+    },
+    // PDF Modal styles
+    pdfModalContainer: {
+        flex: 1,
+        backgroundColor: '#f8fafc',
+    },
+    pdfModalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        paddingTop: 48,
+        backgroundColor: '#ffffff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e2e8f0',
+    },
+    pdfModalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#0f172a',
+    },
+    pdfCloseButton: {
+        padding: 4,
+    },
+    pdfPreviewPlaceholder: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 32,
+    },
+    pdfPreviewText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#0f172a',
+        marginTop: 16,
+    },
+    pdfPreviewSubtext: {
+        fontSize: 13,
+        color: '#64748b',
+        marginTop: 4,
+    },
+    pdfModalActions: {
+        flexDirection: 'row',
+        gap: 12,
+        padding: 16,
+        paddingBottom: 32,
+        backgroundColor: '#ffffff',
+        borderTopWidth: 1,
+        borderTopColor: '#e2e8f0',
+    },
+    pdfShareButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#2563eb',
+        borderRadius: 12,
+        paddingVertical: 14,
+    },
+    pdfShareButtonText: {
+        color: '#ffffff',
+        fontWeight: '600',
+        fontSize: 15,
+    },
+    pdfDownloadButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#eff6ff',
+        borderRadius: 12,
+        paddingVertical: 14,
+        borderWidth: 1,
+        borderColor: '#bfdbfe',
+    },
+    pdfDownloadButtonText: {
+        color: '#2563eb',
+        fontWeight: '600',
+        fontSize: 15,
+    },
 });

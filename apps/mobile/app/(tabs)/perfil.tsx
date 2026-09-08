@@ -21,18 +21,32 @@ import {
     type AppLanguage,
 } from '../../src/i18n';
 import { clearUserCaches } from '../../src/localCache';
-import { useAppTheme, type ThemePreference } from '../../constants/theme';
+import { useTheme, type ThemePreference } from '../../constants/theme';
 import type { User } from '@supabase/supabase-js';
 
 export default function ProfileScreen() {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const insets = useSafeAreaInsets();
-    // Tema dinámico (sistema/claro/oscuro) de constants/theme.ts
-    const { colors, preference, setPreference } = useAppTheme();
+    // Tema dinámico (sistema/claro/oscuro) de constants/theme
+    const { colors, preference, setPreference } = useTheme();
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [deleting, setDeleting] = useState(false);
-    const [language, setLanguage] = useState(getCurrentLanguage());
+    // Idioma reactivo: se actualiza con i18n.language para forzar re-render
+    const [language, setLanguage] = useState<AppLanguage>(
+        (i18n.language as AppLanguage) || getCurrentLanguage()
+    );
+
+    // Sincronizar el estado local con el idioma activo de i18n
+    useEffect(() => {
+        const handleLanguageChanged = (lng: string) => {
+            setLanguage(lng as AppLanguage);
+        };
+        i18n.on('languageChanged', handleLanguageChanged);
+        return () => {
+            i18n.off('languageChanged', handleLanguageChanged);
+        };
+    }, [i18n]);
 
     useEffect(() => {
         const loadProfile = async () => {

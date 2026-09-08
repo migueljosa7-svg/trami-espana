@@ -415,32 +415,25 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8fafc'
     },
     header: {
         paddingTop: 48,
         paddingHorizontal: 16,
         paddingBottom: 8,
-        backgroundColor: '#ffffff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e2e8f0'
     },
     headerTitle: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#0f172a',
         marginBottom: 12
     },
     searchRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f1f5f9',
         borderRadius: 12,
         paddingHorizontal: 12,
         paddingVertical: 10,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
     },
     searchIcon: {
         marginRight: 10,
@@ -448,7 +441,6 @@ const styles = StyleSheet.create({
     searchInput: {
         flex: 1,
         fontSize: 16,
-        color: '#0f172a',
         padding: 0,
     },
     clearButton: {
@@ -462,7 +454,6 @@ const styles = StyleSheet.create({
     filterLabel: {
         fontSize: 11,
         fontWeight: '700',
-        color: '#94a3b8',
         textTransform: 'uppercase',
         letterSpacing: 0.8,
         marginTop: 6,
@@ -472,9 +463,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        backgroundColor: '#fef9c3',
         borderWidth: 1,
-        borderColor: '#fde68a',
         borderRadius: 10,
         paddingHorizontal: 12,
         paddingVertical: 8,
@@ -483,16 +472,13 @@ const styles = StyleSheet.create({
     offlineBannerText: {
         fontSize: 12,
         fontWeight: '600',
-        color: '#92400e',
         flex: 1,
     },
     chip: {
-        backgroundColor: '#f1f5f9',
         borderRadius: 20,
         paddingHorizontal: 14,
         paddingVertical: 7,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
     },
     chipActive: {
         backgroundColor: '#2563eb',
@@ -501,7 +487,6 @@ const styles = StyleSheet.create({
     chipText: {
         fontSize: 13,
         fontWeight: '500',
-        color: '#475569',
     },
     chipTextActive: {
         color: '#ffffff',
@@ -515,7 +500,6 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 8,
         fontSize: 14,
-        color: '#64748b'
     },
     resultsList: {
         flex: 1
@@ -527,18 +511,15 @@ const styles = StyleSheet.create({
     resultsCount: {
         fontSize: 12,
         fontWeight: '600',
-        color: '#64748b',
         marginBottom: 12,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     card: {
-        backgroundColor: '#ffffff',
         borderRadius: 14,
         padding: 16,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.04,
@@ -556,15 +537,12 @@ const styles = StyleSheet.create({
     cardScope: {
         fontSize: 11,
         fontWeight: '700',
-        color: '#2563eb',
-        backgroundColor: '#eff6ff',
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 6,
         flexShrink: 1,
     },
     costTag: {
-        backgroundColor: '#fef9c3',
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 6,
@@ -577,7 +555,6 @@ const styles = StyleSheet.create({
     cardCost: {
         fontSize: 11,
         fontWeight: '600',
-        color: '#92400e',
     },
     cardCostFree: {
         color: '#15803d',
@@ -585,13 +562,11 @@ const styles = StyleSheet.create({
     cardTitle: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#0f172a',
         marginBottom: 6,
         lineHeight: 22,
     },
     cardDesc: {
         fontSize: 13,
-        color: '#475569',
         lineHeight: 19,
         marginBottom: 8,
     },
@@ -603,15 +578,12 @@ const styles = StyleSheet.create({
     errorBox: {
         margin: 16,
         padding: 16,
-        backgroundColor: '#fef2f2',
         borderWidth: 1,
-        borderColor: '#fecaca',
         borderRadius: 12,
         alignItems: 'center',
     },
     errorText: {
         fontSize: 14,
-        color: '#b91c1c',
         lineHeight: 20,
         textAlign: 'center',
         marginBottom: 12,
@@ -638,12 +610,10 @@ const styles = StyleSheet.create({
     emptyTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#0f172a',
         marginBottom: 6,
     },
     emptySubtitle: {
         fontSize: 14,
-        color: '#64748b',
         textAlign: 'center',
         lineHeight: 20,
     },

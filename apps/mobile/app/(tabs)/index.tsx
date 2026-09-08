@@ -1,14 +1,20 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Link } from 'expo-router';
 import { PROCEDURE_CATEGORIES } from '@trami-espana/shared';
+import { useTheme } from '../../constants/theme';
 
 export default function HomeScreen() {
+    const { colors } = useTheme();
+    const { width } = useWindowDimensions();
+    const isTablet = width >= 768;
+    const cardWidth = isTablet ? '31%' : '48%';
+
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-            <View style={styles.content}>
+        <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.scrollContent}>
+            <View style={[styles.content, { paddingHorizontal: isTablet ? 32 : 16 }]}>
                 {/* Banner Disclaimer */}
-                <View style={styles.disclaimerBanner}>
-                    <Text style={styles.disclaimerText}>
+                <View style={[styles.disclaimerBanner, { backgroundColor: colors.warningBackground, borderColor: colors.warningBorder }]}>
+                    <Text style={[styles.disclaimerText, { color: colors.warningText }]}>
                         ⚠️ Trami España es un servicio independiente y no está afiliado ni respaldado por el Gobierno de España.
                     </Text>
                 </View>
@@ -32,7 +38,7 @@ export default function HomeScreen() {
 
                 {/* Categories Section */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Categorías principales</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Categorías principales</Text>
                     <View style={styles.categoriesGrid}>
                         {PROCEDURE_CATEGORIES.slice(0, 6).map((category) => (
                             <Link
@@ -40,9 +46,9 @@ export default function HomeScreen() {
                                 href={`/(tabs)/buscar?categoria=${category.slug}`}
                                 asChild
                             >
-                                <TouchableOpacity style={styles.categoryCard} activeOpacity={0.7}>
+                                <TouchableOpacity style={[styles.categoryCard, { backgroundColor: colors.card, borderColor: colors.border, width: cardWidth }]} activeOpacity={0.7}>
                                     <Text style={styles.categoryIcon}>{category.icon}</Text>
-                                    <Text style={styles.categoryName}>
+                                    <Text style={[styles.categoryName, { color: colors.textSecondary }]}>
                                         {category.name}
                                     </Text>
                                 </TouchableOpacity>
@@ -52,9 +58,9 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Quick Assistant Callout */}
-                <View style={styles.assistantCallout}>
-                    <Text style={styles.assistantCalloutTitle}>🤖 ¿Dudas con un trámite?</Text>
-                    <Text style={styles.assistantCalloutDesc}>
+                <View style={[styles.assistantCallout, { backgroundColor: colors.primarySoft, borderColor: colors.primary }]}>
+                    <Text style={[styles.assistantCalloutTitle, { color: colors.primary }]}>🤖 ¿Dudas con un trámite?</Text>
+                    <Text style={[styles.assistantCalloutDesc, { color: colors.primary }]}>
                         Pregunta a nuestro Asistente de IA. Orientación rápida con información oficial validada.
                     </Text>
                     <Link href="/(tabs)/asistente" asChild>
@@ -71,27 +77,22 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8fafc'
     },
     scrollContent: {
         flexGrow: 1,
     },
     content: {
-        padding: 16,
         paddingTop: 48,
         paddingBottom: 80,
     },
     disclaimerBanner: {
-        backgroundColor: '#fef3c7',
         borderWidth: 1,
-        borderColor: '#fde68a',
         borderRadius: 10,
         padding: 10,
         marginBottom: 16
     },
     disclaimerText: {
         fontSize: 12,
-        color: '#92400e',
         lineHeight: 16
     },
     hero: {
@@ -130,7 +131,6 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#0f172a',
         marginBottom: 12
     },
     categoriesGrid: {
@@ -139,12 +139,9 @@ const styles = StyleSheet.create({
         gap: 10
     },
     categoryCard: {
-        backgroundColor: '#ffffff',
         borderWidth: 1,
-        borderColor: '#e2e8f0',
         borderRadius: 16,
         padding: 16,
-        width: '48%',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
@@ -160,28 +157,23 @@ const styles = StyleSheet.create({
     categoryName: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#334155',
         lineHeight: 18,
         textAlign: 'center',
         flexWrap: 'wrap',
     },
     assistantCallout: {
-        backgroundColor: '#eff6ff',
         borderRadius: 16,
         padding: 18,
         borderWidth: 1,
-        borderColor: '#bfdbfe',
         marginBottom: 24
     },
     assistantCalloutTitle: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#1e40af',
         marginBottom: 6
     },
     assistantCalloutDesc: {
         fontSize: 13,
-        color: '#3b82f6',
         marginBottom: 12,
         lineHeight: 18
     },

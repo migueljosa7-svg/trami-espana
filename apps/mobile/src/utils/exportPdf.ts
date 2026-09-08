@@ -133,32 +133,50 @@ function buildProcedureHtml(input: ProcedurePdfInput): string {
 }
 
 /**
- * Genera el PDF del trámite y lo abre con el menú de compartir del
- * sistema (Guardar en archivos, Enviar por correo, WhatsApp...).
- * En Android sin proveedor de share cae a abrir el archivo con Linking.
- * Nota: printToFileAsync (SDK 50) no acepta fileName; el nombre final lo
- * asigna el sistema al guardar desde el menú de compartir.
+ * Genera el PDF del trámite y devuelve el URI para previsualización.
+ * El usuario puede luego compartir o guardar desde la vista de previsualización.
  */
-export async function exportProcedureToPdf(input: ProcedurePdfInput): Promise<PdfExportResult> {
-  if (!Print) return 'failed';
+export async function generateProcedurePdf(input: ProcedurePdfInput): Promise<string | null> {
+  if (!Print) return null;
   try {
     const { uri } = await Print.printToFileAsync({
       html: buildProcedureHtml(input),
     });
+    return uri;
+  } catch {
+    return null;
+  }
+}
 
+/**
+ * Comparte el PDF usando el menú de compartir del sistema.
+ */
+export async function sharePdf(uri: string): Promise<boolean> {
+  try {
     if (Sharing && (await Sharing.isAvailableAsync())) {
       await Sharing.shareAsync(uri, {
         mimeType: 'application/pdf',
         dialogTitle: 'Exportar trámite a PDF',
         UTI: 'com.adobe.pdf',
       });
-      return 'shared';
+      return true;
     }
-
     await Linking.openURL(Platform.OS === 'android' ? `file://${uri}` : uri);
-    return 'opened';
+    return true;
   } catch {
-    return 'failed';
+    return false;
   }
+}
+
+/**
+ * @deprecated Usar generateProcedurePdf + sharePdf para permitir previsualización.
+ * Genera el PDF del trámite y lo abre con el menú de compartir del sistema.
+ */
+export async function exportProcedureToPdf(input: ProcedurePdfInput): Promise<PdfExportResult> {
+  const uri = await generateProcedurePdf(input);
+  if (!uri) return 'failed';
+  
+  const shared = await sharePdf(uri);
+  return shared ? 'shared' : 'failed';
 }
 

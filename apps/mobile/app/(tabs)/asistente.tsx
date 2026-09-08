@@ -15,8 +15,10 @@ import { Link, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { authService, assistantService, AssistantChatMessage, ASSISTANT_DISCLAIMER } from "@trami-espana/shared";
 
-const MAX_CHARS = 500;
+const MAX_CHARS = 1000;
 const SLOW_THRESHOLD_MS = 6000;
+const MAX_INPUT_HEIGHT = 120;
+const MIN_INPUT_HEIGHT = 44;
 
 type MessageStatus = "normal" | "partial" | "no-results" | "fallback" | "error" | "greeting";
 
@@ -125,6 +127,7 @@ export default function AssistantScreen() {
   const [isSlowResponse, setIsSlowResponse] = useState(false);
   const [lastFailedQuery, setLastFailedQuery] = useState("");
   const [isOffline, setIsOffline] = useState(false);
+  const [inputHeight, setInputHeight] = useState(MIN_INPUT_HEIGHT);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const router = useRouter();
@@ -514,49 +517,62 @@ export default function AssistantScreen() {
       </ScrollView>
 
       {/* Input Bar */}
-      <View style={styles.inputContainer}>
-        <View style={styles.inputWrapper}>
-          <TextInput
-            style={styles.input}
-            value={inputQuery}
-            onChangeText={setInputQuery}
-            placeholder="Escribe tu consulta sobre un trámite..."
-            placeholderTextColor="#94a3b8"
-            maxLength={MAX_CHARS}
-            multiline
-            returnKeyType="send"
-            onSubmitEditing={() => handleSend()}
-            blurOnSubmit={false}
-            accessibilityLabel="Campo de consulta al asistente"
-          />
-          {inputQuery.length > 0 && (
-            <Text
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      >
+        <View style={styles.inputContainer}>
+          <View style={styles.inputWrapper}>
+            <TextInput
               style={[
-                styles.charCounter,
-                charsLeft < 50 && styles.charCounterWarning,
+                styles.input,
+                {
+                  height: Math.min(MAX_INPUT_HEIGHT, Math.max(MIN_INPUT_HEIGHT, inputHeight)),
+                },
               ]}
-            >
-              {charsLeft}
-            </Text>
-          )}
+              value={inputQuery}
+              onChangeText={setInputQuery}
+              onContentSizeChange={(e) => {
+                setInputHeight(e.nativeEvent.contentSize.height);
+              }}
+              placeholder="Escribe tu consulta sobre un trámite..."
+              placeholderTextColor="#94a3b8"
+              maxLength={MAX_CHARS}
+              multiline
+              returnKeyType="send"
+              onSubmitEditing={() => handleSend()}
+              blurOnSubmit={false}
+              accessibilityLabel="Campo de consulta al asistente"
+            />
+            {inputQuery.length > 0 && (
+              <Text
+                style={[
+                  styles.charCounter,
+                  charsLeft < 50 && styles.charCounterWarning,
+                ]}
+              >
+                {charsLeft}
+              </Text>
+            )}
+          </View>
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              (!inputQuery.trim() || isLoading) && styles.sendButtonDisabled,
+            ]}
+            onPress={() => handleSend()}
+            disabled={!inputQuery.trim() || isLoading}
+            accessibilityLabel="Enviar consulta"
+            activeOpacity={0.7}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#ffffff" size="small" />
+            ) : (
+              <Ionicons name="send" size={22} color="#ffffff" />
+            )}
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            (!inputQuery.trim() || isLoading) && styles.sendButtonDisabled,
-          ]}
-          onPress={() => handleSend()}
-          disabled={!inputQuery.trim() || isLoading}
-          accessibilityLabel="Enviar consulta"
-          activeOpacity={0.7}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#ffffff" size="small" />
-          ) : (
-            <Ionicons name="send" size={22} color="#ffffff" />
-          )}
-        </TouchableOpacity>
-      </View>
+      </KeyboardAvoidingView>
     </KeyboardAvoidingView>
   );
 }
@@ -740,13 +756,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#f1f5f9",
     borderRadius: 20,
     paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingRight: 50,
-    fontSize: 17,
+    fontSize: 16,
     color: "#0f172a",
-    maxHeight: 120,
     borderWidth: 1.5,
     borderColor: "#e2e8f0",
+    textAlignVertical: "top",
   },
   inputFocused: {
     borderColor: "#2563eb",

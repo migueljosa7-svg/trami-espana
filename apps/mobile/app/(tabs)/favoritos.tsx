@@ -1,12 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { Link } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { authService, favoriteService, FavoriteWithProcedure } from '@trami-espana/shared';
-import { cacheFavorites } from '../../src/localCache';
+import { cacheFavorites, readCachedFavorites } from '../../src/localCache';
+import { useTheme } from '../../constants/theme';
 
 export default function FavoritesScreen() {
-    const router = useRouter();
+    const { colors } = useTheme();
+    const { width } = useWindowDimensions();
+    const isTablet = width >= 768;
     const [favorites, setFavorites] = useState<FavoriteWithProcedure[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -15,26 +19,32 @@ export default function FavoritesScreen() {
         try {
             const currentUser = await authService.getCurrentUser();
 
-            // Sin usuario: no tocar Supabase ni servicios. Redirigir a login.
             if (!currentUser) {
-                router.replace('/login');
+                // Modo invitado: cargar favoritos locales de AsyncStorage.
+                const cached = await readCachedFavorites<FavoriteWithProcedure[]>([]);
+                setFavorites(Array.isArray(cached) ? cached : []);
                 return;
             }
 
             const data = await favoriteService.getFavorites();
             if (data) {
                 setFavorites(data);
-                // Copia local (aislada por usuario) para acceso offline.
                 await cacheFavorites(data);
             } else {
                 setFavorites([]);
             }
         } catch {
-            // Error controlado.
+            // Error controlado: intentar cargar caché local como fallback.
+            try {
+                const cached = await readCachedFavorites<FavoriteWithProcedure[]>([]);
+                setFavorites(Array.isArray(cached) ? cached : []);
+            } catch {
+                setFavorites([]);
+            }
         } finally {
             setIsLoading(false);
         }
-    }, [router]);
+    }, []);
 
     // Carga inicial
     useEffect(() => {
@@ -42,7 +52,6 @@ export default function FavoritesScreen() {
     }, [loadFavs]);
 
     // Sincronización en tiempo real: recargar al recibir foco la pantalla.
-    // Así refleja inmediatamente los cambios hechos en detalle.tsx o buscar.tsx.
     useFocusEffect(
         useCallback(() => {
             void loadFavs();
@@ -50,37 +59,65 @@ export default function FavoritesScreen() {
     );
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Mis Favoritos</Text>
-                <Text style={styles.headerSubtitle}>Trámites guardados para acceso rápido</Text>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+            <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Mis Favoritos</Text>
+                <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>Trámites guardados para acceso rápido</Text>
             </View>
 
             {isLoading ? (
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#2563eb" />
+                    <ActivityIndicator size="large" color={colors.primary} />
                 </View>
             ) : favorites.length === 0 ? (
                 <View style={styles.emptyState}>
                     <Text style={styles.emptyIcon}>💙</Text>
-                    <Text style={styles.emptyTitle}>No tienes trámites guardados</Text>
-                    <Text style={styles.emptySubtitle}>
+                    <Text style={[styles.emptyTitle, { color: colors.text }]}>No tienes trámites guardados</Text>
+                    <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
                         Guarda tus trámites más consultados para acceder a ellos rápidamente.
                     </Text>
                     <Link href="/(tabs)/buscar" asChild>
-                        <TouchableOpacity style={styles.browseButton}>
+                        <TouchableOpacity style={[styles.browseButton, { backgroundColor: colors.primary }]}>
                             <Text style={styles.browseButtonText}>Explorar trámites</Text>
                         </TouchableOpacity>
                     </Link>
                 </View>
             ) : (
-                <ScrollView style={styles.list} contentContainerStyle={{ padding: 16 }}>
+                <ScrollView style={styles.list} contentContainerStyle={{ padding: isTablet ? 32 : 16 }}>
                     {favorites.map((item) => (
                         <Link key={item.id} href={`/procedure/${item.procedure.slug}`} asChild>
-                            <TouchableOpacity style={styles.card} accessibilityLabel={`Favorito: ${item.procedure.title}`}>
-                                <Text style={styles.cardScope}>{item.procedure.scope.toUpperCase()}</Text>
-                                <Text style={styles.cardTitle}>{item.procedure.title}</Text>
-                                <Text style={styles.cardDesc} numberOfLines={2}>
+                            <TouchableOpacity style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]} accessibilityLabel={`Favorito: ${item.procedure.title}`}>
+                                <View style={styles.cardHeader}>
+                                    <Text style={[styles.cardScope, { color: colors.primary, backgroundColor: colors.primarySoft }]}>{item.procedure.scope.toUpperCase()}</Text>
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            void (async () => {
+                                                try {
+                                                    const currentUser = await authService.getCurrentUser();
+                                                    if (!currentUser) {
+                                                        // Modo invitado: eliminar de caché local
+                                                        type CachedFav = { procedure?: { id: string }; id: string };
+                                                        const cached = await readCachedFavorites<CachedFav[]>([]);
+                                                        const favs: CachedFav[] = Array.isArray(cached) ? cached : [];
+                                                        const updated = favs.filter((f) => f.procedure?.id !== item.procedure?.id && f.id !== item.procedure?.id);
+                                                        await cacheFavorites(updated);
+                                                    } else {
+                                                        // Usuario autenticado: eliminar de Supabase
+                                                        await favoriteService.removeFavorite(item.procedure.id);
+                                                    }
+                                                    void loadFavs();
+                                                } catch {
+                                                    // Silencioso
+                                                }
+                                            })();
+                                        }}
+                                        style={styles.removeBtn}
+                                    >
+                                        <Ionicons name="heart" size={20} color={colors.danger} />
+                                    </TouchableOpacity>
+                                </View>
+                                <Text style={[styles.cardTitle, { color: colors.text }]}>{item.procedure.title}</Text>
+                                <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={2}>
                                     {item.procedure.short_description}
                                 </Text>
                             </TouchableOpacity>
@@ -95,24 +132,19 @@ export default function FavoritesScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8fafc'
     },
     header: {
         paddingTop: 48,
         paddingHorizontal: 16,
         paddingBottom: 16,
-        backgroundColor: '#ffffff',
         borderBottomWidth: 1,
-        borderBottomColor: '#e2e8f0'
     },
     headerTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#0f172a'
     },
     headerSubtitle: {
         fontSize: 12,
-        color: '#64748b',
         marginTop: 2
     },
     center: {
@@ -133,17 +165,14 @@ const styles = StyleSheet.create({
     emptyTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#0f172a',
         marginBottom: 8
     },
     emptySubtitle: {
         fontSize: 13,
-        color: '#64748b',
         textAlign: 'center',
         marginBottom: 20
     },
     browseButton: {
-        backgroundColor: '#2563eb',
         borderRadius: 10,
         paddingVertical: 12,
         paddingHorizontal: 20
@@ -157,27 +186,33 @@ const styles = StyleSheet.create({
         flex: 1
     },
     card: {
-        backgroundColor: '#ffffff',
         borderRadius: 12,
         padding: 16,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#e2e8f0'
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4,
     },
     cardScope: {
         fontSize: 11,
         fontWeight: '700',
-        color: '#2563eb',
-        marginBottom: 4
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    removeBtn: {
+        padding: 4,
     },
     cardTitle: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#0f172a',
-        marginBottom: 4
+        marginBottom: 4,
     },
     cardDesc: {
         fontSize: 13,
-        color: '#475569'
     }
 });

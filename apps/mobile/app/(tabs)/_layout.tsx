@@ -2,30 +2,33 @@ import { useCallback } from 'react';
 import { Tabs } from 'expo-router';
 import { BackHandler, Alert, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useAppTheme } from '../../constants/theme';
+import { useTheme } from '../../constants/theme';
 import { useBottomInset } from '../../src/hooks/useBottomInset';
 
 export default function TabsLayout() {
     const { t } = useTranslation();
-    const { colors } = useAppTheme();
-    // Insets del sistema (barra de gestos/botones). En dispositivos sin
-    // barra devuelve el mínimo de seguridad 16 px, de modo que la tab bar
-    // queda SIEMPRE elevada y 100 % accesible en cualquier fabricante
-    // (Samsung, Xiaomi, Pixel...) y en Android 15/16 edge-to-edge.
-    const bottomInset = useBottomInset(); // Math.max(insets.bottom, 16)
+    const { colors } = useTheme();
+    const router = useRouter();
+    const bottomInset = useBottomInset();
 
     // ============================================================
     // Intercepción del botón físico / gesto "atrás" de Android.
-    // Todas las tabs son pantallas raíz (sin stacks internos), así
-    // que "atrás" aquí significa "salir de la app": se muestra una
-    // confirmación nativa antes de BackHandler.exitApp().
+    // Utiliza la API de Expo Router para manejar la navegación.
+    // Si hay pantallas en el stack, vuelve a la anterior.
+    // Solo muestra diálogo de salida si estamos en la raíz.
     // ============================================================
     useFocusEffect(
         useCallback(() => {
             if (Platform.OS !== 'android') return undefined;
             const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+                if (router.canGoBack()) {
+                    router.back();
+                    return true; // Intercepta el evento y vuelve a la pantalla anterior
+                }
+                // En la raíz de una pestaña: mostrar confirmación de salida.
                 Alert.alert(t('exitApp.title'), t('exitApp.subtitle'), [
                     { text: t('exitApp.cancel'), style: 'cancel' },
                     {
@@ -34,11 +37,10 @@ export default function TabsLayout() {
                         onPress: () => BackHandler.exitApp(),
                     },
                 ]);
-                // true = evento consumido; no se cierra la app directamente.
                 return true;
             });
             return () => subscription.remove();
-        }, [t])
+        }, [t, router])
     );
 
     return (
@@ -50,9 +52,7 @@ export default function TabsLayout() {
                 backgroundColor: colors.card,
                 borderTopColor: colors.border,
                 paddingTop: 8,
-                // paddingBottom dinámico: nunca inferior a insets.bottom ni a 16 px.
                 paddingBottom: bottomInset,
-                // La altura crece con el inset para que las etiquetas no se recorten.
                 height: 56 + bottomInset,
             },
             tabBarLabelStyle: {

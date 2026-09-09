@@ -6,6 +6,7 @@ import { procedureService, ProcedureWithDetails } from '@trami-espana/shared';
 import { useTranslation } from 'react-i18next';
 import { useBottomInset } from '../../src/hooks/useBottomInset';
 import { cacheProcedures, readCachedProcedures } from '../../src/localCache';
+import { useTheme, ThemeColors } from '../../constants/theme';
 
 const FILTER_CHIPS = [
     { label: 'Todos', slug: '' },
@@ -144,6 +145,8 @@ async function fetchProceduresByCategory(
 
 export default function SearchScreen() {
     const { t } = useTranslation();
+    const { colors, isDark } = useTheme();
+    const styles = getStyles(colors, isDark);
     // Insets: garantiza que los resultados no queden bajo la barra del sistema.
     const bottomInset = useBottomInset();
     const params = useLocalSearchParams<{ categoria?: string }>();
@@ -412,19 +415,24 @@ export default function SearchScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors, _isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: colors.background,
     },
     header: {
         paddingTop: 48,
         paddingHorizontal: 16,
         paddingBottom: 8,
+        backgroundColor: colors.card,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
     },
     headerTitle: {
         fontSize: 22,
         fontWeight: 'bold',
-        marginBottom: 12
+        marginBottom: 12,
+        color: colors.text,
     },
     searchRow: {
         flexDirection: 'row',
@@ -434,14 +442,18 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         marginBottom: 12,
         borderWidth: 1,
+        backgroundColor: colors.card,
+        borderColor: colors.border,
     },
     searchIcon: {
         marginRight: 10,
+        color: colors.textSecondary,
     },
     searchInput: {
         flex: 1,
         fontSize: 16,
         padding: 0,
+        color: colors.text,
     },
     clearButton: {
         padding: 4,
@@ -458,6 +470,7 @@ const styles = StyleSheet.create({
         letterSpacing: 0.8,
         marginTop: 6,
         marginBottom: 2,
+        color: colors.textSecondary,
     },
     offlineBanner: {
         flexDirection: 'row',
@@ -468,25 +481,31 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 8,
         marginBottom: 12,
+        backgroundColor: colors.warningBackground,
+        borderColor: colors.warningBorder,
     },
     offlineBannerText: {
         fontSize: 12,
         fontWeight: '600',
         flex: 1,
+        color: colors.warningText,
     },
     chip: {
         borderRadius: 20,
         paddingHorizontal: 14,
         paddingVertical: 7,
         borderWidth: 1,
+        backgroundColor: colors.chip,
+        borderColor: colors.border,
     },
     chipActive: {
-        backgroundColor: '#2563eb',
-        borderColor: '#2563eb',
+        backgroundColor: colors.primary,
+        borderColor: colors.primary,
     },
     chipText: {
         fontSize: 13,
         fontWeight: '500',
+        color: colors.textSecondary,
     },
     chipTextActive: {
         color: '#ffffff',
@@ -500,6 +519,7 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 8,
         fontSize: 14,
+        color: colors.textSecondary,
     },
     resultsList: {
         flex: 1
@@ -514,6 +534,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
+        color: colors.textMuted,
     },
     card: {
         borderRadius: 14,
@@ -525,6 +546,8 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.04,
         shadowRadius: 3,
         elevation: 1,
+        backgroundColor: colors.card,
+        borderColor: colors.border,
     },
     cardHeader: {
         flexDirection: 'row',
@@ -541,6 +564,8 @@ const styles = StyleSheet.create({
         paddingVertical: 3,
         borderRadius: 6,
         flexShrink: 1,
+        backgroundColor: colors.chip,
+        color: colors.textSecondary,
     },
     costTag: {
         paddingHorizontal: 8,
@@ -548,32 +573,36 @@ const styles = StyleSheet.create({
         borderRadius: 6,
         maxWidth: '55%',
         flexShrink: 1,
+        backgroundColor: colors.chip,
     },
     costTagFree: {
-        backgroundColor: '#dcfce7',
+        backgroundColor: colors.successBackground,
     },
     cardCost: {
         fontSize: 11,
         fontWeight: '600',
+        color: colors.textSecondary,
     },
     cardCostFree: {
-        color: '#15803d',
+        color: colors.successText,
     },
     cardTitle: {
         fontSize: 16,
         fontWeight: 'bold',
         marginBottom: 6,
         lineHeight: 22,
+        color: colors.text,
     },
     cardDesc: {
         fontSize: 13,
         lineHeight: 19,
         marginBottom: 8,
+        color: colors.textSecondary,
     },
     cardArrow: {
         fontSize: 12,
         fontWeight: '600',
-        color: '#2563eb',
+        color: colors.primary,
     },
     errorBox: {
         margin: 16,
@@ -581,15 +610,18 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderRadius: 12,
         alignItems: 'center',
+        backgroundColor: colors.errorBackground,
+        borderColor: colors.errorBorder,
     },
     errorText: {
         fontSize: 14,
         lineHeight: 20,
         textAlign: 'center',
         marginBottom: 12,
+        color: colors.errorText,
     },
     retryBtn: {
-        backgroundColor: '#ef4444',
+        backgroundColor: colors.danger,
         paddingHorizontal: 20,
         paddingVertical: 8,
         borderRadius: 8,
@@ -611,10 +643,12 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
         marginBottom: 6,
+        color: colors.text,
     },
     emptySubtitle: {
         fontSize: 14,
         textAlign: 'center',
         lineHeight: 20,
+        color: colors.textSecondary,
     },
 });

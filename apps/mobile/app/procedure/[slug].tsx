@@ -7,10 +7,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { generateProcedurePdf, sharePdf } from '../../src/utils/exportPdf';
 import { authService } from '@trami-espana/shared';
 import { cacheFavorites, readCachedFavorites } from '../../src/localCache';
+import { useTheme, ThemeColors } from '../../constants/theme';
 
 export default function ProcedureDetailScreen() {
     const { slug } = useLocalSearchParams<{ slug: string }>();
     const router = useRouter();
+    const { colors, isDark } = useTheme();
+    const styles = getStyles(colors, isDark);
     const [procedure, setProcedure] = useState<ProcedureWithDetails | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isFavorite, setIsFavorite] = useState(false);
@@ -387,9 +390,10 @@ export default function ProcedureDetailScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: colors.background,
     },
     center: {
         flex: 1,
@@ -400,19 +404,23 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 8,
         fontSize: 14,
+        color: colors.textSecondary,
     },
     errorText: {
         fontSize: 15,
         textAlign: 'center',
         marginBottom: 16,
+        color: colors.text,
     },
     backBtn: {
         paddingHorizontal: 20,
         paddingVertical: 10,
         borderRadius: 8,
+        backgroundColor: colors.primary,
     },
     backBtnText: {
         fontWeight: '600',
+        color: '#ffffff',
     },
     topBar: {
         flexDirection: 'row',
@@ -429,6 +437,7 @@ const styles = StyleSheet.create({
     backButtonText: {
         fontSize: 15,
         fontWeight: '600',
+        color: colors.primary,
     },
     bookmarkButton: {
         width: 44,
@@ -442,6 +451,8 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.06,
         shadowRadius: 2,
         elevation: 1,
+        backgroundColor: colors.card,
+        borderColor: colors.border,
     },
     pdfButton: {
         width: 44,
@@ -455,12 +466,16 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.06,
         shadowRadius: 2,
         elevation: 1,
+        backgroundColor: colors.card,
+        borderColor: colors.border,
     },
     headerCard: {
         borderRadius: 16,
         padding: 20,
         marginBottom: 16,
         borderWidth: 1,
+        backgroundColor: colors.card,
+        borderColor: colors.border,
     },
     badgeRow: {
         flexDirection: 'row',
@@ -475,6 +490,8 @@ const styles = StyleSheet.create({
         paddingVertical: 3,
         borderRadius: 6,
         overflow: 'hidden',
+        backgroundColor: colors.chip,
+        color: colors.textSecondary,
     },
     communityBadge: {
         fontSize: 11,
@@ -484,23 +501,28 @@ const styles = StyleSheet.create({
         borderRadius: 6,
         overflow: 'hidden',
         flexShrink: 1,
+        backgroundColor: colors.chip,
+        color: colors.textSecondary,
     },
     title: {
         fontSize: 22,
         fontWeight: 'bold',
         marginBottom: 8,
         lineHeight: 28,
+        color: colors.text,
     },
     shortDesc: {
         fontSize: 14,
         lineHeight: 20,
-        marginBottom: 16
+        marginBottom: 16,
+        color: colors.textSecondary,
     },
     metaGrid: {
         flexDirection: 'row',
         borderTopWidth: 1,
         paddingTop: 12,
-        gap: 16
+        gap: 16,
+        borderTopColor: colors.border,
     },
     metaItem: {
         flex: 1
@@ -508,26 +530,31 @@ const styles = StyleSheet.create({
     metaLabel: {
         fontSize: 11,
         fontWeight: '600',
-        textTransform: 'uppercase'
+        textTransform: 'uppercase',
+        color: colors.textMuted,
     },
     metaValue: {
         fontSize: 13,
         fontWeight: '600',
-        marginTop: 2
+        marginTop: 2,
+        color: colors.text,
     },
     metaValueFree: {
-        color: '#15803d',
+        color: colors.successText,
     },
     section: {
         borderRadius: 16,
         padding: 20,
         marginBottom: 16,
         borderWidth: 1,
+        backgroundColor: colors.card,
+        borderColor: colors.border,
     },
     sectionTitle: {
         fontSize: 17,
         fontWeight: 'bold',
-        marginBottom: 12
+        marginBottom: 12,
+        color: colors.text,
     },
     listItem: {
         flexDirection: 'row',
@@ -537,19 +564,23 @@ const styles = StyleSheet.create({
     },
     bullet: {
         fontSize: 14,
+        color: colors.primary,
     },
     listText: {
         fontSize: 14,
         flex: 1,
-        lineHeight: 20
+        lineHeight: 20,
+        color: colors.text,
     },
     listTextBold: {
         fontSize: 14,
         fontWeight: '600',
+        color: colors.text,
     },
     listSubtext: {
         fontSize: 12,
-        marginTop: 2
+        marginTop: 2,
+        color: colors.textSecondary,
     },
     stepItem: {
         flexDirection: 'row',
@@ -561,34 +592,42 @@ const styles = StyleSheet.create({
         height: 30,
         borderRadius: 15,
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        backgroundColor: colors.primary,
     },
     stepNumberText: {
         fontSize: 13,
         fontWeight: 'bold',
+        color: '#ffffff',
     },
     stepTitle: {
         fontSize: 15,
         fontWeight: '600',
+        color: colors.text,
     },
     stepDesc: {
         fontSize: 13,
         marginTop: 2,
-        lineHeight: 18
+        lineHeight: 18,
+        color: colors.textSecondary,
     },
     linkButton: {
         borderRadius: 12,
         padding: 14,
         marginBottom: 8,
         borderWidth: 1,
+        backgroundColor: colors.primarySoft,
+        borderColor: isDark ? '#1e3a5f' : '#bfdbfe',
     },
     linkButtonText: {
         fontSize: 14,
         fontWeight: '600',
+        color: colors.primary,
     },
     linkSub: {
         fontSize: 12,
-        marginTop: 2
+        marginTop: 2,
+        color: colors.textSecondary,
     },
     favBanner: {
         flexDirection: 'row',
@@ -599,17 +638,20 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         marginBottom: 16,
         borderWidth: 1,
+        backgroundColor: colors.card,
+        borderColor: colors.border,
     },
     favBannerActive: {
-        backgroundColor: '#fef2f2',
-        borderColor: '#fecaca',
+        backgroundColor: colors.errorBackground,
+        borderColor: colors.errorBorder,
     },
     favBannerText: {
         fontSize: 15,
         fontWeight: '600',
+        color: colors.text,
     },
     favBannerTextActive: {
-        color: '#dc2626',
+        color: colors.danger,
     },
     legalNotice: {
         padding: 16,
@@ -618,12 +660,13 @@ const styles = StyleSheet.create({
     },
     legalNoticeText: {
         fontSize: 11,
-        textAlign: 'center'
+        textAlign: 'center',
+        color: colors.textMuted,
     },
     // PDF Modal styles
     pdfModalContainer: {
         flex: 1,
-        backgroundColor: '#f8fafc',
+        backgroundColor: colors.background,
     },
     pdfModalHeader: {
         flexDirection: 'row',
@@ -631,14 +674,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         paddingTop: 48,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderBottomWidth: 1,
-        borderBottomColor: '#e2e8f0',
+        borderBottomColor: colors.border,
     },
     pdfModalTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#0f172a',
+        color: colors.text,
     },
     pdfCloseButton: {
         padding: 4,
@@ -652,12 +695,12 @@ const styles = StyleSheet.create({
     pdfPreviewText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#0f172a',
+        color: colors.text,
         marginTop: 16,
     },
     pdfPreviewSubtext: {
         fontSize: 13,
-        color: '#64748b',
+        color: colors.textSecondary,
         marginTop: 4,
     },
     pdfModalActions: {
@@ -665,9 +708,9 @@ const styles = StyleSheet.create({
         gap: 12,
         padding: 16,
         paddingBottom: 32,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderTopWidth: 1,
-        borderTopColor: '#e2e8f0',
+        borderTopColor: colors.border,
     },
     pdfShareButton: {
         flex: 1,
@@ -675,7 +718,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        backgroundColor: '#2563eb',
+        backgroundColor: colors.primary,
         borderRadius: 12,
         paddingVertical: 14,
     },
@@ -690,14 +733,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        backgroundColor: '#eff6ff',
+        backgroundColor: colors.primarySoft,
         borderRadius: 12,
         paddingVertical: 14,
         borderWidth: 1,
-        borderColor: '#bfdbfe',
+        borderColor: isDark ? '#1e3a5f' : '#bfdbfe',
     },
     pdfDownloadButtonText: {
-        color: '#2563eb',
+        color: colors.primary,
         fontWeight: '600',
         fontSize: 15,
     },

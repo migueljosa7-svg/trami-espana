@@ -17,6 +17,7 @@ import { authService, reminderService, ReminderWithProcedure } from '@trami-espa
 import { cacheReminders } from '../../src/localCache';
 import { scheduleOneShotNotification, syncUpcomingDeadlineNotifications } from '../../src/services/notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme, ThemeColors } from '../../constants/theme';
 
 // Lazy-load expo-calendar (permisos gestionados al usarlo). Las
 // notificaciones locales se centralizan en src/services/notifications.ts.
@@ -83,6 +84,8 @@ function parseDateInput(value: string): Date | null {
 
 export default function RemindersScreen() {
     const router = useRouter();
+    const { colors, isDark } = useTheme();
+    const styles = getStyles(colors, isDark);
     // Insets para que el FAB y el modal nunca queden bajo la barra del sistema.
     const insets = useSafeAreaInsets();
     const [reminders, setReminders] = useState<ReminderWithProcedure[]>([]);
@@ -386,27 +389,27 @@ export default function RemindersScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8fafc'
+        backgroundColor: colors.background
     },
     header: {
         paddingTop: 48,
         paddingHorizontal: 16,
         paddingBottom: 16,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderBottomWidth: 1,
-        borderBottomColor: '#e2e8f0'
+        borderBottomColor: colors.border
     },
     headerTitle: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#0f172a'
+        color: colors.text
     },
     headerSubtitle: {
         fontSize: 13,
-        color: '#64748b',
+        color: colors.textSecondary,
         marginTop: 2
     },
     center: {
@@ -427,13 +430,13 @@ const styles = StyleSheet.create({
     emptyTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#0f172a',
+        color: colors.text,
         marginBottom: 8,
         textAlign: 'center',
     },
     emptySubtitle: {
         fontSize: 14,
-        color: '#64748b',
+        color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 20,
         marginBottom: 24,
@@ -442,7 +445,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        backgroundColor: '#2563eb',
+        backgroundColor: colors.primary,
         paddingHorizontal: 24,
         paddingVertical: 14,
         borderRadius: 14,
@@ -458,17 +461,17 @@ const styles = StyleSheet.create({
     sectionLabel: {
         fontSize: 11,
         fontWeight: '700',
-        color: '#94a3b8',
+        color: colors.textMuted,
         letterSpacing: 1,
         marginBottom: 10,
     },
     card: {
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderRadius: 14,
         padding: 16,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: colors.border,
         flexDirection: 'row',
         alignItems: 'flex-start',
         gap: 12,
@@ -480,7 +483,7 @@ const styles = StyleSheet.create({
     },
     cardDone: {
         opacity: 0.6,
-        backgroundColor: '#f8fafc',
+        backgroundColor: colors.background,
     },
     cardLeft: {
         paddingTop: 2,
@@ -504,8 +507,8 @@ const styles = StyleSheet.create({
     badge: {
         fontSize: 10,
         fontWeight: '700',
-        color: '#d97706',
-        backgroundColor: '#fef3c7',
+        color: colors.warningText,
+        backgroundColor: colors.warningBackground,
         paddingHorizontal: 7,
         paddingVertical: 2,
         borderRadius: 4,
@@ -513,29 +516,29 @@ const styles = StyleSheet.create({
     },
     date: {
         fontSize: 12,
-        color: '#64748b',
+        color: colors.textSecondary,
         fontWeight: '500'
     },
     cardTitle: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#0f172a',
+        color: colors.text,
         marginBottom: 4,
         lineHeight: 22,
     },
     cardTitleDone: {
         textDecorationLine: 'line-through',
-        color: '#94a3b8',
+        color: colors.textMuted,
     },
     cardNotes: {
         fontSize: 13,
-        color: '#475569',
+        color: colors.textSecondary,
         marginTop: 2,
         lineHeight: 18,
     },
     tapHint: {
         fontSize: 11,
-        color: '#94a3b8',
+        color: colors.textMuted,
         marginTop: 6,
         fontStyle: 'italic',
     },
@@ -546,10 +549,10 @@ const styles = StyleSheet.create({
         width: 58,
         height: 58,
         borderRadius: 29,
-        backgroundColor: '#2563eb',
+        backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#2563eb',
+        shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.4,
         shadowRadius: 8,
@@ -558,11 +561,11 @@ const styles = StyleSheet.create({
     // Modal
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: colors.overlay,
         justifyContent: 'flex-end',
     },
     modalSheet: {
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         padding: 24,
@@ -572,32 +575,32 @@ const styles = StyleSheet.create({
         width: 40,
         height: 4,
         borderRadius: 2,
-        backgroundColor: '#e2e8f0',
+        backgroundColor: colors.border,
         alignSelf: 'center',
         marginBottom: 20,
     },
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#0f172a',
+        color: colors.text,
         marginBottom: 20,
     },
     fieldLabel: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#475569',
+        color: colors.textSecondary,
         marginBottom: 6,
     },
     fieldInput: {
-        backgroundColor: '#f1f5f9',
+        backgroundColor: colors.chip,
         borderRadius: 10,
         paddingHorizontal: 14,
         paddingVertical: 12,
         fontSize: 15,
-        color: '#0f172a',
+        color: colors.text,
         marginBottom: 16,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: colors.border,
     },
     fieldInputMulti: {
         height: 80,
@@ -605,10 +608,10 @@ const styles = StyleSheet.create({
     },
     calendarHint: {
         fontSize: 12,
-        color: '#64748b',
+        color: colors.textSecondary,
         marginBottom: 20,
         lineHeight: 17,
-        backgroundColor: '#f0f9ff',
+        backgroundColor: colors.primarySoft,
         padding: 10,
         borderRadius: 8,
     },
@@ -621,24 +624,24 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: colors.border,
         alignItems: 'center',
-        backgroundColor: '#f8fafc',
+        backgroundColor: colors.background,
     },
     cancelBtnText: {
         fontSize: 15,
         fontWeight: '600',
-        color: '#64748b',
+        color: colors.textSecondary,
     },
     saveBtn: {
         flex: 1,
         paddingVertical: 14,
         borderRadius: 12,
-        backgroundColor: '#2563eb',
+        backgroundColor: colors.primary,
         alignItems: 'center',
     },
     saveBtnDisabled: {
-        backgroundColor: '#93c5fd',
+        backgroundColor: isDark ? '#1e3a5f' : '#93c5fd',
     },
     saveBtnText: {
         fontSize: 15,

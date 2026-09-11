@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Link } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { FlashList } from '@shopify/flash-list';
 import { authService, favoriteService, FavoriteWithProcedure } from '@trami-espana/shared';
 import { cacheFavorites, readCachedFavorites } from '../../src/localCache';
 import { useTheme } from '../../constants/theme';
+import { SkeletonItem } from '../../components/SkeletonLoader';
 
 export default function FavoritesScreen() {
     const { colors } = useTheme();
@@ -66,8 +68,13 @@ export default function FavoritesScreen() {
             </View>
 
             {isLoading ? (
-                <View style={styles.center}>
-                    <ActivityIndicator size="large" color={colors.primary} />
+                <View style={{ flex: 1, padding: 16 }}>
+                    <SkeletonItem width="60%" height={18} borderRadius={6} style={{ marginBottom: 10 }} />
+                    <SkeletonItem width="90%" height={14} borderRadius={6} style={{ marginBottom: 6 }} />
+                    <SkeletonItem width="75%" height={14} borderRadius={6} style={{ marginBottom: 16 }} />
+                    <SkeletonItem width="100%" height={80} borderRadius={12} style={{ marginBottom: 12 }} />
+                    <SkeletonItem width="100%" height={80} borderRadius={12} style={{ marginBottom: 12 }} />
+                    <SkeletonItem width="100%" height={80} borderRadius={12} />
                 </View>
             ) : favorites.length === 0 ? (
                 <View style={styles.emptyState}>
@@ -83,8 +90,9 @@ export default function FavoritesScreen() {
                     </Link>
                 </View>
             ) : (
-                <ScrollView style={styles.list} contentContainerStyle={{ padding: isTablet ? 32 : 16 }}>
-                    {favorites.map((item) => (
+                <FlashList
+                    data={favorites}
+                    renderItem={({ item }) => (
                         <Link key={item.id} href={`/procedure/${item.procedure.slug}`} asChild>
                             <TouchableOpacity style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]} accessibilityLabel={`Favorito: ${item.procedure.title}`}>
                                 <View style={styles.cardHeader}>
@@ -95,14 +103,12 @@ export default function FavoritesScreen() {
                                                 try {
                                                     const currentUser = await authService.getCurrentUser();
                                                     if (!currentUser) {
-                                                        // Modo invitado: eliminar de caché local
                                                         type CachedFav = { procedure?: { id: string }; id: string };
                                                         const cached = await readCachedFavorites<CachedFav[]>([]);
                                                         const favs: CachedFav[] = Array.isArray(cached) ? cached : [];
                                                         const updated = favs.filter((f) => f.procedure?.id !== item.procedure?.id && f.id !== item.procedure?.id);
                                                         await cacheFavorites(updated);
                                                     } else {
-                                                        // Usuario autenticado: eliminar de Supabase
                                                         await favoriteService.removeFavorite(item.procedure.id);
                                                     }
                                                     void loadFavs();
@@ -122,8 +128,11 @@ export default function FavoritesScreen() {
                                 </Text>
                             </TouchableOpacity>
                         </Link>
-                    ))}
-                </ScrollView>
+                    )}
+                    keyExtractor={(item) => item.id}
+                    estimatedItemSize={100}
+                    contentContainerStyle={{ padding: isTablet ? 32 : 16 }}
+                />
             )}
         </View>
     );

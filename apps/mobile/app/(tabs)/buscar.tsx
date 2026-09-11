@@ -1,12 +1,23 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Link, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { FlashList } from '@shopify/flash-list';
 import { procedureService, ProcedureWithDetails } from '@trami-espana/shared';
 import { useTranslation } from 'react-i18next';
 import { useBottomInset } from '../../src/hooks/useBottomInset';
 import { cacheProcedures, readCachedProcedures } from '../../src/localCache';
 import { useTheme, ThemeColors } from '../../constants/theme';
+import { useSearchHistory } from '../../src/hooks/useSearchHistory';
+import { SkeletonItem } from '../../components/SkeletonLoader';
+
+const QUICK_CHIPS = [
+    { label: 'DNI / Pasaporte', query: 'DNI' },
+    { label: 'Cita SEPE', query: 'cita sepe' },
+    { label: 'Vida Laboral', query: 'vida laboral' },
+    { label: 'Certificado Digital', query: 'certificado digital' },
+    { label: 'Ingreso Mínimo', query: 'ingreso mínimo vital' },
+];
 
 const FILTER_CHIPS = [
     { label: 'Todos', slug: '' },
@@ -147,8 +158,7 @@ export default function SearchScreen() {
     const { t } = useTranslation();
     const { colors, isDark } = useTheme();
     const styles = getStyles(colors, isDark);
-    // Insets: garantiza que los resultados no queden bajo la barra del sistema.
-    const bottomInset = useBottomInset();
+    useBottomInset(); /* eslint-disable-line @typescript-eslint/no-unused-vars */
     const params = useLocalSearchParams<{ categoria?: string }>();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(params.categoria || '');
@@ -158,6 +168,11 @@ export default function SearchScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [isFromCache, setIsFromCache] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isFocused, setIsFocused] = useState(false);
+    const searchInputRef = useRef<TextInput>(null);
+
+    // Historial de búsquedas
+    const { history, addToHistory, removeFromHistory, clearHistory } = useSearchHistory();
 
     // Keep selectedCategory in sync if navigated from home category card
     useEffect(() => {
@@ -242,6 +257,25 @@ export default function SearchScreen() {
         setSearchQuery('');
     };
 
+    const handleQuickChipPress = (query: string) => {
+        setSearchQuery(query);
+        setSelectedCategory('');
+        setIsFocused(false);
+        void addToHistory(query);
+    };
+
+    const handleHistoryItemPress = (query: string) => {
+        setSearchQuery(query);
+        setIsFocused(false);
+    };
+
+    const handleSearchSubmit = () => {
+        if (searchQuery.trim().length >= 2) {
+            void addToHistory(searchQuery);
+        }
+        setIsFocused(false);
+    };
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
@@ -249,22 +283,69 @@ export default function SearchScreen() {
 
                 {/* Search bar with icon */}
                 <View style={styles.searchRow}>
-                    <Ionicons name="search" size={20} color="#64748b" style={styles.searchIcon} />
+                    <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
                     <TextInput
+                        ref={searchInputRef}
                         style={styles.searchInput}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                         placeholder="Ej. Renovar DNI, Empadronamiento..."
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor={colors.textMuted}
                         returnKeyType="search"
                         clearButtonMode="while-editing"
+                        onFocus={() => setIsFocused(true)}
+                        onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+                        onSubmitEditing={handleSearchSubmit}
                     />
                     {searchQuery.length > 0 && (
                         <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
-                            <Ionicons name="close-circle" size={20} color="#94a3b8" />
+                            <Ionicons name="close-circle" size={20} color={colors.textMuted} />
                         </TouchableOpacity>
                     )}
                 </View>
+
+                {/* Quick chips */}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.chipsContainer}
+                >
+                    {QUICK_CHIPS.map((chip) => (
+                        <TouchableOpacity
+                            key={chip.label}
+                            style={[styles.quickChip, { backgroundColor: colors.chip, borderColor: colors.border }]}
+                            onPress={() => handleQuickChipPress(chip.query)}
+                            activeOpacity={0.75}
+                        >
+                            <Text style={[styles.quickChipText, { color: colors.textSecondary }]}>{chip.label}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+
+                {/* Search history dropdown */}
+                {isFocused && history.length > 0 && searchQuery.length === 0 && (
+                    <View style={[styles.historyDropdown, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        <View style={styles.historyHeader}>
+                            <Text style={[styles.historyTitle, { color: colors.textSecondary }]}>Búsquedas recientes</Text>
+                            <TouchableOpacity onPress={clearHistory}>
+                                <Text style={[styles.historyClear, { color: colors.primary }]}>Borrar todo</Text>
+                            </TouchableOpacity>
+                        </View>
+                        {history.map((item) => (
+                            <TouchableOpacity
+                                key={item}
+                                style={styles.historyItem}
+                                onPress={() => handleHistoryItemPress(item)}
+                            >
+                                <Ionicons name="time-outline" size={16} color={colors.textMuted} />
+                                <Text style={[styles.historyItemText, { color: colors.text }]} numberOfLines={1}>{item}</Text>
+                                <TouchableOpacity onPress={() => removeFromHistory(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                    <Ionicons name="close" size={14} color={colors.textMuted} />
+                                </TouchableOpacity>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
 
                 {/* Filter chips */}
                 <ScrollView
@@ -348,8 +429,14 @@ export default function SearchScreen() {
 
             {isLoading ? (
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#2563eb" />
-                    <Text style={styles.loadingText}>Buscando trámites...</Text>
+                    <View style={{ width: '100%', padding: 16 }}>
+                        <SkeletonItem width="60%" height={18} borderRadius={6} style={{ marginBottom: 10 }} />
+                        <SkeletonItem width="90%" height={14} borderRadius={6} style={{ marginBottom: 6 }} />
+                        <SkeletonItem width="75%" height={14} borderRadius={6} style={{ marginBottom: 16 }} />
+                        <SkeletonItem width="100%" height={80} borderRadius={12} style={{ marginBottom: 12 }} />
+                        <SkeletonItem width="100%" height={80} borderRadius={12} style={{ marginBottom: 12 }} />
+                        <SkeletonItem width="100%" height={80} borderRadius={12} />
+                    </View>
                 </View>
             ) : error ? (
                 <View style={styles.errorBox}>
@@ -359,57 +446,51 @@ export default function SearchScreen() {
                     </TouchableOpacity>
                 </View>
             ) : (
-                <ScrollView style={styles.resultsList} contentContainerStyle={[styles.resultsContent, { paddingBottom: 32 + bottomInset }]}>
-                    {isFromCache && (
-                        <View style={styles.offlineBanner}>
-                            <Ionicons name="cloud-offline-outline" size={14} color="#92400e" />
-                            <Text style={styles.offlineBannerText}>{t('search.offlineBanner')}</Text>
-                        </View>
-                    )}
-                    <Text style={styles.resultsCount}>
-                        {visibleProcedures.length} trámite{visibleProcedures.length !== 1 ? 's' : ''} encontrado{visibleProcedures.length !== 1 ? 's' : ''}
-                    </Text>
-
-                    {visibleProcedures.map((proc) => (
-                        <Link
-                            key={proc.id}
-                            href={`/procedure/${proc.slug}`}
-                            asChild
-                        >
+                <FlashList
+                    data={visibleProcedures}
+                    renderItem={({ item: proc }) => (
+                        <Link href={`/procedure/${proc.slug}`} asChild>
                             <TouchableOpacity style={styles.card} activeOpacity={0.8}>
                                 <View style={styles.cardHeader}>
                                     <Text style={styles.cardScope}>{proc.scope.toUpperCase()}</Text>
                                     {proc.cost && (
-                                        <View style={[
-                                            styles.costTag,
-                                            proc.cost.toLowerCase().includes('gratuit') && styles.costTagFree,
-                                        ]}>
-                                            <Text style={[
-                                                styles.cardCost,
-                                                proc.cost.toLowerCase().includes('gratuit') && styles.cardCostFree,
-                                            ]}>
+                                        <View style={[styles.costTag, proc.cost.toLowerCase().includes('gratuit') && styles.costTagFree]}>
+                                            <Text style={[styles.cardCost, proc.cost.toLowerCase().includes('gratuit') && styles.cardCostFree]}>
                                                 {proc.cost.length > 18 ? proc.cost.slice(0, 18) + '…' : proc.cost}
                                             </Text>
                                         </View>
                                     )}
                                 </View>
                                 <Text style={styles.cardTitle}>{proc.title}</Text>
-                                <Text style={styles.cardDesc} numberOfLines={2}>
-                                    {proc.short_description}
-                                </Text>
+                                <Text style={styles.cardDesc} numberOfLines={2}>{proc.short_description}</Text>
                                 <Text style={styles.cardArrow}>Ver detalles →</Text>
                             </TouchableOpacity>
                         </Link>
-                    ))}
-
-                    {visibleProcedures.length === 0 && !isLoading && (
+                    )}
+                    keyExtractor={(item) => item.id}
+                    estimatedItemSize={120}
+                    contentContainerStyle={styles.resultsContent}
+                    ListHeaderComponent={
+                        <>
+                            {isFromCache && (
+                                <View style={styles.offlineBanner}>
+                                    <Ionicons name="cloud-offline-outline" size={14} color={colors.warningText} />
+                                    <Text style={styles.offlineBannerText}>{t('search.offlineBanner')}</Text>
+                                </View>
+                            )}
+                            <Text style={styles.resultsCount}>
+                                {visibleProcedures.length} trámite{visibleProcedures.length !== 1 ? 's' : ''} encontrado{visibleProcedures.length !== 1 ? 's' : ''}
+                            </Text>
+                        </>
+                    }
+                    ListEmptyComponent={
                         <View style={styles.emptyState}>
                             <Text style={styles.emptyIcon}>🔍</Text>
                             <Text style={styles.emptyTitle}>{t('search.noResults')}</Text>
                             <Text style={styles.emptySubtitle}>{t('search.noResultsMsg')}</Text>
                         </View>
-                    )}
-                </ScrollView>
+                    }
+                />
             )}
         </View>
     );
@@ -490,22 +571,69 @@ const getStyles = (colors: ThemeColors, _isDark: boolean) => StyleSheet.create({
         flex: 1,
         color: colors.warningText,
     },
+    quickChip: {
+        borderRadius: 20,
+        paddingHorizontal: 14,
+        paddingVertical: 7,
+        borderWidth: 1,
+        marginRight: 8,
+    },
+    quickChipText: {
+        fontSize: 13,
+        fontWeight: '500',
+    },
+    historyDropdown: {
+        borderRadius: 12,
+        borderWidth: 1,
+        paddingVertical: 8,
+        marginBottom: 12,
+        maxHeight: 220,
+    },
+    historyHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+    },
+    historyTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    historyClear: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    historyItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+    },
+    historyItemText: {
+        flex: 1,
+        fontSize: 14,
+    },
     chip: {
         borderRadius: 20,
         paddingHorizontal: 14,
         paddingVertical: 7,
         borderWidth: 1,
-        backgroundColor: colors.chip,
         borderColor: colors.border,
-    },
-    chipActive: {
-        backgroundColor: colors.primary,
-        borderColor: colors.primary,
+        backgroundColor: colors.card,
+        marginRight: 8,
     },
     chipText: {
         fontSize: 13,
         fontWeight: '500',
         color: colors.textSecondary,
+    },
+    chipActive: {
+        backgroundColor: colors.primary,
+        borderColor: colors.primary,
     },
     chipTextActive: {
         color: '#ffffff',

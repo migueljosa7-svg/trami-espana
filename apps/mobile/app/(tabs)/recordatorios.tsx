@@ -15,7 +15,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { reminderService, ReminderWithProcedure } from '@trami-espana/shared';
 import { cacheReminders } from '../../src/localCache';
-import { scheduleOneShotNotification, syncUpcomingDeadlineNotifications } from '../../src/services/notifications';
+import { scheduleDeadlineNotifications, syncUpcomingDeadlineNotifications } from '../../src/services/notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../constants/theme';
 import { useAuth } from '../../src/context/AuthContext';
@@ -63,10 +63,15 @@ async function addToDeviceCalendar(title: string, date: Date, notes?: string): P
     }
 }
 
-// Helper: programa la notificación local usando el servicio centralizado
-// (permisos, canal de Android y triggers gestionados allí).
+// Helper: programa notificaciones locales (24h antes + el día del evento)
 async function scheduleNotification(title: string, body: string, date: Date): Promise<boolean> {
-    return scheduleOneShotNotification(date, title, body);
+    const result = await scheduleDeadlineNotifications({
+        id: 'manual',
+        title,
+        notes: body,
+        deadline: date,
+    });
+    return result.dayBefore || result.dayOf;
 }
 
 // Simple date string formatter for the input (YYYY-MM-DD)
@@ -183,16 +188,17 @@ export default function RemindersScreen() {
                 formNotes.trim() || 'Recordatorio de trámite administrativo'
             );
 
-            // Schedule local notification
-            const notifAdded = await scheduleNotification(
-                '📋 Recordatorio de trámite',
-                trimTitle,
-                parsedDate
-            );
+            // Schedule local notification (24h before + on the day)
+            const notifResult = await scheduleDeadlineNotifications({
+                id: newReminder?.id || 'temp',
+                title: trimTitle,
+                notes: formNotes.trim() || undefined,
+                deadline: parsedDate,
+            });
 
             let successMsg = '✅ Recordatorio guardado.';
             if (calAdded) successMsg += '\n📅 Añadido a tu calendario.';
-            if (notifAdded) successMsg += '\n🔔 Notificación programada.';
+            if (notifResult.dayBefore || notifResult.dayOf) successMsg += '\n🔔 Notificaciones programadas (24h antes y el día).';
 
             setShowModal(false);
             setFormTitle('');
@@ -291,6 +297,29 @@ export default function RemindersScreen() {
                                         </View>
                                         <Text style={styles.cardTitle}>{rem.title}</Text>
                                         {rem.description && <Text style={styles.cardNotes}>{rem.description}</Text>}
+                                        <View style={styles.cardActions}>
+                                            <TouchableOpacity
+                                                style={[styles.actionBtn, { backgroundColor: colors.primarySoft }]}
+                                                onPress={() => {
+                                                    const date = new Date(rem.reminder_date);
+                                                    void addToDeviceCalendar(rem.title, date, rem.description || undefined);
+                                                }}
+                                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                            >
+                                                <Ionicons name="calendar-outline" size={14} color={colors.primary} />
+                                                <Text style={[styles.actionBtnText, { color: colors.primary }]}>Añadir al Calendario</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.actionBtn, { backgroundColor: colors.chip }]}
+                                                onPress={() => {
+                                                    const date = new Date(rem.reminder_date);
+                                                    void scheduleNotification(rem.title, rem.description || 'Recordatorio de trámite', date);
+                                                }}
+                                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                            >
+                                                <Ionicons name="notifications-outline" size={14} color={colors.textSecondary} />
+                                            </TouchableOpacity>
+                                        </View>
                                         <Text style={styles.tapHint}>Toca para marcar como completado</Text>
                                     </View>
                                 </TouchableOpacity>
@@ -570,6 +599,24 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         color: colors.textMuted,
         marginTop: 6,
         fontStyle: 'italic',
+    },
+    cardActions: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 10,
+        marginBottom: 4,
+    },
+    actionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    actionBtnText: {
+        fontSize: 11,
+        fontWeight: '600',
     },
     fab: {
         position: 'absolute',

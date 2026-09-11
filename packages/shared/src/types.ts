@@ -6,7 +6,7 @@
 import type { Database } from './supabase';
 
 // Exportar Database para que esté disponible en otros módulos
-export { Database };
+export { type Database };
 
 // Tipos principales de la base de datos
 export type Procedure = Database['public']['Tables']['procedures']['Row'];
@@ -117,7 +117,7 @@ export interface FavoriteItem {
 
 export interface ReminderItem {
     id: string;
-    procedure_id: string;
+    procedure_id: string | null;
     title: string;
     description: string | null;
     reminder_date: string;

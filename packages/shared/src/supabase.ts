@@ -6,15 +6,44 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Cliente de Supabase (se inicializa en cada app)
+// Client of Supabase (initialized in each app)
 let supabaseClient: SupabaseClient | null = null;
 
 /**
- * Inicializa el cliente de Supabase con las credenciales
- * Esta función debe ser llamada desde apps/web o apps/mobile
+ * Adaptador mínimo de almacenamiento compatible con Supabase Auth.
+ * En web se usa localStorage por defecto; en móvil (Expo / React Native)
+ * debe inyectarse AsyncStorage desde la app para que la sesión sobreviva
+ * al cerrar la app (sin esto solo vive en memoria RAM).
  */
-export const initializeSupabase = (url: string, anonKey: string): void => {
-    supabaseClient = createClient(url, anonKey);
+export interface SupabaseStorageAdapter {
+    getItem(key: string): Promise<string | null>;
+    setItem(key: string, value: string): Promise<void>;
+    removeItem(key: string): Promise<void>;
+}
+
+export interface InitializeSupabaseOptions {
+    storage?: SupabaseStorageAdapter;
+}
+
+/**
+ * Inicializa el cliente de Supabase con las credenciales
+ * Esta función debe ser llamada desde apps/web o apps/mobile.
+ * En móvil, pasar `{ storage: AsyncStorage }` es OBLIGATORIO para
+ * persistencia real de sesión.
+ */
+export const initializeSupabase = (
+    url: string,
+    anonKey: string,
+    options?: InitializeSupabaseOptions
+): void => {
+    supabaseClient = createClient(url, anonKey, {
+        auth: {
+            ...(options?.storage ? { storage: options.storage } : {}),
+            autoRefreshToken: true,
+            persistSession: true,
+            detectSessionInUrl: false,
+        },
+    });
 };
 
 /**
@@ -157,7 +186,7 @@ export type Database = {
                 Row: {
                     id: string;
                     user_id: string;
-                    procedure_id: string;
+                    procedure_id: string | null;
                     title: string;
                     description: string | null;
                     reminder_date: string;

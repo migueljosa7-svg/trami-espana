@@ -102,11 +102,17 @@ export function AuthProvider({ children }: AuthProviderProps): React.ReactElemen
         try {
             const { data: subscription } = authService.onAuthStateChange((event, currentSession) => {
                 console.log('[AUTH] Cambio de estado:', event);
-                
-                if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+
+                if (
+                    event === 'SIGNED_IN' ||
+                    event === 'TOKEN_REFRESHED' ||
+                    event === 'INITIAL_SESSION'
+                ) {
                     setSession(currentSession);
                     setUser(currentSession?.user ?? null);
-                    console.log('[AUTH] Usuario actualizado:', currentSession?.user?.email);
+                    if (currentSession?.user) {
+                        console.log('[AUTH] Usuario actualizado:', currentSession.user.email);
+                    }
                 } else if (event === 'SIGNED_OUT') {
                     setSession(null);
                     setUser(null);

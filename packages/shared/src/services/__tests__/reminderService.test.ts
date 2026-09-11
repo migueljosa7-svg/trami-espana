@@ -13,14 +13,24 @@ vi.mock('../../supabase', () => ({
 }));
 
 const mockUser = { id: 'user-1', email: 'user@test.com' };
+const mockSession = { user: mockUser };
+
+function mockAuthClient(user: typeof mockUser | null) {
+    return {
+        auth: {
+            getSession: vi
+                .fn()
+                .mockResolvedValue({ data: { session: user ? mockSession : null } }),
+            getUser: vi.fn().mockResolvedValue({ data: { user }, error: null }),
+        },
+    };
+}
 
 describe('Validación de recordatorio', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         (getSupabaseClient as any).mockReturnValue({
-            auth: {
-                getUser: vi.fn().mockResolvedValue({ data: { user: mockUser } })
-            },
+            ...mockAuthClient(mockUser),
             from: vi.fn().mockReturnThis(),
             insert: vi.fn().mockResolvedValue({ error: null }),
             select: vi.fn().mockReturnThis(),
@@ -30,9 +40,7 @@ describe('Validación de recordatorio', () => {
 
     it('debe rechazar si no hay usuario autenticado', async () => {
         (getSupabaseClient as any).mockReturnValue({
-            auth: {
-                getUser: vi.fn().mockResolvedValue({ data: { user: null } })
-            }
+            ...mockAuthClient(null),
         });
 
         await expect(reminderService.createReminder({
@@ -40,6 +48,60 @@ describe('Validación de recordatorio', () => {
             title: 'Revisar documentación',
             reminder_date: '2026-09-20T10:00:00'
         })).rejects.toThrow('Usuario no autenticado');
+    });
+
+    it('debe rechazar con mensaje de sesión expirada si getUser falla sin sesión', async () => {
+        (getSupabaseClient as any).mockReturnValue({
+            auth: {
+                getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+                getUser: vi
+                    .fn()
+                    .mockResolvedValue({ data: { user: null }, error: new Error('JWT expired') }),
+            },
+        });
+
+        await expect(
+            reminderService.createReminder({
+                procedure_id: 'proc-1',
+                title: 'Revisar documentación',
+                reminder_date: '2026-09-20T10:00:00',
+            })
+        ).rejects.toThrow('sesión ha expirado');
+    });
+
+    it('debe crear un recordatorio manual sin procedure_id (NULL, nunca "")', async () => {
+        const mockReminder = {
+            id: 'rem-manual',
+            user_id: 'user-1',
+            procedure_id: null,
+            title: 'Recordatorio manual',
+            description: null,
+            reminder_date: '2026-09-20T10:00:00',
+            is_completed: false,
+            created_at: '2026-01-01',
+            updated_at: '2026-01-01'
+        };
+
+        const insertFn = vi.fn().mockReturnThis();
+        (getSupabaseClient as any).mockReturnValue({
+            ...mockAuthClient(mockUser),
+            from: vi.fn().mockReturnThis(),
+            insert: insertFn,
+            select: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockReminder, error: null })
+        });
+
+        const result = await reminderService.createReminder({
+            procedure_id: null,
+            title: 'Recordatorio manual',
+            reminder_date: '2026-09-20T10:00:00'
+        });
+
+        expect(result).not.toBeNull();
+        expect(result?.procedure_id).toBeNull();
+        expect(insertFn).toHaveBeenCalledWith(
+            expect.objectContaining({ procedure_id: null, user_id: 'user-1' })
+        );
     });
 
     it('debe crear un recordatorio correctamente', async () => {
@@ -56,9 +118,7 @@ describe('Validación de recordatorio', () => {
         };
 
         (getSupabaseClient as any).mockReturnValue({
-            auth: {
-                getUser: vi.fn().mockResolvedValue({ data: { user: mockUser } })
-            },
+            ...mockAuthClient(mockUser),
             from: vi.fn().mockReturnThis(),
             insert: vi.fn().mockReturnThis(),
             select: vi.fn().mockReturnThis(),
@@ -90,9 +150,7 @@ describe('Validación de recordatorio', () => {
         };
 
         (getSupabaseClient as any).mockReturnValue({
-            auth: {
-                getUser: vi.fn().mockResolvedValue({ data: { user: mockUser } })
-            },
+            ...mockAuthClient(mockUser),
             from: vi.fn().mockReturnThis(),
             insert: vi.fn().mockReturnThis(),
             select: vi.fn().mockReturnThis(),

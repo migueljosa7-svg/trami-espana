@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { I18nextProvider } from 'react-i18next';
-import { authService, initializeSupabase } from '@trami-espana/shared';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authService, getSupabaseClient, initializeSupabase } from '@trami-espana/shared';
 import { initI18n, getI18nInstance } from '../src/i18n';
 import { clearUserCaches, runLocalStorageMigration } from '../src/localCache';
 import { ENV, validateEnv } from '../config/env';
@@ -28,7 +30,11 @@ function ensureRuntimeInit() {
             if (envErrors.length > 0 && __DEV__) {
                 console.warn('[env] Configuración incompleta:', envErrors.join(' '));
             }
-            initializeSupabase(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY);
+            // Persistencia REAL en móvil: AsyncStorage es obligatorio.
+            // Sin esto la sesión solo vive en memoria y se pierde al cerrar la app.
+            initializeSupabase(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, {
+                storage: AsyncStorage,
+            });
         } catch (e) {
             console.warn('[init] Error inicializando Supabase:', e);
         }
@@ -36,9 +42,33 @@ function ensureRuntimeInit() {
     }
 }
 
+// Rehidrata/refresca el token al volver del segundo plano.
+// Supabase detiene el auto-refresh en background en nativo; al volver a
+// 'active' se reanuda para que auth.uid() vuelva a ser válido y los INSERT
+// con RLS (recordatorios/favoritos) no fallen con JWT expirado.
+function useSupabaseAutoRefresh() {
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (state) => {
+            try {
+                const client = getSupabaseClient();
+                if (state === 'active') {
+                    void client.auth.startAutoRefresh();
+                } else {
+                    void client.auth.stopAutoRefresh();
+                }
+            } catch {
+                // Supabase aún no inicializado: ignorar.
+            }
+        });
+        return () => subscription.remove();
+    }, []);
+}
+
 function RootNavigation() {
     const { colors, isDark } = useTheme();
     const [storageReady, setStorageReady] = useState(false);
+
+    useSupabaseAutoRefresh();
 
     useEffect(() => {
         let mounted = true;

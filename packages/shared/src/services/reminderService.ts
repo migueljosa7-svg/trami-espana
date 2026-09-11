@@ -30,7 +30,7 @@ export interface ReminderWithProcedure extends Reminder {
 }
 
 export interface CreateReminderData {
-    procedure_id: string;
+    procedure_id?: string | null;
     title: string;
     description?: string;
     reminder_date: string;
@@ -104,20 +104,48 @@ export const reminderService = {
      */
     async createReminder(data: CreateReminderData): Promise<ReminderWithProcedure | null> {
         try {
-            const user = await getSupabaseClient().auth.getUser();
+            const client = getSupabaseClient();
+            // 1) Sesión rápida desde almacenamiento local (no hace red).
+            const {
+                data: { session },
+            } = await client.auth.getSession();
+            const sessionUserId = session?.user?.id ?? null;
 
-            if (!user.data.user) {
+            // 2) Validar usuario contra el servidor (detecta JWT expirado/revocado).
+            const { data: userData, error: userError } = await client.auth.getUser();
+
+            const activeUser = userData?.user ?? null;
+            // Preferir el usuario validado; si falla por red pero hay sesión local,
+            // conservar la sesión local (la app ya lo hace en AuthContext web).
+            const userId = activeUser?.id ?? sessionUserId ?? null;
+
+            if (userError && !userId) {
+                throw new ReminderServiceError(
+                    'Tu sesión ha expirado. Por favor, inicia sesión de nuevo.',
+                    'NOT_AUTHENTICATED'
+                );
+            }
+
+            if (!userId) {
                 throw new ReminderServiceError(
                     'Usuario no autenticado',
                     'NOT_AUTHENTICATED'
                 );
             }
 
-            const { data: reminder, error } = await getSupabaseClient()
+            // procedure_id es opcional en la app móvil (recordatorio manual).
+            // Se envía NULL cuando no hay trámite asociado (requiere la
+            // migración 20240101000015 que hace la columna NULLABLE).
+            // Nunca enviar '' porque provoca error 22P02/23503 de Postgres.
+            const rawProcedureId = (data.procedure_id ?? '').trim();
+            const procedureId: string | null =
+                rawProcedureId.length > 0 ? rawProcedureId : null;
+
+            const { data: reminder, error } = await client
                 .from('reminders')
                 .insert({
-                    user_id: user.data.user.id,
-                    procedure_id: data.procedure_id,
+                    user_id: userId,
+                    procedure_id: procedureId,
                     title: data.title,
                     description: data.description || null,
                     reminder_date: data.reminder_date,

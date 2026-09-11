@@ -3,7 +3,7 @@
     "name": "Trami España",
     "slug": "trami-espana",
     "scheme": "tramiespana",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -26,8 +26,8 @@
         "backgroundColor": "#2563eb"
       },
       "package": "es.tramiespana.app",
-      "versionCode": 17,
-      "versionName": "1.2.0"
+      "versionCode": 18,
+      "versionName": "1.2.1"
     },
     "web": {
       "bundler": "metro",

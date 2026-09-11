@@ -1,0 +1,65 @@
+[1mdiff --git a/packages/shared/src/supabase.ts b/packages/shared/src/supabase.ts[m
+[1mindex 7ccce80..c8fa138 100644[m
+[1m--- a/packages/shared/src/supabase.ts[m
+[1m+++ b/packages/shared/src/supabase.ts[m
+[36m@@ -9,13 +9,36 @@[m [mimport { createClient, SupabaseClient } from '@supabase/supabase-js';[m
+ // Client of Supabase (initialized in each app)[m
+ let supabaseClient: SupabaseClient | null = null;[m
+ [m
+[32m+[m[32m/**[m
+[32m+[m[32m * Adaptador mínimo de almacenamiento compatible con Supabase Auth.[m
+[32m+[m[32m * En web se usa localStorage por defecto; en móvil (Expo / React Native)[m
+[32m+[m[32m * debe inyectarse AsyncStorage desde la app para que la sesión sobreviva[m
+[32m+[m[32m * al cerrar la app (sin esto solo vive en memoria RAM).[m
+[32m+[m[32m */[m
+[32m+[m[32mexport interface SupabaseStorageAdapter {[m
+[32m+[m[32m    getItem(key: string): Promise<string | null>;[m
+[32m+[m[32m    setItem(key: string, value: string): Promise<void>;[m
+[32m+[m[32m    removeItem(key: string): Promise<void>;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mexport interface InitializeSupabaseOptions {[m
+[32m+[m[32m    storage?: SupabaseStorageAdapter;[m
+[32m+[m[32m}[m
+[32m+[m
+ /**[m
+  * Inicializa el cliente de Supabase con las credenciales[m
+[31m- * Esta función debe ser llamada desde apps/web o apps/mobile[m
+[32m+[m[32m * Esta función debe ser llamada desde apps/web o apps/mobile.[m
+[32m+[m[32m * En móvil, pasar `{ storage: AsyncStorage }` es OBLIGATORIO para[m
+[32m+[m[32m * persistencia real de sesión.[m
+  */[m
+[31m-export const initializeSupabase = (url: string, anonKey: string): void => {[m
+[32m+[m[32mexport const initializeSupabase = ([m
+[32m+[m[32m    url: string,[m
+[32m+[m[32m    anonKey: string,[m
+[32m+[m[32m    options?: InitializeSupabaseOptions[m
+[32m+[m[32m): void => {[m
+     supabaseClient = createClient(url, anonKey, {[m
+         auth: {[m
+[32m+[m[32m            ...(options?.storage ? { storage: options.storage } : {}),[m
+             autoRefreshToken: true,[m
+             persistSession: true,[m
+             detectSessionInUrl: false,[m
+[36m@@ -163,7 +186,7 @@[m [mexport type Database = {[m
+                 Row: {[m
+                     id: string;[m
+                     user_id: string;[m
+[31m-                    procedure_id: string;[m
+[32m+[m[32m                    procedure_id: string | null;[m
+                     title: string;[m
+                     description: string | null;[m
+                     reminder_date: string;[m
+[1mdiff --git a/packages/shared/src/types.ts b/packages/shared/src/types.ts[m
+[1mindex ab08767..e53fe80 100644[m
+[1m--- a/packages/shared/src/types.ts[m
+[1m+++ b/packages/shared/src/types.ts[m
+[36m@@ -117,7 +117,7 @@[m [mexport interface FavoriteItem {[m
+ [m
+ export interface ReminderItem {[m
+     id: string;[m
+[31m-    procedure_id: string;[m
+[32m+[m[32m    procedure_id: string | null;[m
+     title: string;[m
+     description: string | null;[m
+     reminder_date: string;[m

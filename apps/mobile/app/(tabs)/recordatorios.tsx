@@ -92,7 +92,7 @@ export default function RemindersScreen() {
     const router = useRouter();
     const { colors, isDark } = useTheme();
     const styles = getStyles(colors, isDark);
-    const { user } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
     // Insets para que el FAB y el modal nunca queden bajo la barra del sistema.
     const insets = useSafeAreaInsets();
     const [reminders, setReminders] = useState<ReminderWithProcedure[]>([]);
@@ -106,6 +106,10 @@ export default function RemindersScreen() {
     const [saving, setSaving] = useState(false);
 
     const loadReminders = useCallback(async () => {
+        // Esperar a que AuthContext rehidrate la sesión (authLoading) antes
+        // de decidir si hay que redirigir al login. Sin esto, al volver
+        // del segundo plano se redirige aunque la sesión exista en disco.
+        if (authLoading) return;
         setIsLoading(true);
         try {
             // Usar el usuario del AuthContext en lugar de llamar a authService directamente
@@ -127,7 +131,7 @@ export default function RemindersScreen() {
         } finally {
             setIsLoading(false);
         }
-    }, [router, user]);
+    }, [router, user, authLoading]);
 
     useEffect(() => {
         loadReminders();
@@ -166,11 +170,11 @@ export default function RemindersScreen() {
         console.log('[RECORDATORIOS] Guardando recordatorio para usuario:', user.email);
         setSaving(true);
         try {
-            // Save to Supabase (procedure_id is optional; we use a generic dummy for non-procedure reminders)
-            // We create a reminder without procedure_id by finding the first available procedure id or leaving null
-            // The service requires procedure_id — create reminder with a placeholder
+            // Recordatorio manual: sin trámite asociado -> procedure_id NULL.
+            // Nunca enviar '' (provoca error 22P02/23503 en Postgres).
+            // Requiere la migración 20240101000015 (procedure_id NULLABLE).
             const newReminder = await reminderService.createReminder({
-                procedure_id: '',   // Optional on schema; handled gracefully
+                procedure_id: null,
                 title: trimTitle,
                 description: formNotes.trim() || undefined,
                 reminder_date: parsedDate.toISOString(),

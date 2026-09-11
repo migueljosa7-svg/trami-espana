@@ -13,11 +13,12 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { authService, reminderService, ReminderWithProcedure } from '@trami-espana/shared';
+import { reminderService, ReminderWithProcedure } from '@trami-espana/shared';
 import { cacheReminders } from '../../src/localCache';
 import { scheduleOneShotNotification, syncUpcomingDeadlineNotifications } from '../../src/services/notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../constants/theme';
+import { useAuth } from '../../src/context/AuthContext';
 
 // Lazy-load expo-calendar (permisos gestionados al usarlo). Las
 // notificaciones locales se centralizan en src/services/notifications.ts.
@@ -86,6 +87,7 @@ export default function RemindersScreen() {
     const router = useRouter();
     const { colors, isDark } = useTheme();
     const styles = getStyles(colors, isDark);
+    const { user } = useAuth();
     // Insets para que el FAB y el modal nunca queden bajo la barra del sistema.
     const insets = useSafeAreaInsets();
     const [reminders, setReminders] = useState<ReminderWithProcedure[]>([]);
@@ -101,23 +103,26 @@ export default function RemindersScreen() {
     const loadReminders = useCallback(async () => {
         setIsLoading(true);
         try {
-            const currentUser = await authService.getCurrentUser();
-            if (!currentUser) {
+            // Usar el usuario del AuthContext en lugar de llamar a authService directamente
+            if (!user) {
+                console.log('[RECORDATORIOS] Usuario no autenticado - redirigiendo a login');
                 router.replace('/login');
                 return;
             }
+            console.log('[RECORDATORIOS] Cargando recordatorios para:', user.email);
             const data = await reminderService.getReminders();
             if (data) {
                 setReminders(data);
                 // Copia local (aislada por usuario) para acceso offline.
                 await cacheReminders(data);
+                console.log('[RECORDATORIOS] Recordatorios cargados:', data.length);
             }
-        } catch {
-            // Error controlado.
+        } catch (error) {
+            console.error('[RECORDATORIOS] Error al cargar recordatorios:', error);
         } finally {
             setIsLoading(false);
         }
-    }, [router]);
+    }, [router, user]);
 
     useEffect(() => {
         loadReminders();
@@ -143,6 +148,17 @@ export default function RemindersScreen() {
             return;
         }
 
+        // Validar autenticación ANTES de proceder
+        if (!user) {
+            console.log('[RECORDATORIOS] Usuario no autenticado - no se puede guardar');
+            Alert.alert(
+                'Inicio de sesión obligatorio',
+                'Debes iniciar sesión para crear recordatorios.'
+            );
+            return;
+        }
+
+        console.log('[RECORDATORIOS] Guardando recordatorio para usuario:', user.email);
         setSaving(true);
         try {
             // Save to Supabase (procedure_id is optional; we use a generic dummy for non-procedure reminders)
@@ -157,6 +173,7 @@ export default function RemindersScreen() {
 
             if (newReminder) {
                 setReminders((prev) => [newReminder, ...prev]);
+                console.log('[RECORDATORIOS] Recordatorio guardado correctamente:', newReminder.id);
             }
 
             // Add to device calendar
@@ -182,9 +199,21 @@ export default function RemindersScreen() {
             setFormNotes('');
             setFormDate(formatDateForInput(new Date(Date.now() + 7 * 86400000)));
             Alert.alert('¡Recordatorio creado!', successMsg);
-        } catch {
-            // If it's a "procedure_id required" error, create without it
-            Alert.alert('Error', 'No se pudo guardar el recordatorio. Asegúrate de estar conectado a internet e iniciado sesión.');
+        } catch (error) {
+            // Log detallado del error para depuración
+            const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+            const errorCode = error instanceof Error && 'code' in error ? (error as { code?: string }).code : undefined;
+            console.error('[RECORDATORIOS] Error al guardar recordatorio:', errorMessage, 'Código:', errorCode);
+            
+            // Mensaje de error más específico según el tipo de error
+            if (/not authenticated|not_authenticated|auth/i.test(errorMessage)) {
+                Alert.alert('Error de sesión', 'Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
+                router.replace('/login');
+            } else if (/network|connection|internet/i.test(errorMessage)) {
+                Alert.alert('Error de conexión', 'No se pudo conectar con el servidor. Verifica tu conexión a internet e inténtalo de nuevo.');
+            } else {
+                Alert.alert('Error', 'No se pudo guardar el recordatorio. Inténtalo de nuevo.');
+            }
         } finally {
             setSaving(false);
         }

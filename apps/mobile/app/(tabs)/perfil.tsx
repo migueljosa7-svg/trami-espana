@@ -8,11 +8,11 @@ import {
     Alert,
     ScrollView,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { authService, accountService, LEGAL_DISCLAIMER } from '@trami-espana/shared';
+import { accountService, LEGAL_DISCLAIMER } from '@trami-espana/shared';
 import {
     changeLanguage,
     getCurrentLanguage,
@@ -22,15 +22,15 @@ import {
 } from '../../src/i18n';
 import { clearUserCaches } from '../../src/localCache';
 import { useTheme, type ThemePreference } from '../../constants/theme';
-import type { User } from '@supabase/supabase-js';
+import { useAuth } from '../../src/context/AuthContext';
 
 export default function ProfileScreen() {
     const { t, i18n } = useTranslation();
+    const router = useRouter();
     const insets = useSafeAreaInsets();
     // Tema dinámico (sistema/claro/oscuro) de constants/theme
     const { colors, preference, setPreference } = useTheme();
-    const [user, setUser] = useState<User | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const { user, isLoading, signOut: authSignOut } = useAuth();
     const [deleting, setDeleting] = useState(false);
     // Idioma reactivo: se actualiza con i18n.language para forzar re-render
     const [language, setLanguage] = useState<AppLanguage>(
@@ -48,21 +48,6 @@ export default function ProfileScreen() {
         };
     }, [i18n]);
 
-    useEffect(() => {
-        const loadProfile = async () => {
-            setIsLoading(true);
-            try {
-                const currentUser = await authService.getCurrentUser();
-                setUser(currentUser);
-            } catch {
-                // Error controlado.
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        loadProfile();
-    }, []);
-
     const handleSwitchLanguage = (lang: AppLanguage) => {
         if (lang === language) return;
         const wasRTL = isRTLLanguage(language);
@@ -75,12 +60,28 @@ export default function ProfileScreen() {
     };
 
     const handleSignOut = async () => {
-        // Aislamiento estricto: al cerrar sesión se purgan de inmediato la
-        // caché local de favoritos y recordatorios (AsyncStorage) para que un
-        // usuario invitado o distinto no vea datos de una sesión anterior.
-        await clearUserCaches();
-        await authService.logout();
-        setUser(null);
+        Alert.alert(
+            'Cerrar sesión',
+            '¿Estás seguro de que deseas cerrar sesión?',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Cerrar sesión',
+                    style: 'destructive',
+                    onPress: async () => {
+                        console.log('[PERFIL] Cerrando sesión...');
+                        // Aislamiento estricto: al cerrar sesión se purgan de inmediato la
+                        // caché local de favoritos y recordatorios (AsyncStorage) para que un
+                        // usuario invitado o distinto no vea datos de una sesión anterior.
+                        await clearUserCaches();
+                        await authSignOut();
+                        console.log('[PERFIL] Sesión cerrada exitosamente');
+                        // Redirigir al login
+                        router.replace('/login');
+                    },
+                },
+            ]
+        );
     };
 
     const confirmDeleteAccount = () => {
@@ -102,10 +103,10 @@ export default function ProfileScreen() {
                         }
                         // Purga de la caché local antes de cerrar sesión.
                         await clearUserCaches();
-                        await authService.logout();
-                        setUser(null);
+                        await authSignOut();
                         setDeleting(false);
                         Alert.alert(t('profile.auth.accountDeleted'), t('profile.auth.accountDeletedMsg'));
+                        router.replace('/login');
                     },
                 },
             ]

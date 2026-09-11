@@ -8,6 +8,7 @@ import { initI18n, getI18nInstance } from '../src/i18n';
 import { clearUserCaches, runLocalStorageMigration } from '../src/localCache';
 import { ENV, validateEnv } from '../config/env';
 import { ThemeProvider, useTheme } from '../constants/theme';
+import { AuthProvider } from '../src/context/AuthContext';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 // Inicializar i18n y Supabase una única vez en el ciclo de vida de la app.
@@ -83,21 +84,23 @@ function RootNavigation() {
         <SafeAreaProvider>
             <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={colors.background} />
             <I18nextProvider i18n={getI18nInstance()}>
-                <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                    <Stack.Screen name="login" options={{ headerShown: false }} />
-                    <Stack.Screen name="registro" options={{ headerShown: false }} />
-                    <Stack.Screen name="recuperar-contrasena" options={{ headerShown: false }} />
-                    <Stack.Screen
-                        name="procedure/[slug]"
-                        options={{
-                            headerShown: true,
-                            title: 'Detalle del trámite',
-                            headerBackTitle: 'Atrás',
-                        }}
-                    />
-                    <Stack.Screen name="error" options={{ headerShown: false }} />
-                </Stack>
+                <AuthProvider>
+                    <Stack screenOptions={{ headerShown: false }}>
+                        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                        <Stack.Screen name="login" options={{ headerShown: false }} />
+                        <Stack.Screen name="registro" options={{ headerShown: false }} />
+                        <Stack.Screen name="recuperar-contrasena" options={{ headerShown: false }} />
+                        <Stack.Screen
+                            name="procedure/[slug]"
+                            options={{
+                                headerShown: true,
+                                title: 'Detalle del trámite',
+                                headerBackTitle: 'Atrás',
+                            }}
+                        />
+                        <Stack.Screen name="error" options={{ headerShown: false }} />
+                    </Stack>
+                </AuthProvider>
             </I18nextProvider>
         </SafeAreaProvider>
     );

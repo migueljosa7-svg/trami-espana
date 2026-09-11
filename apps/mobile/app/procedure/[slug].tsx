@@ -5,24 +5,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { procedureService, favoriteService, ProcedureWithDetails } from '@trami-espana/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { generateProcedurePdf, sharePdf } from '../../src/utils/exportPdf';
-import { authService } from '@trami-espana/shared';
-import { cacheFavorites, readCachedFavorites } from '../../src/localCache';
+import { readCachedFavorites } from '../../src/localCache';
 import { useTheme, ThemeColors } from '../../constants/theme';
+import { useAuth } from '../../src/context/AuthContext';
 
 export default function ProcedureDetailScreen() {
     const { slug } = useLocalSearchParams<{ slug: string }>();
     const router = useRouter();
     const { colors, isDark } = useTheme();
     const styles = getStyles(colors, isDark);
+    const { user, isLoading: authLoading } = useAuth();
     const [procedure, setProcedure] = useState<ProcedureWithDetails | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isFavorite, setIsFavorite] = useState(false);
     const [favLoading, setFavLoading] = useState(false);
     const [exportingPdf, setExportingPdf] = useState(false);
-    const [isGuest, setIsGuest] = useState(false);
     const [pdfUri, setPdfUri] = useState<string | null>(null);
     const [showPdfPreview, setShowPdfPreview] = useState(false);
     const insets = useSafeAreaInsets();
+
+    // Determinar si el usuario es invitado (no autenticado)
+    const isGuest = !user && !authLoading;
 
     useEffect(() => {
         const fetchProcedure = async () => {
@@ -32,14 +35,9 @@ export default function ProcedureDetailScreen() {
                 const data = await procedureService.getProcedureBySlug(slug);
                 setProcedure(data);
 
-                // Check if user is logged in
-                const currentUser = await authService.getCurrentUser();
-                const guest = !currentUser;
-                setIsGuest(guest);
-
-                // Check favorite status
+                // Check favorite status usando el estado del AuthContext
                 if (data) {
-                    if (guest) {
+                    if (isGuest) {
                         // Modo invitado: verificar en caché local
                         type CachedFav = { procedure?: { id: string }; id: string };
                         const cached = await readCachedFavorites<CachedFav[]>([]);
@@ -61,10 +59,24 @@ export default function ProcedureDetailScreen() {
             }
         };
         fetchProcedure();
-    }, [slug]);
+    }, [slug, isGuest]);
 
-    const toggleFavorite = async (proc: ProcedureWithDetails) => {
-        console.log('[FAVORITES] Clic en favorito:', proc.slug, 'Estado previo:', isFavorite);
+    // ============================================================
+    // FUNCIÓN UNIFICADA PARA TOGGLE DE FAVORITOS
+    // Valida autenticación ANTES de hacer cualquier petición
+    // ============================================================
+    const handleToggleFavorite = async (proc: ProcedureWithDetails) => {
+        console.log('[FAVORITES] Intento de toggle favorito:', proc.slug, 'Estado previo:', isFavorite, 'isGuest:', isGuest);
+
+        // Validar autenticación ANTES de proceder
+        if (isGuest || !user) {
+            console.log('[FAVORITES] Usuario no autenticado - bloqueando acción');
+            Alert.alert(
+                'Inicio de sesión obligatorio',
+                'Es obligatorio iniciar sesión para añadir o actualizar trámites en tus favoritos.'
+            );
+            return;
+        }
 
         if (favLoading) return;
         setFavLoading(true);
@@ -75,48 +87,29 @@ export default function ProcedureDetailScreen() {
         setIsFavorite(!wasFavorite);
 
         try {
-            if (isGuest) {
-                // Modo invitado: guardar en AsyncStorage local
-                type CachedFav = { procedure?: { id: string }; id: string };
-                const cached = await readCachedFavorites<CachedFav[]>([]);
-                const favs: CachedFav[] = Array.isArray(cached) ? cached : [];
-
-                if (wasFavorite) {
-                    // Quitar de favoritos
-                    const updated = favs.filter((f) => f.procedure?.id !== proc.id && f.id !== proc.id);
-                    await cacheFavorites(updated);
-                    Alert.alert('Eliminado', 'Trámite eliminado de tus favoritos.');
-                } else {
-                    // Añadir a favoritos
-                    const newFav = {
-                        id: `guest_${Date.now()}`,
-                        procedure_id: proc.id,
-                        created_at: new Date().toISOString(),
-                        procedure: proc,
-                    };
-                    favs.unshift(newFav);
-                    await cacheFavorites(favs);
-                    Alert.alert('¡Guardado! 💙', 'Trámite añadido a tus favoritos.');
+            // Usuario autenticado: usar Supabase
+            if (wasFavorite) {
+                console.log('[FAVORITES] Eliminando de favoritos en Supabase...');
+                const result = await favoriteService.removeFavorite(proc.id);
+                if (!result.success) {
+                    throw new Error(result.error?.message || 'No se pudo eliminar de favoritos');
                 }
+                console.log('[FAVORITES] Eliminado correctamente');
+                Alert.alert('Eliminado', 'Trámite eliminado de tus favoritos.');
             } else {
-                // Usuario autenticado: usar Supabase
-                if (wasFavorite) {
-                    const result = await favoriteService.removeFavorite(proc.id);
-                    if (!result.success) {
-                        throw new Error('No se pudo eliminar de favoritos');
-                    }
-                    Alert.alert('Eliminado', 'Trámite eliminado de tus favoritos.');
-                } else {
-                    const result = await favoriteService.addFavorite(proc.id);
-                    if (!result.success) {
-                        throw new Error('No se pudo añadir a favoritos');
-                    }
-                    Alert.alert('¡Guardado! 💙', 'Trámite añadido a tus favoritos.');
+                console.log('[FAVORITES] Añadiendo a favoritos en Supabase...');
+                const result = await favoriteService.addFavorite(proc.id);
+                if (!result.success) {
+                    throw new Error(result.error?.message || 'No se pudo añadir a favoritos');
                 }
+                console.log('[FAVORITES] Añadido correctamente');
+                Alert.alert('¡Guardado! 💙', 'Trámite añadido a tus favoritos.');
             }
-        } catch {
+        } catch (error) {
             // Revertir el cambio optimista en caso de error
             setIsFavorite(wasFavorite);
+            const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+            console.error('[FAVORITES] Error al actualizar favoritos:', errorMessage);
             Alert.alert('Error', 'No se pudo actualizar favoritos. Inténtalo de nuevo.');
         } finally {
             setFavLoading(false);
@@ -214,7 +207,7 @@ export default function ProcedureDetailScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={styles.bookmarkButton}
-                    onPress={() => toggleFavorite(procedure)}
+                    onPress={() => handleToggleFavorite(procedure)}
                     disabled={favLoading}
                     activeOpacity={0.75}
                     accessibilityLabel={isFavorite ? 'Eliminar de favoritos' : 'Añadir a favoritos'}
@@ -323,7 +316,7 @@ export default function ProcedureDetailScreen() {
             {/* Guardar en favoritos banner */}
             <TouchableOpacity
                 style={[styles.favBanner, isFavorite && styles.favBannerActive]}
-                onPress={() => toggleFavorite(procedure)}
+                onPress={() => handleToggleFavorite(procedure)}
                 disabled={favLoading}
                 activeOpacity={0.8}
             >

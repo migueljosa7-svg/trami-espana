@@ -148,11 +148,15 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 2,
         minHeight: 100,
+        // v1.2.5: icono + texto centrados simetricamente (columna).
+        flexDirection: 'column',
+        alignItems: 'center',
         justifyContent: 'center',
     },
     categoryIcon: {
         fontSize: 24,
-        marginBottom: 6
+        marginBottom: 6,
+        textAlign: 'center',
     },
     categoryName: {
         fontSize: 13,

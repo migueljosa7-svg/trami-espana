@@ -332,7 +332,7 @@ export default function AssistantScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       {/* Header */}
@@ -520,10 +520,6 @@ export default function AssistantScreen() {
       </ScrollView>
 
       {/* Input Bar */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-      >
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
             <TextInput
@@ -575,7 +571,6 @@ export default function AssistantScreen() {
             )}
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
     </KeyboardAvoidingView>
   );
 }

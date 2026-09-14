@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Alert, Modal } from 'react-native';
-import { useLocalSearchParams, useRouter, useNavigation, Stack } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,7 +14,6 @@ import { useChecklist } from '../../src/hooks/useChecklist';
 export default function ProcedureDetailScreen() {
     const { slug } = useLocalSearchParams<{ slug: string }>();
     const router = useRouter();
-    const navigation = useNavigation();
     const { colors, isDark } = useTheme();
     const styles = getStyles(colors, isDark);
     const { user, isLoading: authLoading } = useAuth();
@@ -25,9 +24,6 @@ export default function ProcedureDetailScreen() {
     const [exportingPdf, setExportingPdf] = useState(false);
     const [pdfUri, setPdfUri] = useState<string | null>(null);
     const [showPdfPreview, setShowPdfPreview] = useState(false);
-    // Modal de confirmación al salir / volver atrás.
-    const [showExitConfirm, setShowExitConfirm] = useState(false);
-    const pendingExitAction = useRef<unknown>(null);
     const insets = useSafeAreaInsets();
 
     // IDs de checklist: requisitos + documentos + pasos. Reactivo con useChecklist.
@@ -53,38 +49,8 @@ export default function ProcedureDetailScreen() {
     // Determinar si el usuario es invitado (no autenticado)
     const isGuest = !user && !authLoading;
 
-    // ============================================================
-    // Modal de confirmaciÃ³n al salir / volver atrÃ¡s (Item 4)
-    // Intercepta la eliminaciÃ³n de la pantalla: botÃ³n atrÃ¡s del header
-    // nativo, gesto iOS, router.back() y botÃ³n fÃ­sico de Android.
-    // ============================================================
-    useEffect(() => {
-        if (!procedure) return undefined;
-        const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-            // Bloquear la salida y pedir confirmaciÃ³n.
-            e.preventDefault();
-            pendingExitAction.current = e.data?.action ?? null;
-            setShowExitConfirm(true);
-        });
-        return unsubscribe;
-    }, [navigation, procedure]);
+    // NOTA v1.2.5: sin modal de salida aqui. Atras = router.back(). El modal de salida vive solo en (tabs)/_layout.
 
-    const handleExitConfirm = () => {
-        setShowExitConfirm(false);
-        const action = pendingExitAction.current;
-        pendingExitAction.current = null;
-        if (action) {
-            // Re-enviar la acciÃ³n pendiente (el usuario confirmÃ³ salir).
-            navigation.dispatch(action as never);
-        } else {
-            router.back();
-        }
-    };
-
-    const handleExitCancel = () => {
-        setShowExitConfirm(false);
-        pendingExitAction.current = null;
-    };
 
     useEffect(() => {
         const fetchProcedure = async () => {
@@ -538,42 +504,7 @@ export default function ProcedureDetailScreen() {
             </View>
         </Modal>
 
-        {/* Modal de confirmación al salir / volver atrás */}
-        <Modal
-            visible={showExitConfirm}
-            transparent
-            animationType="fade"
-            onRequestClose={handleExitCancel}
-        >
-            <View style={styles.exitOverlay}>
-                <View style={styles.exitCard}>
-                    <View style={styles.exitIconWrap}>
-                        <Ionicons name="exit-outline" size={34} color={colors.warning} />
-                    </View>
-                    <Text style={styles.exitTitle}>¿Salir del trámite?</Text>
-                    <Text style={styles.exitMessage}>
-                        Tu checklist y favoritos se guardan automáticamente. Podrás
-                        continuar este trámite cuando vuelvas a abrirlo.
-                    </Text>
-                    <View style={styles.exitActions}>
-                        <TouchableOpacity
-                            style={styles.exitCancelBtn}
-                            onPress={handleExitCancel}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.exitCancelText}>Continuar aquí</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.exitConfirmBtn}
-                            onPress={handleExitConfirm}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.exitConfirmText}>Salir</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </View>
-        </Modal>
+        {/* v1.2.5: sin modal de salida en detalle; atras = router.back(). */}
         </SafeAreaView>
     );
 }
@@ -921,77 +852,6 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         color: colors.textMuted,
     },
     // Modal de confirmación al salir
-    exitOverlay: {
-        flex: 1,
-        backgroundColor: colors.overlay,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 24,
-    },
-    exitCard: {
-        width: '100%',
-        maxWidth: 360,
-        backgroundColor: colors.card,
-        borderRadius: 20,
-        padding: 24,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: colors.border,
-    },
-    exitIconWrap: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
-        backgroundColor: colors.warningBackground,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 14,
-    },
-    exitTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: colors.text,
-        textAlign: 'center',
-        marginBottom: 8,
-    },
-    exitMessage: {
-        fontSize: 14,
-        lineHeight: 20,
-        color: colors.textSecondary,
-        textAlign: 'center',
-        marginBottom: 20,
-    },
-    exitActions: {
-        flexDirection: 'row',
-        gap: 10,
-        width: '100%',
-    },
-    exitCancelBtn: {
-        flex: 1,
-        paddingVertical: 13,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: colors.border,
-        alignItems: 'center',
-        backgroundColor: colors.background,
-    },
-    exitCancelText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: colors.textSecondary,
-    },
-    exitConfirmBtn: {
-        flex: 1,
-        paddingVertical: 13,
-        borderRadius: 12,
-        backgroundColor: colors.primary,
-        alignItems: 'center',
-    },
-    exitConfirmText: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#ffffff',
-    },
     // PDF Modal styles
     pdfModalContainer: {
         flex: 1,

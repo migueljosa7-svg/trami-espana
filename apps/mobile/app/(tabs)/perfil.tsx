@@ -582,6 +582,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         width: '100%',
         paddingVertical: 14,
         paddingHorizontal: 16,
+        gap: 12,
     },
     menuRowBorder: {
         borderBottomWidth: 1,

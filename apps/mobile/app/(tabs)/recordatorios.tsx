@@ -128,15 +128,16 @@ async function scheduleNotification(title: string, body: string, date: Date): Pr
     return result.dayBefore || result.dayOf;
 }
 
-// Simple date string formatter for the input (YYYY-MM-DD)
-function formatDateForInput(date: Date): string {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
+/** Fecha legible para el boton selector (DD/MM/AAAA). */
+function formatDateForDisplay(date: Date): string {
     const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const y = date.getFullYear();
+    return `${d}/${m}/${y}`;
 }
 
-function parseDateInput(value: string): Date | null {
+/** Parsea claves internas YYYY-MM-DD (vista calendario). No es entrada manual. */
+export function parseDateKey(value: string): Date | null {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
     const d = new Date(value + 'T10:00:00');
     return isNaN(d.getTime()) ? null : d;
@@ -152,10 +153,10 @@ function formatTimeForDisplay(date: Date): string {
     return `${h}:${m}`;
 }
 
-/** Combina la fecha (AAAA-MM-DD) con la hora seleccionada del formTime. */
-function mergeDateAndTime(dateStr: string, time: Date): Date | null {
-    const base = parseDateInput(dateStr);
-    if (!base) return null;
+/** Combina la fecha (Date nativo del picker) con la hora seleccionada. */
+function mergeDateAndTime(date: Date, time: Date): Date | null {
+    if (!date || isNaN(date.getTime())) return null;
+    const base = new Date(date);
     base.setHours(time.getHours(), time.getMinutes(), 0, 0);
     return base;
 }
@@ -200,7 +201,9 @@ export default function RemindersScreen() {
 
     // New reminder form state
     const [formTitle, setFormTitle] = useState('');
-    const [formDate, setFormDate] = useState(formatDateForInput(new Date(Date.now() + 7 * 86400000)));
+    // v1.2.5: fecha como Date nativo (DateTimePicker modo date). Sin texto manual.
+    const [formDateObj, setFormDateObj] = useState<Date>(() => new Date(Date.now() + 7 * 86400000));
+    const [showDatePicker, setShowDatePicker] = useState(false);
     const [formNotes, setFormNotes] = useState('');
     const [saving, setSaving] = useState(false);
     // Hora del recordatorio (Item 3). Valor por defecto 10:00.
@@ -263,9 +266,9 @@ export default function RemindersScreen() {
             Alert.alert('Campo requerido', 'Por favor introduce un título para el recordatorio.');
             return;
         }
-        const parsedDate = mergeDateAndTime(formDate, formTime);
+        const parsedDate = mergeDateAndTime(formDateObj, formTime);
         if (!parsedDate) {
-            Alert.alert('Fecha inválida', 'Introduce la fecha en formato AAAA-MM-DD (ej. 2025-12-01).');
+            Alert.alert('Fecha inválida', 'Elige la fecha con el selector de calendario.');
             return;
         }
 
@@ -337,7 +340,7 @@ export default function RemindersScreen() {
             setShowModal(false);
             setFormTitle('');
             setFormNotes('');
-            setFormDate(formatDateForInput(new Date(Date.now() + 7 * 86400000)));
+            setFormDateObj(new Date(Date.now() + 7 * 86400000));
             Alert.alert('¡Recordatorio creado!', successMsg);
         } catch (error) {
             // Log detallado del error para depuración
@@ -487,17 +490,8 @@ export default function RemindersScreen() {
                                         <Text style={styles.cardTitle}>{rem.title}</Text>
                                         {rem.description && <Text style={styles.cardNotes}>{rem.description}</Text>}
                                         <View style={styles.cardActions}>
-                                            <TouchableOpacity
-                                                style={[styles.actionBtn, { backgroundColor: colors.primarySoft }]}
-                                                onPress={() => {
-                                                    const date = new Date(rem.reminder_date);
-                                                    void addToDeviceCalendar(rem.title, date, rem.description || undefined);
-                                                }}
-                                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                            >
-                                                <Ionicons name="calendar-outline" size={14} color={colors.primary} />
-                                                <Text style={[styles.actionBtnText, { color: colors.primary }]}>Añadir al Calendario</Text>
-                                            </TouchableOpacity>
+                                            {/* v1.2.5: sin boton manual de calendario. La sincronizacion
+                                                es automatica al guardar (ver handleCreateReminder). */}
                                             <TouchableOpacity
                                                 style={[styles.actionBtn, { backgroundColor: colors.chip }]}
                                                 onPress={() => {
@@ -580,16 +574,36 @@ export default function RemindersScreen() {
                             autoFocus
                         />
 
-                        <Text style={styles.fieldLabel}>Fecha (AAAA-MM-DD) *</Text>
-                        <TextInput
-                            style={styles.fieldInput}
-                            value={formDate}
-                            onChangeText={setFormDate}
-                            placeholder="2025-12-01"
-                            placeholderTextColor="#94a3b8"
-                            keyboardType="numeric"
-                            maxLength={10}
-                        />
+                        <Text style={styles.fieldLabel}>Fecha *</Text>
+                        <TouchableOpacity
+                            style={styles.timeField}
+                            onPress={() => setShowDatePicker(true)}
+                            activeOpacity={0.75}
+                            accessibilityLabel="Elegir fecha del recordatorio"
+                            accessibilityRole="button"
+                        >
+                            <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+                            <Text style={styles.timeFieldText}>{formatDateForDisplay(formDateObj)}</Text>
+                            <Text style={styles.timeFieldHint}>Toca para elegir fecha</Text>
+                        </TouchableOpacity>
+
+                        {showDatePicker && (
+                            <DateTimePicker
+                                value={formDateObj}
+                                mode="date"
+                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                onChange={(event: DateTimePickerEvent, selectedDate?: Date) => {
+                                    if (Platform.OS === 'ios') {
+                                        // iOS: mantiene el selector abierto mientras se gira.
+                                        if (selectedDate) setFormDateObj(selectedDate);
+                                    } else {
+                                        // Android: el dialogo se cierra al elegir/descartar.
+                                        setShowDatePicker(false);
+                                        if (event.type === 'set' && selectedDate) setFormDateObj(selectedDate);
+                                    }
+                                }}
+                            />
+                        )}
 
                         <Text style={styles.fieldLabel}>Hora *</Text>
                         <TouchableOpacity

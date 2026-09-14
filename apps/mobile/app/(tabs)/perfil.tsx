@@ -218,17 +218,15 @@ export default function ProfileScreen() {
                                     accessibilityRole="button"
                                     activeOpacity={0.7}
                                 >
-                                    <Ionicons name={item.icon} size={18} color="#64748b" style={styles.menuIcon} />
+                                    <Ionicons name={item.icon} size={22} color="#64748b" style={styles.menuIcon} />
                                     <Text
-                                        style={[styles.menuLabel, { flex: 1, marginRight: 8, color: colors.text }]}
+                                        style={styles.menuLabel}
                                         numberOfLines={1}
                                         ellipsizeMode="tail"
                                     >
                                         {item.label}
                                     </Text>
-                                    <View style={styles.menuChevronFixed}>
-                                        <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
-                                    </View>
+                                    <Ionicons name="chevron-forward" size={20} color="#cbd5e1" style={styles.menuChevron} />
                                 </TouchableOpacity>
                             </Link>
                         ))}
@@ -574,28 +572,28 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     },
     menuRow: {
         flexDirection: 'row',
-        flexWrap: 'nowrap',
         alignItems: 'center',
-        // space-between: el chevron queda fijado quirúrgicamente en el
-        // borde derecho de la tarjeta aunque el texto sea largo.
-        justifyContent: 'space-between',
-        width: '100%',
         paddingVertical: 14,
         paddingHorizontal: 16,
-        gap: 12,
+        width: '100%',
     },
     menuRowBorder: {
         borderBottomWidth: 1,
         borderBottomColor: colors.chip,
     },
     menuIcon: {
-        marginRight: 12,
+        marginRight: 14,
     },
     menuLabel: {
         flex: 1,
-        marginRight: 8,
-        fontSize: 14,
+        fontSize: 15,
+        fontWeight: '500',
+        textAlign: 'left',
         color: colors.text,
+    },
+    menuChevron: {
+        alignSelf: 'center',
+        opacity: 0.5,
     },
     // Chevron de fila: nunca se encoge ni salta de línea; centrado
     // verticalmente respecto a la fila (alineación del icono) y con el
@@ -603,6 +601,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     menuChevronFixed: {
         flexShrink: 0,
         alignSelf: 'center',
+        opacity: 0.5,
     },
     // Selector de idioma
     langFlag: {

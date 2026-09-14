@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Tabs, useRouter, useSegments } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import {
     BackHandler,
     Modal,
@@ -18,7 +18,6 @@ export default function TabsLayout() {
     const { t } = useTranslation();
     const { colors, isDark } = useTheme();
     const router = useRouter();
-    const segments = useSegments();
     const bottomInset = useBottomInset();
 
     // ============================================================
@@ -40,27 +39,20 @@ export default function TabsLayout() {
     // ============================================================
     const handleBackPress = useCallback((): boolean => {
         if (Platform.OS !== 'android') return false;
-        // v1.2.5: el modal de salida es EXCLUSIVO de las pestanas raiz
-        // del menu principal ((tabs)). Si la ruta activa NO es una de
-        // las tabs raiz (p. ej. procedure/[slug] u otra pantalla del
-        // stack fuera de tabs), no interceptar: devolver false para que
-        // el Stack haga el pop normal con router.back().
-        const seg = segments as string[];
-        // segments tipico en tabs raiz: ["(tabs)"] o ["(tabs)","index"|...].
-        // Cualquier segmento extra (p. ej. ["(tabs)","procedure"...] o
-        // rutas fuera de tabs) => no es raiz => no mostrar modal.
-        const inTabsRoot = seg.length <= 2 && seg[0] === '(tabs)';
-        if (!inTabsRoot) return false;
-        if (router.canGoBack()) {
-            // Hay historial de navegación: volver a la pantalla anterior.
-            router.back();
-            return true; // Intercepta el evento
+        // Pantallas principales ((tabs)): si no hay historial (!canGoBack),
+        // interceptar el cierre (return true) y mostrar SIEMPRE el modal
+        // "¿Estás seguro de que quieres salir de la aplicación?".
+        // Solo "Salir" ejecuta BackHandler.exitApp().
+        if (!router.canGoBack()) {
+            setShowExitModal(true);
+            return true;
         }
-        // En la raíz de una pestaña principal: se detiene la salida
-        // directa (return true) y se abre el modal personalizado.
-        setShowExitModal(true);
+        // Pantallas secundarias (ej. procedure/[slug] o modal de nuevo
+        // recordatorio): NO mostrar el modal de la app. Volver limpio
+        // con router.back() manteniendo el listado cargado.
+        router.back();
         return true;
-    }, [router, segments]);
+    }, [router]);
 
     useEffect(() => {
         if (Platform.OS !== 'android') return undefined;

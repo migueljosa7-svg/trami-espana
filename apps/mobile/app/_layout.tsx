@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { I18nextProvider } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Linking from 'expo-linking';
 import { authService, getSupabaseClient, initializeSupabase } from '@trami-espana/shared';
 import { initI18n, getI18nInstance } from '../src/i18n';
 import { clearUserCaches, runLocalStorageMigration } from '../src/localCache';
@@ -66,9 +67,56 @@ function useSupabaseAutoRefresh() {
 
 function RootNavigation() {
     const { colors, isDark } = useTheme();
+    const router = useRouter();
     const [storageReady, setStorageReady] = useState(false);
 
     useSupabaseAutoRefresh();
+
+    // Captura del deep link de confirmación de Supabase (tramiespana:///auth/callback?code=...).
+    // Sin esto, al pulsar el enlace del email el SO abre la app pero la sesión PKCE
+    // nunca se intercambia y el usuario queda sin autenticar.
+    useEffect(() => {
+        const handleDeepLink = async (url: string | null) => {
+            if (!url) return;
+            try {
+                const parsed = Linking.parse(url);
+                const path = (parsed.path ?? '').replace(/^\/+/, '');
+                if (path !== 'auth/callback' && path !== 'login' && !url.includes('auth/callback')) {
+                    return;
+                }
+                const params = (parsed.queryParams ?? {}) as Record<string, string | undefined>;
+                const code = params.code;
+                if (code) {
+                    const client = getSupabaseClient();
+                    const { error } = await client.auth.exchangeCodeForSession(code);
+                    if (!error) {
+                        router.replace('/(tabs)');
+                        return;
+                    }
+                }
+                const hashParams = new URLSearchParams(url.split('#')[1] ?? '');
+                const accessToken = hashParams.get('access_token');
+                const refreshToken = hashParams.get('refresh_token');
+                if (accessToken && refreshToken) {
+                    const client = getSupabaseClient();
+                    const { error } = await client.auth.setSession({
+                        access_token: accessToken,
+                        refresh_token: refreshToken,
+                    });
+                    if (!error) {
+                        router.replace('/(tabs)');
+                        return;
+                    }
+                }
+                router.replace('/login?confirmed=true');
+            } catch {
+                router.replace('/login?confirmed=true');
+            }
+        };
+        void Linking.getInitialURL().then((url) => handleDeepLink(url));
+        const sub = Linking.addEventListener('url', (e) => void handleDeepLink(e.url));
+        return () => sub.remove();
+    }, [router]);
 
     useEffect(() => {
         let mounted = true;
@@ -117,6 +165,7 @@ function RootNavigation() {
                 <AuthProvider>
                     <Stack screenOptions={{ headerShown: false }}>
                         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                        <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
                         <Stack.Screen name="login" options={{ headerShown: false }} />
                         <Stack.Screen name="registro" options={{ headerShown: false }} />
                         <Stack.Screen name="recuperar-contrasena" options={{ headerShown: false }} />
@@ -126,6 +175,12 @@ function RootNavigation() {
                                 headerShown: true,
                                 title: 'Detalle del trámite',
                                 headerBackTitle: 'Atrás',
+                                // Tema oscuro total: la cabecera superior ("Detalle
+                                // del trámite") y la flecha de regreso ya no quedan
+                                // con fondo blanco en modo oscuro.
+                                headerStyle: { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' },
+                                headerTintColor: isDark ? '#FFFFFF' : '#0F172A',
+                                headerTitleStyle: { color: isDark ? '#FFFFFF' : '#0F172A' },
                             }}
                         />
                         <Stack.Screen name="error" options={{ headerShown: false }} />

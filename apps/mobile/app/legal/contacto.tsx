@@ -1,8 +1,11 @@
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { LEGAL_EMAIL_CONTACT, LEGAL_EMAIL_UNVERIFIED_NOTICE, LEGAL_DISCLAIMER } from '@trami-espana/shared';
 import LegalScreen from '../../components/LegalScreen';
+import { useTheme, ThemeColors } from '../../constants/theme';
 
 export default function ContactoScreen() {
+    const { colors } = useTheme();
+    const styles = getStyles(colors);
     const openMail = () => {
         Linking.openURL(`mailto:${LEGAL_EMAIL_CONTACT}`).catch(() => {});
     };
@@ -35,29 +38,29 @@ export default function ContactoScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
     card: {
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: colors.border,
         borderRadius: 12,
         padding: 16,
         marginBottom: 16,
     },
     label: {
         fontSize: 13,
-        color: '#64748b',
+        color: colors.textSecondary,
         marginBottom: 4,
     },
     email: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#2563eb',
+        color: colors.primary,
         textDecorationLine: 'underline',
         marginBottom: 12,
     },
     button: {
-        backgroundColor: '#2563eb',
+        backgroundColor: colors.primary,
         borderRadius: 10,
         paddingVertical: 12,
         alignItems: 'center',
@@ -68,21 +71,21 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     notice: {
-        backgroundColor: '#fef3c7',
+        backgroundColor: colors.warningBackground,
         borderWidth: 1,
-        borderColor: '#fde68a',
+        borderColor: colors.warningBorder,
         borderRadius: 10,
         padding: 12,
         marginBottom: 16,
     },
     noticeText: {
         fontSize: 12,
-        color: '#92400e',
+        color: colors.warningText,
         lineHeight: 17,
     },
     info: {
         fontSize: 13,
-        color: '#475569',
+        color: colors.textSecondary,
         lineHeight: 19,
     },
 });

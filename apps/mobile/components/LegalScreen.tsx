@@ -1,5 +1,6 @@
 import React from 'react';
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
+import { useTheme, ThemeColors } from '../constants/theme';
 
 export interface LegalSection {
     title: string;
@@ -28,6 +29,8 @@ export default function LegalScreen({
     footer,
     children,
 }: LegalScreenProps) {
+    const { colors } = useTheme();
+    const styles = getStyles(colors);
     return (
         <ScrollView
             style={styles.container}
@@ -57,10 +60,10 @@ export default function LegalScreen({
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8fafc',
+        backgroundColor: colors.background,
     },
     contentContainer: {
         padding: 20,
@@ -70,26 +73,26 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#0f172a',
+        color: colors.text,
         marginBottom: 8,
     },
     subtitle: {
         fontSize: 13,
-        color: '#64748b',
+        color: colors.textSecondary,
         marginBottom: 16,
         lineHeight: 18,
     },
     noticeBox: {
-        backgroundColor: '#fef3c7',
+        backgroundColor: colors.warningBackground,
         borderWidth: 1,
-        borderColor: '#fde68a',
+        borderColor: colors.warningBorder,
         borderRadius: 10,
         padding: 12,
         marginBottom: 16,
     },
     noticeText: {
         fontSize: 12,
-        color: '#92400e',
+        color: colors.warningText,
         lineHeight: 17,
     },
     section: {
@@ -98,17 +101,17 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#0f172a',
+        color: colors.text,
         marginBottom: 6,
     },
     sectionBody: {
         fontSize: 14,
-        color: '#334155',
+        color: colors.textSecondary,
         lineHeight: 21,
     },
     footer: {
         fontSize: 12,
-        color: '#94a3b8',
+        color: colors.textMuted,
         lineHeight: 17,
         marginTop: 12,
     },

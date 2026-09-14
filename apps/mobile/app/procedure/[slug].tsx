@@ -1,17 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Alert, Modal } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useNavigation, Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { procedureService, favoriteService, ProcedureWithDetails } from '@trami-espana/shared';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { generateProcedurePdf, sharePdf } from '../../src/utils/exportPdf';
 import { readCachedFavorites } from '../../src/localCache';
 import { useTheme, ThemeColors } from '../../constants/theme';
 import { useAuth } from '../../src/context/AuthContext';
+import { useChecklist } from '../../src/hooks/useChecklist';
 
 export default function ProcedureDetailScreen() {
     const { slug } = useLocalSearchParams<{ slug: string }>();
     const router = useRouter();
+    const navigation = useNavigation();
     const { colors, isDark } = useTheme();
     const styles = getStyles(colors, isDark);
     const { user, isLoading: authLoading } = useAuth();
@@ -22,10 +25,66 @@ export default function ProcedureDetailScreen() {
     const [exportingPdf, setExportingPdf] = useState(false);
     const [pdfUri, setPdfUri] = useState<string | null>(null);
     const [showPdfPreview, setShowPdfPreview] = useState(false);
+    // Modal de confirmación al salir / volver atrás.
+    const [showExitConfirm, setShowExitConfirm] = useState(false);
+    const pendingExitAction = useRef<unknown>(null);
     const insets = useSafeAreaInsets();
+
+    // IDs de checklist: requisitos + documentos + pasos. Reactivo con useChecklist.
+    const checklistIds = useMemo(() => {
+        if (!procedure) return [] as string[];
+        const ids: string[] = [];
+        (procedure.requirements ?? []).forEach((r, i) => ids.push(`req-${r.id || i}`));
+        (procedure.documents ?? []).forEach((d, i) => ids.push(`doc-${d.id || i}`));
+        (procedure.steps ?? []).forEach((s, i) => ids.push(`step-${s.id || i}`));
+        return ids;
+    }, [procedure]);
+    const {
+        checkedItems,
+        toggleItem,
+        totalItems: checklistTotal,
+        checkedCount: checklistCompleted,
+        progressPercent: checklistProgressPercent,
+    } = useChecklist(slug ?? '', checklistIds);
+    // Cabecera adaptada al tema: fondo dinámico (blanco en claro, oscuro en dark)
+    // para que el SafeArea/Header no quede en #FFFFFF con el modo oscuro activo.
+    const topBackground = isDark ? '#0F172A' : '#FFFFFF';
 
     // Determinar si el usuario es invitado (no autenticado)
     const isGuest = !user && !authLoading;
+
+    // ============================================================
+    // Modal de confirmaciÃ³n al salir / volver atrÃ¡s (Item 4)
+    // Intercepta la eliminaciÃ³n de la pantalla: botÃ³n atrÃ¡s del header
+    // nativo, gesto iOS, router.back() y botÃ³n fÃ­sico de Android.
+    // ============================================================
+    useEffect(() => {
+        if (!procedure) return undefined;
+        const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+            // Bloquear la salida y pedir confirmaciÃ³n.
+            e.preventDefault();
+            pendingExitAction.current = e.data?.action ?? null;
+            setShowExitConfirm(true);
+        });
+        return unsubscribe;
+    }, [navigation, procedure]);
+
+    const handleExitConfirm = () => {
+        setShowExitConfirm(false);
+        const action = pendingExitAction.current;
+        pendingExitAction.current = null;
+        if (action) {
+            // Re-enviar la acciÃ³n pendiente (el usuario confirmÃ³ salir).
+            navigation.dispatch(action as never);
+        } else {
+            router.back();
+        }
+    };
+
+    const handleExitCancel = () => {
+        setShowExitConfirm(false);
+        pendingExitAction.current = null;
+    };
 
     useEffect(() => {
         const fetchProcedure = async () => {
@@ -184,8 +243,27 @@ export default function ProcedureDetailScreen() {
     }
 
     return (
-        <>
-        <ScrollView style={styles.container} contentContainerStyle={{ padding: 16, paddingBottom: 60 + insets.bottom }}>
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: topBackground }]} edges={['top', 'bottom']}>
+            {/* Cabecera del Stack tematizada desde la propia pantalla: en
+                modo oscuro la franja superior ("Detalle del trámite") queda
+                #0F172A con texto claro, nunca blanca. Estas opciones
+                dinámicas sobreescriben/garantizan las del _layout raíz. */}
+            <Stack.Screen
+                options={{
+                    headerShown: true,
+                    title: 'Detalle del trámite',
+                    headerBackTitle: 'Atrás',
+                    headerStyle: { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' },
+                    headerTintColor: isDark ? '#FFFFFF' : '#0F172A',
+                    headerTitleStyle: { color: isDark ? '#FFFFFF' : '#0F172A' },
+                    headerShadowVisible: false,
+                }}
+            />
+            {/* StatusBar aplicada de forma uniforme en esta vista: con
+                backgroundColor enlazado al tema para que la franja superior
+                no aparezca en blanco en modo oscuro (Android). */}
+            <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={topBackground} />
+            <ScrollView style={styles.container} contentContainerStyle={{ padding: 16, paddingBottom: 60 + insets.bottom, backgroundColor: colors.background }}>
             {/* Back + Bookmark header row */}
             <View style={styles.topBar}>
                 <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.7}>
@@ -231,6 +309,38 @@ export default function ProcedureDetailScreen() {
                 <Text style={styles.title}>{procedure.title}</Text>
                 <Text style={styles.shortDesc}>{procedure.short_description}</Text>
 
+                {/* Barra de progreso del trámite (reactiva con useChecklist) */}
+                {checklistTotal > 0 && (
+                    <View
+                        style={[
+                            styles.progressCard,
+                            checklistProgressPercent >= 100 && styles.progressCardComplete,
+                        ]}
+                        accessibilityLabel={`Progreso del trámite: ${checklistCompleted} de ${checklistTotal} (${checklistProgressPercent}%)`}
+                    >
+                        <View style={styles.progressHeader}>
+                            <Text style={styles.progressLabel}>
+                                Progreso: {checklistCompleted}/{checklistTotal} completados - {checklistProgressPercent}%
+                            </Text>
+                            {checklistProgressPercent >= 100 && (
+                                <View style={styles.progressDoneBadge}>
+                                    <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+                                    <Text style={styles.progressDoneText}>Completado</Text>
+                                </View>
+                            )}
+                        </View>
+                        <View style={styles.progressTrack}>
+                            <View
+                                style={[
+                                    styles.progressFill,
+                                    checklistProgressPercent >= 100 && styles.progressFillComplete,
+                                    { width: `${checklistProgressPercent}%` },
+                                ]}
+                            />
+                        </View>
+                    </View>
+                )}
+
                 <View style={styles.metaGrid}>
                     <View style={styles.metaItem}>
                         <Text style={styles.metaLabel}>Coste</Text>
@@ -252,12 +362,28 @@ export default function ProcedureDetailScreen() {
             {procedure.requirements && procedure.requirements.length > 0 && (
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Requisitos</Text>
-                    {procedure.requirements.map((req, idx) => (
-                        <View key={req.id || idx} style={styles.listItem}>
-                            <Text style={styles.bullet}>•</Text>
-                            <Text style={styles.listText}>{req.title}</Text>
-                        </View>
-                    ))}
+                    {procedure.requirements.map((req, idx) => {
+                        const id = `req-${req.id || idx}`;
+                        const done = !!checkedItems[id];
+                        return (
+                            <TouchableOpacity
+                                key={req.id || idx}
+                                style={[styles.listItem, done && styles.listItemDone]}
+                                onPress={() => toggleItem(id)}
+                                activeOpacity={0.7}
+                                accessibilityRole="checkbox"
+                                accessibilityState={{ checked: done }}
+                                accessibilityLabel={`Requisito: ${req.title}`}
+                            >
+                                <Ionicons
+                                    name={done ? 'checkmark-circle' : 'ellipse-outline'}
+                                    size={20}
+                                    color={done ? colors.success : colors.textMuted}
+                                />
+                                <Text style={[styles.listText, done && styles.listTextDone]}>{req.title}</Text>
+                            </TouchableOpacity>
+                        );
+                    })}
                 </View>
             )}
 
@@ -265,15 +391,31 @@ export default function ProcedureDetailScreen() {
             {procedure.documents && procedure.documents.length > 0 && (
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Documentación necesaria</Text>
-                    {procedure.documents.map((doc, idx) => (
-                        <View key={doc.id || idx} style={styles.listItem}>
-                            <Text style={styles.bullet}>📄</Text>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.listTextBold}>{doc.name}</Text>
-                                {doc.description && <Text style={styles.listSubtext}>{doc.description}</Text>}
-                            </View>
-                        </View>
-                    ))}
+                    {procedure.documents.map((doc, idx) => {
+                        const id = `doc-${doc.id || idx}`;
+                        const done = !!checkedItems[id];
+                        return (
+                            <TouchableOpacity
+                                key={doc.id || idx}
+                                style={[styles.listItem, done && styles.listItemDone]}
+                                onPress={() => toggleItem(id)}
+                                activeOpacity={0.7}
+                                accessibilityRole="checkbox"
+                                accessibilityState={{ checked: done }}
+                                accessibilityLabel={`Documento: ${doc.name}`}
+                            >
+                                <Ionicons
+                                    name={done ? 'checkmark-circle' : 'ellipse-outline'}
+                                    size={20}
+                                    color={done ? colors.success : colors.textMuted}
+                                />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.listTextBold, done && styles.listTextDone]}>{doc.name}</Text>
+                                    {doc.description && <Text style={styles.listSubtext}>{doc.description}</Text>}
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })}
                 </View>
             )}
 
@@ -281,17 +423,33 @@ export default function ProcedureDetailScreen() {
             {procedure.steps && procedure.steps.length > 0 && (
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Pasos a seguir</Text>
-                    {procedure.steps.map((step, idx) => (
-                        <View key={step.id || idx} style={styles.stepItem}>
-                            <View style={styles.stepNumber}>
-                                <Text style={styles.stepNumberText}>{step.order_index || idx + 1}</Text>
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.stepTitle}>{step.title}</Text>
-                                <Text style={styles.stepDesc}>{step.description}</Text>
-                            </View>
-                        </View>
-                    ))}
+                    {procedure.steps.map((step, idx) => {
+                        const id = `step-${step.id || idx}`;
+                        const done = !!checkedItems[id];
+                        return (
+                            <TouchableOpacity
+                                key={step.id || idx}
+                                style={[styles.stepItem, done && styles.listItemDone]}
+                                onPress={() => toggleItem(id)}
+                                activeOpacity={0.7}
+                                accessibilityRole="checkbox"
+                                accessibilityState={{ checked: done }}
+                                accessibilityLabel={`Paso: ${step.title}`}
+                            >
+                                <View style={[styles.stepNumber, done && styles.stepNumberDone]}>
+                                    {done ? (
+                                        <Ionicons name="checkmark" size={16} color="#ffffff" />
+                                    ) : (
+                                        <Text style={styles.stepNumberText}>{step.order_index || idx + 1}</Text>
+                                    )}
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.stepTitle, done && styles.listTextDone]}>{step.title}</Text>
+                                    <Text style={styles.stepDesc}>{step.description}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })}
                 </View>
             )}
 
@@ -379,11 +537,51 @@ export default function ProcedureDetailScreen() {
                 </View>
             </View>
         </Modal>
-    </>
+
+        {/* Modal de confirmación al salir / volver atrás */}
+        <Modal
+            visible={showExitConfirm}
+            transparent
+            animationType="fade"
+            onRequestClose={handleExitCancel}
+        >
+            <View style={styles.exitOverlay}>
+                <View style={styles.exitCard}>
+                    <View style={styles.exitIconWrap}>
+                        <Ionicons name="exit-outline" size={34} color={colors.warning} />
+                    </View>
+                    <Text style={styles.exitTitle}>¿Salir del trámite?</Text>
+                    <Text style={styles.exitMessage}>
+                        Tu checklist y favoritos se guardan automáticamente. Podrás
+                        continuar este trámite cuando vuelvas a abrirlo.
+                    </Text>
+                    <View style={styles.exitActions}>
+                        <TouchableOpacity
+                            style={styles.exitCancelBtn}
+                            onPress={handleExitCancel}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={styles.exitCancelText}>Continuar aquí</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.exitConfirmBtn}
+                            onPress={handleExitConfirm}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={styles.exitConfirmText}>Salir</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+        </SafeAreaView>
     );
 }
 
 const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
+    safeArea: {
+        flex: 1,
+    },
     container: {
         flex: 1,
         backgroundColor: colors.background,
@@ -510,6 +708,62 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         marginBottom: 16,
         color: colors.textSecondary,
     },
+    progressCard: {
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 14,
+        borderWidth: 1,
+        backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+        borderColor: colors.border,
+    },
+    progressHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+    },
+    progressLabel: {
+        flex: 1,
+        fontSize: 13,
+        fontWeight: '700',
+        color: colors.text,
+        marginRight: 8,
+    },
+    progressTrack: {
+        height: 10,
+        borderRadius: 5,
+        overflow: 'hidden',
+        backgroundColor: isDark ? '#334155' : '#E2E8F0',
+    },
+    progressFill: {
+        height: '100%',
+        borderRadius: 5,
+        backgroundColor: colors.success,
+    },
+    // Trámite 100% completado: refuerza el color e indica éxito visual.
+    progressCardComplete: {
+        backgroundColor: isDark ? '#0D2818' : '#F0FDF4',
+        borderColor: isDark ? '#1A4A2E' : '#BBF7D0',
+    },
+    progressFillComplete: {
+        backgroundColor: isDark ? '#34D399' : '#059669',
+    },
+    progressDoneBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: colors.successBackground,
+        borderWidth: 1,
+        borderColor: colors.successBorder,
+        borderRadius: 999,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+    },
+    progressDoneText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: colors.successText,
+    },
     metaGrid: {
         flexDirection: 'row',
         borderTopWidth: 1,
@@ -565,6 +819,13 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         lineHeight: 20,
         color: colors.text,
     },
+    listTextDone: {
+        textDecorationLine: 'line-through',
+        opacity: 0.6,
+    },
+    listItemDone: {
+        opacity: 0.85,
+    },
     listTextBold: {
         fontSize: 14,
         fontWeight: '600',
@@ -587,6 +848,9 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: colors.primary,
+    },
+    stepNumberDone: {
+        backgroundColor: colors.success,
     },
     stepNumberText: {
         fontSize: 13,
@@ -655,6 +919,78 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         fontSize: 11,
         textAlign: 'center',
         color: colors.textMuted,
+    },
+    // Modal de confirmación al salir
+    exitOverlay: {
+        flex: 1,
+        backgroundColor: colors.overlay,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    exitCard: {
+        width: '100%',
+        maxWidth: 360,
+        backgroundColor: colors.card,
+        borderRadius: 20,
+        padding: 24,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    exitIconWrap: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: colors.warningBackground,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 14,
+    },
+    exitTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: colors.text,
+        textAlign: 'center',
+        marginBottom: 8,
+    },
+    exitMessage: {
+        fontSize: 14,
+        lineHeight: 20,
+        color: colors.textSecondary,
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    exitActions: {
+        flexDirection: 'row',
+        gap: 10,
+        width: '100%',
+    },
+    exitCancelBtn: {
+        flex: 1,
+        paddingVertical: 13,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: colors.border,
+        alignItems: 'center',
+        backgroundColor: colors.background,
+    },
+    exitCancelText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: colors.textSecondary,
+    },
+    exitConfirmBtn: {
+        flex: 1,
+        paddingVertical: 13,
+        borderRadius: 12,
+        backgroundColor: colors.primary,
+        alignItems: 'center',
+    },
+    exitConfirmText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#ffffff',
     },
     // PDF Modal styles
     pdfModalContainer: {

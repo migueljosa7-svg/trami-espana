@@ -13,10 +13,13 @@ import {
 import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { authService } from '@trami-espana/shared';
+import { useTheme, ThemeColors } from '../constants/theme';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export default function ForgotPasswordScreen() {
+    const { colors } = useTheme();
+    const styles = getStyles(colors);
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -143,14 +146,14 @@ export default function ForgotPasswordScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: {
         flex: 1,
-        backgroundColor: '#f8fafc',
+        backgroundColor: colors.background,
     },
     container: {
         flex: 1,
-        backgroundColor: '#f8fafc',
+        backgroundColor: colors.background,
         padding: 24,
         paddingTop: 72,
     },
@@ -166,7 +169,7 @@ const styles = StyleSheet.create({
         width: 64,
         height: 64,
         borderRadius: 32,
-        backgroundColor: '#2563eb',
+        backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 14,
@@ -179,13 +182,13 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#0f172a',
+        color: colors.text,
         marginBottom: 6,
         textAlign: 'center',
     },
     subtitle: {
         fontSize: 13,
-        color: '#64748b',
+        color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 19,
     },
@@ -193,16 +196,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'flex-start',
         gap: 8,
-        backgroundColor: '#fef2f2',
+        backgroundColor: colors.errorBackground,
         borderWidth: 1,
-        borderColor: '#fecaca',
+        borderColor: colors.errorBorder,
         borderRadius: 12,
         padding: 12,
         marginBottom: 14,
     },
     errorText: {
         flex: 1,
-        color: '#b91c1c',
+        color: colors.errorText,
         fontSize: 13,
         lineHeight: 18,
         fontWeight: '500',
@@ -213,16 +216,16 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#475569',
+        color: colors.textSecondary,
         marginBottom: 6,
     },
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: colors.border,
         paddingHorizontal: 12,
         marginBottom: 16,
     },
@@ -233,10 +236,10 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingVertical: 12,
         fontSize: 15,
-        color: '#0f172a',
+        color: colors.text,
     },
     button: {
-        backgroundColor: '#2563eb',
+        backgroundColor: colors.primary,
         borderRadius: 12,
         paddingVertical: 14,
         alignItems: 'center',
@@ -261,19 +264,19 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
     },
     backLinkText: {
-        color: '#2563eb',
+        color: colors.primary,
         fontSize: 14,
         fontWeight: '600',
     },
     successCard: {
         flex: 1,
         justifyContent: 'center',
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderRadius: 20,
         padding: 28,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: colors.border,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
@@ -284,7 +287,7 @@ const styles = StyleSheet.create({
         width: 76,
         height: 76,
         borderRadius: 38,
-        backgroundColor: '#eff6ff',
+        backgroundColor: colors.primarySoft,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 18,
@@ -292,29 +295,29 @@ const styles = StyleSheet.create({
     successTitle: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#0f172a',
+        color: colors.text,
         marginBottom: 10,
     },
     successText: {
         fontSize: 14,
-        color: '#475569',
+        color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 21,
         marginBottom: 10,
     },
     successEmail: {
         fontWeight: '700',
-        color: '#0f172a',
+        color: colors.text,
     },
     successHint: {
         fontSize: 12,
-        color: '#94a3b8',
+        color: colors.textMuted,
         textAlign: 'center',
         lineHeight: 17,
         marginBottom: 22,
     },
     primaryButton: {
-        backgroundColor: '#2563eb',
+        backgroundColor: colors.primary,
         borderRadius: 12,
         paddingVertical: 14,
         paddingHorizontal: 28,

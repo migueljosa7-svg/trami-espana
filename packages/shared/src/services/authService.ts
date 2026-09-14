@@ -3,7 +3,7 @@
 // ===========================================
 // Servicio para gestionar autenticación con Supabase
 
-import { getSupabaseClient } from '../supabase';
+import { getSupabaseClient, readPersistedSupabaseSession } from '../supabase';
 import type { User, Session } from '@supabase/supabase-js';
 
 // ===========================================
@@ -76,6 +76,15 @@ export interface RegisterCredentials {
     password: string;
     confirmPassword: string;
     fullName?: string;
+    /** Deep link de retorno para el email de confirmación (Expo: Linking.createURL('/auth/callback')). */
+    emailRedirectTo?: string;
+    /**
+     * Idioma preferido del usuario (ISO 639-1, ej. 'es', 'en', 'ca'...).
+     * Se envía dentro de `options.data.locale` para que el correo de
+     * confirmación que envía Supabase se genere en el idioma seleccionado
+     * en la app (por defecto 'es').
+     */
+    locale?: string;
 }
 
 export interface AuthResponse {
@@ -95,7 +104,7 @@ export const authService = {
      */
     async register(credentials: RegisterCredentials): Promise<AuthResponse> {
         try {
-            const { email, password, confirmPassword, fullName } = credentials;
+            const { email, password, confirmPassword, fullName, emailRedirectTo, locale } = credentials;
 
             if (password !== confirmPassword) {
                 throw new AuthServiceError(
@@ -111,16 +120,24 @@ export const authService = {
                 );
             }
 
-                        const { data, error } = await getSupabaseClient().auth.signUp({
+                        const userLocale = (locale || 'es').toLowerCase();
+            const { data, error } = await getSupabaseClient().auth.signUp({
                 email,
                 password,
                 options: {
                     data: {
-                        full_name: fullName || null
+                        full_name: fullName || null,
+                        // Idioma de la app: Supabase localiza el email de
+                        // activación usando `locale` de los user_metadata
+                        // (código ISO abreviado, ej. 'es', 'ca', 'en').
+                        locale: userLocale
                     },
                     // Supabase enviará el email de confirmación automáticamente
                     // cuando la confirmación de email esté habilitada en el proyecto.
-                                        emailRedirectTo: getRedirectUrl('/login?confirmed=true')
+                    // Prioridad: deep link de Expo (Linking.createURL('/auth/callback'))
+                    // pasado desde la app móvil; fallback al redirect por defecto.
+                    emailRedirectTo:
+                        emailRedirectTo || getRedirectUrl('/login?confirmed=true')
                 }
             });
 
@@ -231,30 +248,67 @@ export const authService = {
 
     /**
      * Obtener la sesión actual
+     *
+     * Garantiza la lectura del token persistido (AsyncStorage en móvil)
+     * ANTES de marcar el estado inicial de autenticación:
+     *  1. Vía oficial: `supabase.auth.getSession()`, que espera la
+     *     rehidratación interna del cliente.
+     *  2. FALLBACK: si el cliente aún no tiene sesión en memoria (race
+     *     condition en el arranque), se lee el token directamente del
+     *     storage persistido (`sb-<ref>-auth-token`) y se reintroduce en
+     *     el cliente para que autoRefresh y las peticiones con RLS lo usen.
+     *
+     * Devuelve null SOLO si no existe sesión en memoria ni en disco:
+     * nunca se descarta una sesión válida por un error puntual.
      */
     async getSession(): Promise<Session | null> {
+        // 1) Vía oficial del cliente.
         try {
             const { data, error } = await getSupabaseClient().auth.getSession();
 
+            if (!error && data.session) {
+                return data.session;
+            }
             if (error) {
-                throw new AuthServiceError(
-                    'Error al obtener la sesión',
-                    'SESSION_ERROR',
-                    { originalMessage: error.message }
-                );
+                console.log('[AUTH] getSession devolvió error (se intentará el storage):', error.message);
             }
-
-            return data.session;
         } catch (error) {
-            if (error instanceof AuthServiceError) {
-                throw error;
-            }
-            throw new AuthServiceError(
-                'Error al obtener la sesión',
-                'SESSION_ERROR',
-                { originalError: error }
-            );
+            console.log('[AUTH] getSession lanzó error (se intentará el storage):', error);
         }
+
+        // 2) FALLBACK DE PERSISTENCIA: leer el token directamente del disco.
+        try {
+            if (typeof readPersistedSupabaseSession === 'function') {
+                const persisted = await readPersistedSupabaseSession();
+                if (persisted) {
+                    console.log('[AUTH] Sesión recuperada del almacenamiento persistido');
+                    try {
+                        // Reintroducir la sesión en el cliente para que
+                        // autoRefreshToken y las peticiones la utilicen.
+                        await getSupabaseClient().auth.setSession({
+                            access_token: persisted.access_token,
+                            refresh_token: persisted.refresh_token,
+                        });
+                        const { data: retry } = await getSupabaseClient().auth.getSession();
+                        if (retry?.session) {
+                            return retry.session;
+                        }
+                    } catch (restoreError) {
+                        console.log(
+                            '[AUTH] No se pudo restaurar en el cliente; se usa la sesión en disco:',
+                            restoreError
+                        );
+                    }
+                    // La sesión existe en disco: se devuelve siempre para
+                    // NO forzar un cierre de sesión injusto (p. ej. offline).
+                    return persisted;
+                }
+            }
+        } catch (fallbackError) {
+            console.log('[AUTH] Fallback de storage falló:', fallbackError);
+        }
+
+        return null;
     },
 
     /**
@@ -289,14 +343,22 @@ export const authService = {
      * Reenviar el email de confirmación de un registro aún no confirmado.
      * Usa la API oficial de Supabase (auth.resend).
      */
-    async resendConfirmation(email: string): Promise<{ error: Error | null }> {
+    async resendConfirmation(
+        email: string,
+        emailRedirectTo?: string
+    ): Promise<{ error: Error | null }> {
         try {
-                        const redirectTo = getRedirectUrl('/login?confirmed=true');
+            // Prioridad: deep link de Expo (Linking.createURL('/auth/callback'))
+            // pasado desde la app móvil; fallback al redirect por defecto.
+            const redirectTo = emailRedirectTo || getRedirectUrl('/login?confirmed=true');
 
+            // Nota: para el tipo 'signup', la API de Supabase NO permite
+            // sobrescribir `data` aquí; el idioma (locale) ya se guardó en
+            // user_metadata durante signUp y se reutiliza en el reenvío.
             const { error } = await getSupabaseClient().auth.resend({
                 type: 'signup',
                 email,
-                ...(redirectTo ? { options: { emailRedirectTo: redirectTo } } : {})
+                options: { emailRedirectTo: redirectTo }
             });
 
             if (error) {

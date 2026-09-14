@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, type ComponentProps } from 'react';
 import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Link, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -70,6 +70,16 @@ const isFreeProcedure = (procedure: ProcedureWithDetails): boolean => {
         cost === '0 €' ||
         cost === '0 eur'
     );
+};
+
+/** Icono de la tarjeta de trámite según su ámbito (Item 6). */
+const getProcedureIcon = (procedure: ProcedureWithDetails): ComponentProps<typeof Ionicons>['name'] => {
+    const scope = (procedure.scope ?? '').toLowerCase();
+    if (scope.includes('municipal')) return 'business';
+    if (scope.includes('autonom')) return 'map';
+    if (scope.includes('provincial')) return 'location';
+    if (scope.includes('estatal')) return 'flag';
+    return 'document-text';
 };
 
 // ===========================================
@@ -451,19 +461,30 @@ export default function SearchScreen() {
                     renderItem={({ item: proc }) => (
                         <Link href={`/procedure/${proc.slug}`} asChild>
                             <TouchableOpacity style={styles.card} activeOpacity={0.8}>
-                                <View style={styles.cardHeader}>
-                                    <Text style={styles.cardScope}>{proc.scope.toUpperCase()}</Text>
-                                    {proc.cost && (
-                                        <View style={[styles.costTag, proc.cost.toLowerCase().includes('gratuit') && styles.costTagFree]}>
-                                            <Text style={[styles.cardCost, proc.cost.toLowerCase().includes('gratuit') && styles.cardCostFree]}>
-                                                {proc.cost.length > 18 ? proc.cost.slice(0, 18) + '…' : proc.cost}
-                                            </Text>
-                                        </View>
+                                <View style={styles.cardIcon}>
+                                    {proc.category?.icon ? (
+                                        <Text style={styles.cardIconEmoji}>{proc.category.icon}</Text>
+                                    ) : (
+                                        <Ionicons name={getProcedureIcon(proc)} size={24} color={colors.primary} />
                                     )}
                                 </View>
-                                <Text style={styles.cardTitle}>{proc.title}</Text>
-                                <Text style={styles.cardDesc} numberOfLines={2}>{proc.short_description}</Text>
-                                <Text style={styles.cardArrow}>Ver detalles →</Text>
+                                <View style={styles.cardBody}>
+                                    <View style={styles.cardHeader}>
+                                        <Text style={styles.cardScope}>{proc.scope.toUpperCase()}</Text>
+                                        {proc.cost && (
+                                            <View style={[styles.costTag, proc.cost.toLowerCase().includes('gratuit') && styles.costTagFree]}>
+                                                <Text style={[styles.cardCost, proc.cost.toLowerCase().includes('gratuit') && styles.cardCostFree]}>
+                                                    {proc.cost.length > 18 ? proc.cost.slice(0, 18) + '…' : proc.cost}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                    <Text style={styles.cardTitle} numberOfLines={2}>{proc.title}</Text>
+                                    <Text style={styles.cardDesc} numberOfLines={2}>{proc.short_description}</Text>
+                                </View>
+                                <View style={styles.cardChevron}>
+                                    <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+                                </View>
                             </TouchableOpacity>
                         </Link>
                     )}
@@ -665,17 +686,35 @@ const getStyles = (colors: ThemeColors, _isDark: boolean) => StyleSheet.create({
         color: colors.textMuted,
     },
     card: {
-        borderRadius: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        borderRadius: 16,
         padding: 16,
-        marginBottom: 12,
+        marginBottom: 14,
         borderWidth: 1,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 3,
-        elevation: 1,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
         backgroundColor: colors.card,
         borderColor: colors.border,
+    },
+    cardIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: colors.primarySoft,
+        justifyContent: 'center',
+        alignItems: 'center',
+        flexShrink: 0,
+    },
+    cardIconEmoji: {
+        fontSize: 26,
+    },
+    cardBody: {
+        flex: 1,
     },
     cardHeader: {
         flexDirection: 'row',
@@ -683,7 +722,7 @@ const getStyles = (colors: ThemeColors, _isDark: boolean) => StyleSheet.create({
         alignItems: 'center',
         flexWrap: 'wrap',
         gap: 6,
-        marginBottom: 8
+        marginBottom: 6,
     },
     cardScope: {
         fontSize: 11,
@@ -724,13 +763,12 @@ const getStyles = (colors: ThemeColors, _isDark: boolean) => StyleSheet.create({
     cardDesc: {
         fontSize: 13,
         lineHeight: 19,
-        marginBottom: 8,
+        marginBottom: 2,
         color: colors.textSecondary,
     },
-    cardArrow: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: colors.primary,
+    cardChevron: {
+        alignSelf: 'center',
+        flexShrink: 0,
     },
     errorBox: {
         margin: 16,

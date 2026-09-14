@@ -12,12 +12,21 @@ import {
 } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
 import { authService } from '@trami-espana/shared';
+import { useTheme, ThemeColors } from '../constants/theme';
+import { getCurrentLanguage } from '../src/i18n';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const RESEND_COOLDOWN_SECONDS = 60;
+// Deep link de Expo al que apunta el email de activación (capturado en
+// app/_layout.tsx y app/auth/callback.tsx para completar la sesión PKCE).
+const EMAIL_REDIRECT_URL = Linking.createURL('/auth/callback');
 
 export default function RegisterScreen() {
     const router = useRouter();
+    const { colors } = useTheme();
+    const styles = getStyles(colors);
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -26,6 +35,9 @@ export default function RegisterScreen() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
+    const [resendInfo, setResendInfo] = useState<string | null>(null);
+    const [resending, setResending] = useState(false);
+    const [cooldown, setCooldown] = useState(0);
 
     const validate = (): string | null => {
         if (!fullName.trim()) return 'Introduce tu nombre para personalizar tu cuenta.';
@@ -46,12 +58,18 @@ export default function RegisterScreen() {
         }
         setLoading(true);
         try {
+            // Deep linking de Expo: el email de activación redirige a /auth/callback,
+            // capturado en app/_layout.tsx y AuthContext para completar la sesión.
             const { error: registerError, requiresEmailConfirmation } =
                 await authService.register({
                     email: email.trim(),
                     password,
                     confirmPassword,
                     fullName: fullName.trim(),
+                    emailRedirectTo: EMAIL_REDIRECT_URL,
+                    // Idioma seleccionado en la app para que Supabase localice
+                    // el email de activación (por defecto 'es').
+                    locale: getCurrentLanguage(),
                 });
             if (registerError) {
                 setError(authService.getErrorMessage(registerError.message));
@@ -72,6 +90,44 @@ export default function RegisterScreen() {
         }
     };
 
+    const startCooldown = () => {
+        setCooldown(RESEND_COOLDOWN_SECONDS);
+        const interval = setInterval(() => {
+            setCooldown((prev) => {
+                if (prev <= 1) {
+                    clearInterval(interval);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    };
+
+    const handleResendConfirmation = async () => {
+        if (resending || cooldown > 0 || !email.trim()) return;
+        setResending(true);
+        setError(null);
+        setResendInfo(null);
+        try {
+            const { error: resendError } = await authService.resendConfirmation(
+                email.trim(),
+                EMAIL_REDIRECT_URL
+            );
+            if (resendError) {
+                setError(authService.getErrorMessage(resendError.message));
+                return;
+            }
+            setResendInfo(
+                'Hemos reenviado el email de confirmación. Revisa tu bandeja de entrada y la carpeta de Spam/Correo no deseado.'
+            );
+            startCooldown();
+        } catch {
+            setError('No se pudo reenviar el email. Inténtalo de nuevo más tarde.');
+        } finally {
+            setResending(false);
+        }
+    };
+
     if (needsEmailConfirmation) {
         return (
             <View style={styles.container}>
@@ -86,8 +142,31 @@ export default function RegisterScreen() {
                         para activar tu cuenta.
                     </Text>
                     <Text style={styles.successHint}>
-                        Si no lo ves en unos minutos, revisa la carpeta de spam o publicidad.
+                        Revisa tu bandeja de entrada y también la carpeta de Spam o Correo no deseado.
+                        Si no lo encuentras en unos minutos, puedes reenviarlo.
                     </Text>
+                    {resendInfo && (
+                        <View style={styles.resendInfoBox}>
+                            <Ionicons name="checkmark-circle" size={18} color="#15803d" />
+                            <Text style={styles.resendInfoText}>{resendInfo}</Text>
+                        </View>
+                    )}
+                    <TouchableOpacity
+                        style={[styles.resendButton, (resending || cooldown > 0) && styles.buttonDisabled]}
+                        onPress={handleResendConfirmation}
+                        disabled={resending || cooldown > 0}
+                        activeOpacity={0.85}
+                    >
+                        {resending ? (
+                            <ActivityIndicator color="#2563eb" />
+                        ) : (
+                            <Text style={styles.resendButtonText}>
+                                {cooldown > 0
+                                    ? `Reenviar correo de confirmación (${cooldown}s)`
+                                    : 'Reenviar correo de confirmación'}
+                            </Text>
+                        )}
+                    </TouchableOpacity>
                     <Link href="/login" asChild>
                         <TouchableOpacity style={styles.primaryButton} activeOpacity={0.85}>
                             <Text style={styles.primaryButtonText}>Ir a iniciar sesión</Text>
@@ -220,14 +299,14 @@ export default function RegisterScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: {
         flex: 1,
-        backgroundColor: '#f8fafc',
+        backgroundColor: colors.background,
     },
     container: {
         flex: 1,
-        backgroundColor: '#f8fafc',
+        backgroundColor: colors.background,
         padding: 24,
         paddingTop: 72,
     },
@@ -243,7 +322,7 @@ const styles = StyleSheet.create({
         width: 64,
         height: 64,
         borderRadius: 32,
-        backgroundColor: '#2563eb',
+        backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 14,
@@ -256,12 +335,12 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 26,
         fontWeight: 'bold',
-        color: '#0f172a',
+        color: colors.text,
         marginBottom: 6,
     },
     subtitle: {
         fontSize: 13,
-        color: '#64748b',
+        color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 19,
     },
@@ -269,16 +348,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'flex-start',
         gap: 8,
-        backgroundColor: '#fef2f2',
+        backgroundColor: colors.errorBackground,
         borderWidth: 1,
-        borderColor: '#fecaca',
+        borderColor: colors.errorBorder,
         borderRadius: 12,
         padding: 12,
         marginBottom: 14,
     },
     errorText: {
         flex: 1,
-        color: '#b91c1c',
+        color: colors.errorText,
         fontSize: 13,
         lineHeight: 18,
         fontWeight: '500',
@@ -289,16 +368,16 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#475569',
+        color: colors.textSecondary,
         marginBottom: 6,
     },
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: colors.border,
         paddingHorizontal: 12,
         marginBottom: 14,
     },
@@ -309,13 +388,13 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingVertical: 12,
         fontSize: 15,
-        color: '#0f172a',
+        color: colors.text,
     },
     eyeButton: {
         padding: 4,
     },
     button: {
-        backgroundColor: '#2563eb',
+        backgroundColor: colors.primary,
         borderRadius: 12,
         paddingVertical: 14,
         alignItems: 'center',
@@ -335,26 +414,26 @@ const styles = StyleSheet.create({
     },
     footerText: {
         fontSize: 13,
-        color: '#64748b',
+        color: colors.textSecondary,
         marginBottom: 8,
     },
     loginLink: {
         paddingVertical: 4,
     },
     loginLinkText: {
-        color: '#2563eb',
+        color: colors.primary,
         fontSize: 14,
         fontWeight: '700',
     },
     successCard: {
         flex: 1,
         justifyContent: 'center',
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderRadius: 20,
         padding: 28,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: colors.border,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
@@ -365,7 +444,7 @@ const styles = StyleSheet.create({
         width: 76,
         height: 76,
         borderRadius: 38,
-        backgroundColor: '#eff6ff',
+        backgroundColor: colors.primarySoft,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 18,
@@ -373,29 +452,65 @@ const styles = StyleSheet.create({
     successTitle: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#0f172a',
+        color: colors.text,
         marginBottom: 10,
     },
     successText: {
         fontSize: 14,
-        color: '#475569',
+        color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 21,
         marginBottom: 10,
     },
     successEmail: {
         fontWeight: '700',
-        color: '#0f172a',
+        color: colors.text,
     },
     successHint: {
         fontSize: 12,
-        color: '#94a3b8',
+        color: colors.textMuted,
         textAlign: 'center',
         lineHeight: 17,
-        marginBottom: 22,
+        marginBottom: 16,
+    },
+    resendInfoBox: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+        backgroundColor: colors.successBackground,
+        borderWidth: 1,
+        borderColor: colors.successBorder,
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 14,
+    },
+    resendInfoText: {
+        flex: 1,
+        color: colors.successText,
+        fontSize: 13,
+        lineHeight: 18,
+        fontWeight: '500',
+    },
+    resendButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.primarySoft,
+        borderWidth: 1,
+        borderColor: colors.primary,
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        width: '100%',
+        marginBottom: 12,
+    },
+    resendButtonText: {
+        color: colors.primary,
+        fontWeight: '700',
+        fontSize: 14,
     },
     primaryButton: {
-        backgroundColor: '#2563eb',
+        backgroundColor: colors.primary,
         borderRadius: 12,
         paddingVertical: 14,
         paddingHorizontal: 28,

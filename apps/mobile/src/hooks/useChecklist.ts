@@ -49,6 +49,14 @@ export function useChecklist(procedureSlug: string, itemIds: string[]) {
   const totalItems = itemIds.length;
   const checkedCount = itemIds.filter(id => checkedItems[id]).length;
   const progress = totalItems > 0 ? checkedCount / totalItems : 0;
+  // Fórmula estricta solicitada en v1.2.3:
+  //   total > 0 ? Math.round((completados / total) * 100) : 0
+  // Cuenta TODOS los ítems reales del trámite (requisitos + documentos +
+  // pasos). Nunca divide sobre bases fijas (p. ej. /10) ni aplica
+  // redondeos intermedios que desvirtúen 6/6 -> 100%.
+  const progressPercent = totalItems > 0
+    ? Math.round((checkedCount / totalItems) * 100)
+    : 0;
 
   const resetChecklist = useCallback(async () => {
     setCheckedItems({});
@@ -65,6 +73,8 @@ export function useChecklist(procedureSlug: string, itemIds: string[]) {
     totalItems,
     checkedCount,
     progress,
+    /** Porcentaje 0-100 calculado con la fórmula estricta. */
+    progressPercent,
     isLoading,
     resetChecklist,
   };

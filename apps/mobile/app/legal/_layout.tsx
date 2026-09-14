@@ -1,15 +1,17 @@
 import { Stack } from 'expo-router';
+import { useTheme } from '../../constants/theme';
 
 export default function LegalLayout() {
+    const { colors, isDark } = useTheme();
     return (
         <Stack
             screenOptions={{
                 headerShown: true,
                 headerBackTitle: 'Volver',
-                headerTintColor: '#2563eb',
-                headerStyle: { backgroundColor: '#ffffff' },
-                headerTitleStyle: { color: '#0f172a' },
-                contentStyle: { backgroundColor: '#f8fafc' },
+                headerTintColor: colors.primary,
+                headerStyle: { backgroundColor: isDark ? '#0F172A' : '#ffffff' },
+                headerTitleStyle: { color: colors.text },
+                contentStyle: { backgroundColor: colors.background },
             }}
         >
             <Stack.Screen name="politica-privacidad" options={{ title: 'Política de privacidad' }} />

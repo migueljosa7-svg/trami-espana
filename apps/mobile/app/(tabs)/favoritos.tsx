@@ -95,7 +95,15 @@ export default function FavoritesScreen() {
                     renderItem={({ item }) => (
                         <Link key={item.id} href={`/procedure/${item.procedure.slug}`} asChild>
                             <TouchableOpacity style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]} accessibilityLabel={`Favorito: ${item.procedure.title}`}>
-                                <View style={styles.cardHeader}>
+                                <View style={[styles.cardIcon, { backgroundColor: colors.primarySoft }]}>
+                                    {item.procedure.category?.icon ? (
+                                        <Text style={styles.cardIconEmoji}>{item.procedure.category.icon}</Text>
+                                    ) : (
+                                        <Ionicons name="heart" size={22} color={colors.primary} />
+                                    )}
+                                </View>
+                                <View style={styles.cardBody}>
+                                    <View style={styles.cardHeader}>
                                     <Text style={[styles.cardScope, { color: colors.primary, backgroundColor: colors.primarySoft }]}>{item.procedure.scope.toUpperCase()}</Text>
                                     <TouchableOpacity
                                         onPress={() => {
@@ -122,10 +130,14 @@ export default function FavoritesScreen() {
                                         <Ionicons name="heart" size={20} color={colors.danger} />
                                     </TouchableOpacity>
                                 </View>
-                                <Text style={[styles.cardTitle, { color: colors.text }]}>{item.procedure.title}</Text>
-                                <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={2}>
-                                    {item.procedure.short_description}
-                                </Text>
+                                    <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>{item.procedure.title}</Text>
+                                    <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={2}>
+                                        {item.procedure.short_description}
+                                    </Text>
+                                </View>
+                                <View style={styles.cardChevron}>
+                                    <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+                                </View>
                             </TouchableOpacity>
                         </Link>
                     )}
@@ -195,10 +207,27 @@ const styles = StyleSheet.create({
         flex: 1
     },
     card: {
-        borderRadius: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        borderRadius: 16,
         padding: 16,
-        marginBottom: 12,
+        marginBottom: 14,
         borderWidth: 1,
+    },
+    cardIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        flexShrink: 0,
+    },
+    cardIconEmoji: {
+        fontSize: 26,
+    },
+    cardBody: {
+        flex: 1,
     },
     cardHeader: {
         flexDirection: 'row',
@@ -223,5 +252,9 @@ const styles = StyleSheet.create({
     },
     cardDesc: {
         fontSize: 13,
+    },
+    cardChevron: {
+        alignSelf: 'center',
+        flexShrink: 0,
     }
 });

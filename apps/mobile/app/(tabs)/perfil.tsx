@@ -21,7 +21,7 @@ import {
     type AppLanguage,
 } from '../../src/i18n';
 import { clearUserCaches } from '../../src/localCache';
-import { useTheme, type ThemePreference } from '../../constants/theme';
+import { useTheme, type ThemeColors, type ThemePreference } from '../../constants/theme';
 import { useAuth } from '../../src/context/AuthContext';
 
 export default function ProfileScreen() {
@@ -30,6 +30,7 @@ export default function ProfileScreen() {
     const insets = useSafeAreaInsets();
     // Tema dinámico (sistema/claro/oscuro) de constants/theme
     const { colors, preference, setPreference } = useTheme();
+    const styles = getStyles(colors);
     const { user, isLoading, signOut: authSignOut } = useAuth();
     const [deleting, setDeleting] = useState(false);
     // Idioma reactivo: se actualiza con i18n.language para forzar re-render
@@ -253,7 +254,11 @@ export default function ProfileScreen() {
                                 accessibilityLabel={`${lang.flag} ${lang.label}`}
                             >
                                 <Text style={styles.langFlag}>{lang.flag}</Text>
-                                <Text style={[styles.menuLabel, { color: colors.text }]}>
+                                <Text
+                                    style={[styles.menuLabel, { color: colors.text }]}
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                >
                                     {lang.label}
                                 </Text>
                                 {language === lang.code && (
@@ -281,7 +286,11 @@ export default function ProfileScreen() {
                                 accessibilityLabel={`${lang.flag} ${lang.label}`}
                             >
                                 <Text style={styles.langFlag}>{lang.flag}</Text>
-                                <Text style={[styles.menuLabel, { color: colors.text }]}>
+                                <Text
+                                    style={[styles.menuLabel, { color: colors.text }]}
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                >
                                     {lang.label}
                                 </Text>
                                 {language === lang.code && (
@@ -313,7 +322,11 @@ export default function ProfileScreen() {
                                 accessibilityLabel={option.label}
                             >
                                 <Ionicons name={option.icon} size={18} color="#64748b" style={styles.menuIcon} />
-                                <Text style={[styles.menuLabel, { color: colors.text }]}>
+                                <Text
+                                    style={[styles.menuLabel, { color: colors.text }]}
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                >
                                     {option.label}
                                 </Text>
                                 {preference === option.key && (
@@ -359,10 +372,10 @@ export default function ProfileScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8fafc',
+        backgroundColor: colors.background,
     },
     scrollContent: {
         paddingBottom: 48,
@@ -370,14 +383,14 @@ const styles = StyleSheet.create({
     header: {
         paddingHorizontal: 16,
         paddingBottom: 16,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderBottomWidth: 1,
-        borderBottomColor: '#e2e8f0',
+        borderBottomColor: colors.border,
     },
     headerTitle: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#0f172a',
+        color: colors.text,
     },
     center: {
         padding: 48,
@@ -389,12 +402,12 @@ const styles = StyleSheet.create({
 
     // Authenticated profile card
     profileCard: {
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderRadius: 20,
         padding: 28,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: colors.border,
         marginBottom: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -406,7 +419,7 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: '#2563eb',
+        backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 14,
@@ -424,11 +437,11 @@ const styles = StyleSheet.create({
     name: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#0f172a',
+        color: colors.text,
     },
     email: {
         fontSize: 14,
-        color: '#64748b',
+        color: colors.textSecondary,
         marginTop: 4,
     },
     verifiedBadge: {
@@ -436,27 +449,27 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 4,
         marginTop: 10,
-        backgroundColor: '#f0fdf4',
+        backgroundColor: colors.successBackground,
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#bbf7d0',
+        borderColor: colors.successBorder,
     },
     verifiedText: {
         fontSize: 12,
-        color: '#15803d',
+        color: colors.successText,
         fontWeight: '600',
     },
 
     // Guest banner
     guestCard: {
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderRadius: 20,
         padding: 28,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: colors.border,
         marginBottom: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -468,22 +481,22 @@ const styles = StyleSheet.create({
         width: 72,
         height: 72,
         borderRadius: 36,
-        backgroundColor: '#eff6ff',
+        backgroundColor: colors.primarySoft,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 16,
         borderWidth: 2,
-        borderColor: '#bfdbfe',
+        borderColor: colors.primary,
     },
     guestTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#0f172a',
+        color: colors.text,
         marginBottom: 8,
     },
     guestSubtitle: {
         fontSize: 14,
-        color: '#64748b',
+        color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 20,
         marginBottom: 20,
@@ -497,7 +510,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        backgroundColor: '#2563eb',
+        backgroundColor: colors.primary,
         borderRadius: 12,
         paddingVertical: 14,
     },
@@ -512,10 +525,10 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         paddingVertical: 13,
         borderWidth: 1.5,
-        borderColor: '#2563eb',
+        borderColor: colors.primary,
     },
     registerBtnText: {
-        color: '#2563eb',
+        color: colors.primary,
         fontWeight: '700',
         fontSize: 15,
     },
@@ -528,34 +541,34 @@ const styles = StyleSheet.create({
     },
     statCard: {
         flex: 1,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderRadius: 14,
         paddingVertical: 16,
         alignItems: 'center',
         gap: 6,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: colors.border,
     },
     statLabel: {
         fontSize: 12,
         fontWeight: '600',
-        color: '#475569',
+        color: colors.textSecondary,
     },
 
     // Legal section
     sectionTitle: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#64748b',
+        color: colors.textMuted,
         textTransform: 'uppercase',
         letterSpacing: 0.8,
         marginBottom: 10,
     },
     menuCard: {
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: colors.border,
         marginBottom: 20,
         overflow: 'hidden',
     },
@@ -563,14 +576,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flexWrap: 'nowrap',
         alignItems: 'center',
-        justifyContent: 'flex-start',
+        // space-between: el chevron queda fijado quirúrgicamente en el
+        // borde derecho de la tarjeta aunque el texto sea largo.
+        justifyContent: 'space-between',
         width: '100%',
         paddingVertical: 14,
         paddingHorizontal: 16,
     },
     menuRowBorder: {
         borderBottomWidth: 1,
-        borderBottomColor: '#f1f5f9',
+        borderBottomColor: colors.chip,
     },
     menuIcon: {
         marginRight: 12,
@@ -578,13 +593,15 @@ const styles = StyleSheet.create({
     menuLabel: {
         flex: 1,
         marginRight: 8,
-        fontSize: 16,
-        color: '#0f172a',
+        fontSize: 14,
+        color: colors.text,
     },
-    // Chevron de fila: nunca se encoge ni salta de línea; con el texto en
-    // flex:1 queda fijado en el extremo derecho de la fila.
+    // Chevron de fila: nunca se encoge ni salta de línea; centrado
+    // verticalmente respecto a la fila (alineación del icono) y con el
+    // texto en flex:1 queda fijado en el extremo derecho de la tarjeta.
     menuChevronFixed: {
         flexShrink: 0,
+        alignSelf: 'center',
     },
     // Selector de idioma
     langFlag: {
@@ -593,13 +610,13 @@ const styles = StyleSheet.create({
     },
     languageSubtitle: {
         fontSize: 13,
-        color: '#64748b',
+        color: colors.textSecondary,
         marginBottom: 12,
     },
     languageGroupTitle: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#2563eb',
+        color: colors.primary,
         marginBottom: 8,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
@@ -611,7 +628,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        backgroundColor: '#ef4444',
+        backgroundColor: colors.danger,
         borderRadius: 14,
         paddingVertical: 14,
         marginBottom: 12,
@@ -626,14 +643,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        backgroundColor: '#fee2e2',
+        backgroundColor: colors.errorBackground,
         borderRadius: 14,
         paddingVertical: 14,
         borderWidth: 1,
-        borderColor: '#fecaca',
+        borderColor: colors.errorBorder,
     },
     deleteText: {
-        color: '#b91c1c',
+        color: colors.errorText,
         fontWeight: '600',
         fontSize: 15,
     },
@@ -646,13 +663,13 @@ const styles = StyleSheet.create({
     },
     footerDivider: {
         height: 1,
-        backgroundColor: '#e2e8f0',
+        backgroundColor: colors.border,
         width: '100%',
         marginBottom: 16,
     },
     legalText: {
         fontSize: 11,
-        color: '#94a3b8',
+        color: colors.textMuted,
         textAlign: 'center',
         lineHeight: 16,
     },

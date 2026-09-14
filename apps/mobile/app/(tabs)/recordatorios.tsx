@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { reminderService, ReminderWithProcedure } from '@trami-espana/shared';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { cacheReminders } from '../../src/localCache';
 import { scheduleDeadlineNotifications, syncUpcomingDeadlineNotifications } from '../../src/services/notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,41 +26,94 @@ import { useAuth } from '../../src/context/AuthContext';
 let Calendar: typeof import('expo-calendar') | null = null;
 try { Calendar = require('expo-calendar'); } catch { /* not available */ }
 
-// Helper: get default calendar id on device
-async function getDefaultCalendarId(): Promise<string | null> {
-    if (!Calendar) return null;
+// ============================================================
+// Compatibilidad GrapheneOS / Android sin Google Play Services.
+// Los helpers de calendario NUNCA lanzan excepciones no capturadas:
+// devuelven siempre { ok, reason } para que la UI pueda mostrar un
+// aviso amistoso y el recordatorio se guarde de todos modos.
+// ============================================================
+type CalendarFailureReason = 'permission' | 'empty' | 'unavailable' | null;
+
+interface CalendarResult {
+    ok: boolean;
+    reason: CalendarFailureReason;
+    /** ID del calendario seleccionado (solo cuando ok === true). */
+    id?: string | null;
+}
+
+// Helper: calendario primario de Google en el dispositivo (Android).
+// No usar IDs locales hardcodeados: se resuelve el calendario real del usuario.
+async function getGooglePrimaryCalendarId(): Promise<CalendarResult> {
+    if (!Calendar) return { ok: false, reason: 'unavailable' };
+    // 1) Permisos: el módulo puede lanzar en ROMs sin proveedor de calendario
+    //    (GrapheneOS / dispositivos sin Google Calendar nativo).
     try {
         const { status } = await Calendar.requestCalendarPermissionsAsync();
-        if (status !== 'granted') return null;
+        if (status !== 'granted') return { ok: false, reason: 'permission' };
+    } catch (error) {
+        console.log('[CALENDARIO] requestCalendarPermissionsAsync lanzó excepción (sin Play Services?):', error);
+        return { ok: false, reason: 'unavailable' };
+    }
+    // 2) Listado de calendarios: también protegido con try/catch.
+    try {
         const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-        // Prefer the default calendar, or the first writable one
-        const writable = calendars.find(
-            (c) => c.allowsModifications && (c.isPrimary || c.source?.name === 'Default')
-        ) || calendars.find((c) => c.allowsModifications);
-        return writable?.id ?? null;
-    } catch {
-        return null;
+        if (!calendars || calendars.length === 0) {
+            // Array vacío: no hay proveedor de calendarios disponible.
+            return { ok: false, reason: 'empty' };
+        }
+        // 1) Calendario primario que permita modificaciones.
+        const primary = calendars.find(
+            (c) => c.isPrimary && c.allowsModifications
+        );
+        if (primary) return { ok: true, reason: null, id: primary.id };
+        // 2) Cuenta de Google activa (ownerAccount de Gmail / source Google).
+        const google = calendars.find((c) => {
+            const owner = (c.ownerAccount ?? '').toLowerCase();
+            const sourceName = (c.source?.name ?? '').toLowerCase();
+            const sourceType = (c.source?.type ?? '').toLowerCase();
+            const looksGoogle =
+                owner.includes('gmail.com') ||
+                owner.includes('googlemail.com') ||
+                sourceName.includes('google') ||
+                sourceName.includes('gmail') ||
+                sourceType.includes('google');
+            return looksGoogle && c.allowsModifications;
+        });
+        if (google) return { ok: true, reason: null, id: google.id };
+        // 3) Fallback: primer calendario modificable.
+        const writable = calendars.find((c) => c.allowsModifications);
+        if (writable) return { ok: true, reason: null, id: writable.id };
+        return { ok: false, reason: 'empty' };
+    } catch (error) {
+        // Error de la API de Google (proveedor no disponible / SecurityException
+        // en GrapheneOS): no propagar, degradar con motivo 'unavailable'.
+        console.log('[CALENDARIO] getCalendarsAsync lanzó excepción (proveedor no disponible?):', error);
+        return { ok: false, reason: 'unavailable' };
     }
 }
 
-// Helper: add event to device calendar
-async function addToDeviceCalendar(title: string, date: Date, notes?: string): Promise<boolean> {
-    const calId = await getDefaultCalendarId();
-    if (!calId || !Calendar) return false;
+// Helper: add event to device calendar (zona horaria local Europe/Madrid)
+async function addToDeviceCalendar(title: string, date: Date, notes?: string): Promise<CalendarResult> {
     try {
+        const result = await getGooglePrimaryCalendarId();
+        if (!result.ok || !Calendar) return { ok: false, reason: result.reason ?? 'unavailable' };
         const start = new Date(date);
         const end = new Date(date);
         end.setHours(end.getHours() + 1);
-        await Calendar.createEventAsync(calId, {
+        await Calendar.createEventAsync(result.id as string, {
             title,
             startDate: start,
             endDate: end,
+            timeZone: 'Europe/Madrid',
             notes: notes || '',
             alarms: [{ relativeOffset: -60 }], // 1h before
         });
-        return true;
-    } catch {
-        return false;
+        return { ok: true, reason: null };
+    } catch (error) {
+        // createEventAsync puede lanzar en dispositivos sin proveedor de
+        // Google Calendar. Se captura SIEMPRE y se degrada con aviso.
+        console.log('[CALENDARIO] createEventAsync lanzó excepción:', error);
+        return { ok: false, reason: 'unavailable' };
     }
 }
 
@@ -88,6 +142,51 @@ function parseDateInput(value: string): Date | null {
     return isNaN(d.getTime()) ? null : d;
 }
 
+// ============================================================
+// Helpers de hora y calendario (Item 3)
+// ============================================================
+/** Formatea la hora como HH:MM (24h). */
+function formatTimeForDisplay(date: Date): string {
+    const h = String(date.getHours()).padStart(2, '0');
+    const m = String(date.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+}
+
+/** Combina la fecha (AAAA-MM-DD) con la hora seleccionada del formTime. */
+function mergeDateAndTime(dateStr: string, time: Date): Date | null {
+    const base = parseDateInput(dateStr);
+    if (!base) return null;
+    base.setHours(time.getHours(), time.getMinutes(), 0, 0);
+    return base;
+}
+
+/** ¿Son el mismo día calendario? */
+function isSameDay(a: Date, b: Date): boolean {
+    return (
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate()
+    );
+}
+
+/**
+ * Devuelve un array de semanas (cada una con 7 celdas Date|null) para el
+ * mes indicado. Usado por la vista de calendario.
+ */
+function buildMonthGrid(year: number, month: number): (Date | null)[][] {
+    const first = new Date(year, month, 1);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const startWeekday = first.getDay(); // 0 = domingo
+    const cells: (Date | null)[] = [];
+    for (let i = 0; i < startWeekday; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
+    while (cells.length % 7 !== 0) cells.push(null);
+    const weeks: (Date | null)[][] = [];
+    for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+    return weeks;
+}
+
+
 export default function RemindersScreen() {
     const router = useRouter();
     const { colors, isDark } = useTheme();
@@ -104,6 +203,19 @@ export default function RemindersScreen() {
     const [formDate, setFormDate] = useState(formatDateForInput(new Date(Date.now() + 7 * 86400000)));
     const [formNotes, setFormNotes] = useState('');
     const [saving, setSaving] = useState(false);
+    // Hora del recordatorio (Item 3). Valor por defecto 10:00.
+    const [formTime, setFormTime] = useState<Date>(() => {
+        const d = new Date();
+        d.setHours(10, 0, 0, 0);
+        return d;
+    });
+    const [showTimePicker, setShowTimePicker] = useState(false);
+    // Vista de calendario (Item 3).
+    const [showCalendar, setShowCalendar] = useState(false);
+    const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
+        const d = new Date();
+        return new Date(d.getFullYear(), d.getMonth(), 1);
+    });
 
     const loadReminders = useCallback(async () => {
         // Esperar a que AuthContext rehidrate la sesión (authLoading) antes
@@ -151,7 +263,7 @@ export default function RemindersScreen() {
             Alert.alert('Campo requerido', 'Por favor introduce un título para el recordatorio.');
             return;
         }
-        const parsedDate = parseDateInput(formDate);
+        const parsedDate = mergeDateAndTime(formDate, formTime);
         if (!parsedDate) {
             Alert.alert('Fecha inválida', 'Introduce la fecha en formato AAAA-MM-DD (ej. 2025-12-01).');
             return;
@@ -185,8 +297,10 @@ export default function RemindersScreen() {
                 console.log('[RECORDATORIOS] Recordatorio guardado correctamente:', newReminder.id);
             }
 
-            // Add to device calendar
-            const calAdded = await addToDeviceCalendar(
+            // Add to device calendar. En GrapheneOS / dispositivos sin
+            // Google Play Services o Google Calendar esto devuelve
+            // { ok: false, reason } sin lanzar: la app NO se bloquea.
+            const calResult = await addToDeviceCalendar(
                 `Trami España: ${trimTitle}`,
                 parsedDate,
                 formNotes.trim() || 'Recordatorio de trámite administrativo'
@@ -200,9 +314,25 @@ export default function RemindersScreen() {
                 deadline: parsedDate,
             });
 
-            let successMsg = '✅ Recordatorio guardado.';
-            if (calAdded) successMsg += '\n📅 Añadido a tu calendario.';
+            let successMsg = `✅ Recordatorio guardado para el ${parsedDate.toLocaleDateString('es-ES', {
+                day: '2-digit', month: 'short', year: 'numeric',
+            })} a las ${formatTimeForDisplay(parsedDate)}.`;
+            if (calResult.ok) successMsg += '\n📅 Añadido a tu calendario con esa hora.';
             if (notifResult.dayBefore || notifResult.dayOf) successMsg += '\n🔔 Notificaciones programadas (24h antes y el día).';
+
+            if (!calResult.ok) {
+                // Aviso amistoso en pantalla: el dispositivo no dispone de
+                // Google Calendar / Play Services (p. ej. GrapheneOS), pero
+                // el recordatorio se ha guardado igualmente en la app con
+                // sus notificaciones locales.
+                const motivoAviso =
+                    calResult.reason === 'permission'
+                        ? 'No concediste el permiso de calendario.'
+                        : calResult.reason === 'empty'
+                            ? 'No se encontró ningún calendario disponible en este dispositivo.'
+                            : 'Este dispositivo no tiene Google Calendar ni los servicios de Google.';
+                successMsg += `\n\n📅 No se pudo añadir al calendario del dispositivo: ${motivoAviso}\nEl recordatorio se ha guardado en la app y recibirás notificaciones en las fechas programadas.`;
+            }
 
             setShowModal(false);
             setFormTitle('');
@@ -222,7 +352,36 @@ export default function RemindersScreen() {
             } else if (/network|connection|internet/i.test(errorMessage)) {
                 Alert.alert('Error de conexión', 'No se pudo conectar con el servidor. Verifica tu conexión a internet e inténtalo de nuevo.');
             } else {
-                Alert.alert('Error', 'No se pudo guardar el recordatorio. Inténtalo de nuevo.');
+                // ============================================================
+                // Fallback 100% local (offline / GrapheneOS / sin Google Play
+                // Services): se guarda el recordatorio EN LA APP vía
+                // notificaciones locales de Expo, sin que la aplicación se
+                // bloquee ni se cierre nunca.
+                // ============================================================
+                try {
+                    const localNotif = await scheduleDeadlineNotifications({
+                        id: `local-${Date.now()}`,
+                        title: trimTitle,
+                        notes: formNotes.trim() || undefined,
+                        deadline: parsedDate,
+                    });
+                    if (localNotif.dayBefore || localNotif.dayOf) {
+                        setShowModal(false);
+                        setFormTitle('');
+                        setFormNotes('');
+                        Alert.alert(
+                            'Recordatorio guardado en la app',
+                            `📱 No se pudo sincronizar con el servidor, pero el recordatorio "${trimTitle}" se ha guardado localmente y recibirás notificaciones el ${parsedDate.toLocaleDateString('es-ES', {
+                                day: '2-digit', month: 'short', year: 'numeric',
+                            })} a las ${formatTimeForDisplay(parsedDate)}.`
+                        );
+                    } else {
+                        Alert.alert('Aviso', 'No se pudo guardar el recordatorio (ni en el servidor ni de forma local). Inténtalo de nuevo.');
+                    }
+                } catch (localError) {
+                    console.error('[RECORDATORIOS] Fallback local también falló:', localError);
+                    Alert.alert('Error', 'No se pudo guardar el recordatorio. Inténtalo de nuevo.');
+                }
             }
         } finally {
             setSaving(false);
@@ -245,12 +404,38 @@ export default function RemindersScreen() {
     const upcomingReminders = reminders.filter((r) => !r.is_completed);
     const completedReminders = reminders.filter((r) => r.is_completed);
 
+    // Días con citas agendadas (clave YYYY-MM-DD) para la vista de calendario.
+    const reminderDays = useMemo(() => {
+        const set = new Set<string>();
+        reminders.forEach((r) => {
+            const d = new Date(r.reminder_date);
+            if (!isNaN(d.getTime())) {
+                set.add(
+                    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+                );
+            }
+        });
+        return set;
+    }, [reminders]);
+
     return (
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Mis Recordatorios</Text>
-                <Text style={styles.headerSubtitle}>Alertas de fechas clave de trámites</Text>
+                <View style={styles.headerRow}>
+                    <View style={styles.headerTextWrap}>
+                        <Text style={styles.headerTitle}>Mis Recordatorios</Text>
+                        <Text style={styles.headerSubtitle}>Alertas de fechas clave de trámites</Text>
+                    </View>
+                    <TouchableOpacity
+                        style={styles.calendarBtn}
+                        onPress={() => setShowCalendar(true)}
+                        activeOpacity={0.75}
+                        accessibilityLabel="Ver calendario de citas"
+                    >
+                        <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {isLoading ? (
@@ -406,6 +591,36 @@ export default function RemindersScreen() {
                             maxLength={10}
                         />
 
+                        <Text style={styles.fieldLabel}>Hora *</Text>
+                        <TouchableOpacity
+                            style={styles.timeField}
+                            onPress={() => setShowTimePicker(true)}
+                            activeOpacity={0.75}
+                        >
+                            <Ionicons name="time-outline" size={20} color={colors.primary} />
+                            <Text style={styles.timeFieldText}>{formatTimeForDisplay(formTime)}</Text>
+                            <Text style={styles.timeFieldHint}>Toca para elegir hora</Text>
+                        </TouchableOpacity>
+
+                        {showTimePicker && (
+                            <DateTimePicker
+                                value={formTime}
+                                mode="time"
+                                is24Hour
+                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                onChange={(event: DateTimePickerEvent, selectedDate?: Date) => {
+                                    if (Platform.OS === 'ios') {
+                                        // iOS: mantiene el spinner abierto mientras se gira.
+                                        if (selectedDate) setFormTime(selectedDate);
+                                    } else {
+                                        // Android: el diálogo se cierra al elegir/desechar.
+                                        setShowTimePicker(false);
+                                        if (event.type === 'set' && selectedDate) setFormTime(selectedDate);
+                                    }
+                                }}
+                            />
+                        )}
+
                         <Text style={styles.fieldLabel}>Notas (opcional)</Text>
                         <TextInput
                             style={[styles.fieldInput, styles.fieldInputMulti]}
@@ -447,6 +662,96 @@ export default function RemindersScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Vista de calendario (Item 3): días con citas agendadas */}
+            <Modal
+                visible={showCalendar}
+                animationType="slide"
+                transparent
+                onRequestClose={() => setShowCalendar(false)}
+            >
+                <View style={styles.calendarOverlay}>
+                    <View style={[styles.calendarSheet, { paddingBottom: Math.max(insets.bottom, 24) + 16 }]}>
+                        <View style={styles.calendarHeaderRow}>
+                            <View>
+                                <Text style={styles.calendarSheetTitle}>Calendario de citas</Text>
+                                <Text style={styles.calendarSheetSubtitle}>Días marcados con recordatorios</Text>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.calendarCloseBtn}
+                                onPress={() => setShowCalendar(false)}
+                                activeOpacity={0.75}
+                            >
+                                <Ionicons name="close" size={22} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.calendarNav}>
+                            <TouchableOpacity
+                                style={styles.calendarNavBtn}
+                                onPress={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons name="chevron-back" size={20} color={colors.primary} />
+                            </TouchableOpacity>
+                            <Text style={styles.calendarMonthTitle}>
+                                {calendarMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                            </Text>
+                            <TouchableOpacity
+                                style={styles.calendarNavBtn}
+                                onPress={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.calendarWeekRow}>
+                            {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((wd) => (
+                                <Text key={wd} style={styles.calendarWeekday}>{wd}</Text>
+                            ))}
+                        </View>
+
+                        {buildMonthGrid(calendarMonth.getFullYear(), calendarMonth.getMonth()).map((week, wi) => (
+                            <View key={`week-${wi}`} style={styles.calendarWeekRow}>
+                                {week.map((day, di) => {
+                                    if (!day) return <View key={`empty-${di}`} style={styles.calendarDayCell} />;
+                                    const isToday = isSameDay(day, new Date());
+                                    const dayKey =
+                                        `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+                                    const hasReminder = reminderDays.has(dayKey);
+                                    return (
+                                        <View
+                                            key={`day-${di}`}
+                                            style={[
+                                                styles.calendarDayCell,
+                                                hasReminder && styles.calendarDayActive,
+                                                isToday && styles.calendarDayToday,
+                                            ]}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.calendarDayText,
+                                                    hasReminder && styles.calendarDayTextActive,
+                                                    isToday && styles.calendarDayTextToday,
+                                                ]}
+                                            >
+                                                {day.getDate()}
+                                            </Text>
+                                            {hasReminder && <View style={styles.calendarDot} />}
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        ))}
+
+                        <View style={styles.calendarLegend}>
+                            <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
+                            <Text style={styles.calendarLegendText}>Día con cita agendada</Text>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -473,6 +778,165 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         fontSize: 13,
         color: colors.textSecondary,
         marginTop: 2
+    },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    headerTextWrap: {
+        flex: 1,
+    },
+    calendarBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: colors.primarySoft,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    // Selector de hora
+    timeField: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        backgroundColor: colors.chip,
+        borderRadius: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    timeFieldText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: colors.text,
+    },
+    timeFieldHint: {
+        flex: 1,
+        textAlign: 'right',
+        fontSize: 12,
+        color: colors.textMuted,
+    },
+    // Vista de calendario
+    calendarOverlay: {
+        flex: 1,
+        backgroundColor: colors.overlay,
+        justifyContent: 'flex-end',
+    },
+    calendarSheet: {
+        backgroundColor: colors.card,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: 20,
+    },
+    calendarHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    calendarSheetTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: colors.text,
+    },
+    calendarSheetSubtitle: {
+        fontSize: 12,
+        color: colors.textSecondary,
+        marginTop: 2,
+    },
+    calendarCloseBtn: {
+        padding: 6,
+    },
+    calendarNav: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    calendarNavBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: colors.primarySoft,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    calendarMonthTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: colors.text,
+        textTransform: 'capitalize',
+    },
+    calendarWeekRow: {
+        flexDirection: 'row',
+        marginBottom: 4,
+    },
+    calendarWeekday: {
+        flex: 1,
+        textAlign: 'center',
+        fontSize: 12,
+        fontWeight: '700',
+        color: colors.textMuted,
+        paddingVertical: 6,
+    },
+    calendarDayCell: {
+        flex: 1,
+        height: 40,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        margin: 1,
+    },
+    calendarDayText: {
+        fontSize: 14,
+        color: colors.text,
+    },
+    calendarDayActive: {
+        backgroundColor: colors.primarySoft,
+        borderWidth: 1,
+        borderColor: colors.primary,
+    },
+    calendarDayTextActive: {
+        color: colors.primary,
+        fontWeight: '700',
+    },
+    calendarDayToday: {
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    calendarDayTextToday: {
+        color: colors.success,
+        fontWeight: '800',
+    },
+    calendarDot: {
+        position: 'absolute',
+        bottom: 5,
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: colors.primary,
+    },
+    calendarLegend: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 16,
+        justifyContent: 'center',
+    },
+    legendDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+    },
+    calendarLegendText: {
+        fontSize: 12,
+        color: colors.textSecondary,
     },
     center: {
         flex: 1,

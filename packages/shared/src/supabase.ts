@@ -4,10 +4,20 @@
 // Este archivo contiene la configuración del cliente Supabase
 // IMPORTANTE: Nunca incluyas la service_role key en el frontend
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
 
 // Client of Supabase (initialized in each app)
 let supabaseClient: SupabaseClient | null = null;
+
+/**
+ * Adaptador de almacenamiento ACTIVO inyectado desde la app
+ * (AsyncStorage en móvil). Se conserva una referencia para poder leer el
+ * token persistido directamente del disco cuando el cliente aún no ha
+ * rehidratado su caché en memoria (condición de carrera en el arranque).
+ */
+let activeStorage: SupabaseStorageAdapter | null = null;
+/** Project ref de la URL de Supabase (para componer la storageKey oficial). */
+let activeProjectRef = '';
 
 /**
  * Adaptador mínimo de almacenamiento compatible con Supabase Auth.
@@ -36,6 +46,16 @@ export const initializeSupabase = (
     anonKey: string,
     options?: InitializeSupabaseOptions
 ): void => {
+    activeStorage = options?.storage ?? null;
+    // Project ref desde la URL (formato https://<ref>.supabase.co).
+    // Se calcula con regex para no depender de `new URL` (no disponible
+    // en todos los entornos de React Native / Hermes).
+    try {
+        const match = /^https?:\/\/([^.]+)/i.exec(url);
+        activeProjectRef = match ? match[1] : '';
+    } catch {
+        activeProjectRef = '';
+    }
     supabaseClient = createClient(url, anonKey, {
         auth: {
             ...(options?.storage ? { storage: options.storage } : {}),
@@ -55,6 +75,61 @@ export const getSupabaseClient = (): SupabaseClient => {
         throw new Error('Supabase client not initialized. Call initializeSupabase first.');
     }
     return supabaseClient;
+};
+
+/**
+ * Clave bajo la que Supabase Auth persiste la sesión en el storage
+ * (formato oficial de supabase-js v2: `sb-<project_ref>-auth-token`).
+ * Devuelve '' si no se ha podido determinar el project ref.
+ */
+export const getSupabaseAuthStorageKey = (): string => {
+    if (!activeProjectRef) return '';
+    return `sb-${activeProjectRef}-auth-token`;
+};
+
+/**
+ * Lee la sesión persistida DIRECTAMENTE del almacenamiento inyectado
+ * (AsyncStorage en móvil) sin depender de la caché en memoria del cliente.
+ *
+ * Esto es la pieza clave para eliminar la condición de carrera en la que
+ * la pantalla de carga termina antes de que AsyncStorage rehidrate la
+ * sesión: aunque el cliente devuelva null, aquí se garantiza la lectura
+ * del token persistido en disco.
+ *
+ * Devuelve null si:
+ *  - no hay storage inyectado (web usa el cliente normal), o
+ *  - no hay token guardado / el JSON no tiene forma de sesión.
+ * NUNCA lanza: es un mecanismo de recuperación silencioso.
+ */
+export const readPersistedSupabaseSession = async (): Promise<Session | null> => {
+    try {
+        if (!activeStorage) return null;
+        const key = getSupabaseAuthStorageKey();
+        if (!key) return null;
+        const raw = await activeStorage.getItem(key);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as
+            | { currentSession?: Session | null; [k: string]: unknown }
+            | Session
+            | null;
+        // auth-js guarda { currentSession, expiresAt, ... } en algunas
+        // versiones y la sesión directa en otras. Se soportan ambas formas.
+        const session =
+            parsed && typeof parsed === 'object' && 'currentSession' in parsed
+                ? (parsed.currentSession as Session | null)
+                : (parsed as Session | null);
+        if (
+            session &&
+            typeof session === 'object' &&
+            typeof (session as Session).access_token === 'string' &&
+            (session as Session).user
+        ) {
+            return session as Session;
+        }
+        return null;
+    } catch {
+        return null;
+    }
 };
 
 // Exportar una instancia por defecto (para compatibilidad)

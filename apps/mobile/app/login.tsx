@@ -12,11 +12,18 @@ import {
 } from 'react-native';
 import { useRouter, Link, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
 import { authService, isEmailNotConfirmedError } from '@trami-espana/shared';
 import { clearUserCaches } from '../src/localCache';
+import { useTheme, ThemeColors } from '../constants/theme';
+
+// Deep link de Expo al que apunta el email de activación (misma URL que el registro).
+const EMAIL_REDIRECT_URL = Linking.createURL('/auth/callback');
 
 export default function LoginScreen() {
     const router = useRouter();
+    const { colors } = useTheme();
+    const styles = getStyles(colors);
     const params = useLocalSearchParams<{ confirmed?: string }>();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -69,7 +76,10 @@ export default function LoginScreen() {
         setResending(true);
         setError(null);
         try {
-            const { error: resendError } = await authService.resendConfirmation(email.trim());
+            const { error: resendError } = await authService.resendConfirmation(
+            email.trim(),
+            EMAIL_REDIRECT_URL
+        );
             if (resendError) {
                 setError(authService.getErrorMessage(resendError.message));
                 return;
@@ -215,14 +225,14 @@ export default function LoginScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: {
         flex: 1,
-        backgroundColor: '#f8fafc',
+        backgroundColor: colors.background,
     },
     container: {
         flex: 1,
-        backgroundColor: '#f8fafc',
+        backgroundColor: colors.background,
     },
     scrollContent: {
         flexGrow: 1,
@@ -239,7 +249,7 @@ const styles = StyleSheet.create({
         width: 68,
         height: 68,
         borderRadius: 34,
-        backgroundColor: '#2563eb',
+        backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 16,
@@ -252,12 +262,12 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 26,
         fontWeight: 'bold',
-        color: '#0f172a',
+        color: colors.text,
         marginBottom: 6,
     },
     subtitle: {
         fontSize: 13,
-        color: '#64748b',
+        color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 19,
     },
@@ -265,16 +275,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'flex-start',
         gap: 8,
-        backgroundColor: '#f0fdf4',
+        backgroundColor: colors.successBackground,
         borderWidth: 1,
-        borderColor: '#bbf7d0',
+        borderColor: colors.successBorder,
         borderRadius: 12,
         padding: 12,
         marginBottom: 12,
     },
     successText: {
         flex: 1,
-        color: '#15803d',
+        color: colors.successText,
         fontSize: 13,
         lineHeight: 18,
         fontWeight: '500',
@@ -283,16 +293,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'flex-start',
         gap: 8,
-        backgroundColor: '#fef2f2',
+        backgroundColor: colors.errorBackground,
         borderWidth: 1,
-        borderColor: '#fecaca',
+        borderColor: colors.errorBorder,
         borderRadius: 12,
         padding: 12,
         marginBottom: 12,
     },
     errorText: {
         flex: 1,
-        color: '#b91c1c',
+        color: colors.errorText,
         fontSize: 13,
         lineHeight: 18,
         fontWeight: '500',
@@ -302,15 +312,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
-        backgroundColor: '#eff6ff',
+        backgroundColor: colors.primarySoft,
         borderWidth: 1,
-        borderColor: '#bfdbfe',
+        borderColor: colors.primary,
         borderRadius: 12,
         paddingVertical: 11,
         marginBottom: 12,
     },
     resendButtonText: {
-        color: '#2563eb',
+        color: colors.primary,
         fontWeight: '600',
         fontSize: 13,
     },
@@ -320,16 +330,16 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#475569',
+        color: colors.textSecondary,
         marginBottom: 6,
     },
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: colors.border,
         paddingHorizontal: 12,
         marginBottom: 14,
     },
@@ -340,7 +350,7 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingVertical: 12,
         fontSize: 15,
-        color: '#0f172a',
+        color: colors.text,
     },
     eyeButton: {
         padding: 4,
@@ -351,12 +361,12 @@ const styles = StyleSheet.create({
         marginBottom: 14,
     },
     forgotButtonText: {
-        color: '#2563eb',
+        color: colors.primary,
         fontSize: 13,
         fontWeight: '600',
     },
     button: {
-        backgroundColor: '#2563eb',
+        backgroundColor: colors.primary,
         borderRadius: 12,
         paddingVertical: 14,
         alignItems: 'center',
@@ -375,14 +385,14 @@ const styles = StyleSheet.create({
     },
     footerText: {
         fontSize: 13,
-        color: '#64748b',
+        color: colors.textSecondary,
         marginBottom: 8,
     },
     registerLink: {
         paddingVertical: 4,
     },
     registerLinkText: {
-        color: '#2563eb',
+        color: colors.primary,
         fontSize: 14,
         fontWeight: '700',
     },

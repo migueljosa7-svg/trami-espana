@@ -163,7 +163,7 @@ function RootNavigation() {
             <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={colors.background} />
             <I18nextProvider i18n={getI18nInstance()}>
                 <AuthProvider>
-                    <Stack screenOptions={{ headerShown: false }}>
+                    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
                         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                         <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
                         <Stack.Screen name="login" options={{ headerShown: false }} />

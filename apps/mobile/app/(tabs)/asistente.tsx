@@ -534,7 +534,7 @@ export default function AssistantScreen() {
               onContentSizeChange={(e) => {
                 setInputHeight(e.nativeEvent.contentSize.height);
               }}
-              placeholder="Escribe tu consulta sobre un trámite..."
+              placeholder="Escribe..."
               placeholderTextColor="#94a3b8"
               maxLength={MAX_CHARS}
               multiline
@@ -753,14 +753,14 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   input: {
     backgroundColor: colors.chip,
     borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     paddingRight: 50,
     fontSize: 16,
     color: colors.text,
     borderWidth: 1.5,
     borderColor: colors.border,
-    textAlignVertical: "top",
+    textAlignVertical: "center",
   },
   inputFocused: {
     borderColor: colors.primary,

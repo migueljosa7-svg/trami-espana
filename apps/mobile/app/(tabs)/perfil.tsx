@@ -3,6 +3,7 @@ import {
     View,
     Text,
     TouchableOpacity,
+    Modal,
     StyleSheet,
     ActivityIndicator,
     Alert,
@@ -59,6 +60,18 @@ export default function ProfileScreen() {
             Alert.alert(t('profile.rtlNoticeTitle'), t('profile.rtlNoticeMsg'));
         }
     };
+    // Variables derivadas del idioma actual para el selector compacto (Item 4, v1.2.7)
+    const currentLangDef = SUPPORTED_LANGUAGES.find((l) => l.code === language) ?? {
+        flag: '🇪🇸',
+        label: t('profile.languageSpain') ?? 'Español',
+        code: language,
+        group: 'spain' as const,
+    };
+    const currentLangLabel = currentLangDef.label;
+    const currentLangFlag = currentLangDef.flag;
+    const [showLanguageModal, setShowLanguageModal] = useState<boolean>(false);
+
+
 
     const handleSignOut = async () => {
         Alert.alert(
@@ -236,69 +249,120 @@ export default function ProfileScreen() {
                     <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('profile.language')}</Text>
                     <Text style={styles.languageSubtitle}>{t('profile.languageSubtitle')}</Text>
 
-                    {/* Idiomas nacionales y regionales de España */}
-                    <Text style={styles.languageGroupTitle}>{t('profile.languageSpain')}</Text>
-                    <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                        {SUPPORTED_LANGUAGES.filter((lang) => lang.group === 'spain').map((lang, index, arr) => (
-                            <TouchableOpacity
-                                key={lang.code}
-                                style={[
-                                    styles.menuRow,
-                                    index < arr.length - 1 && styles.menuRowBorder,
-                                ]}
-                                onPress={() => handleSwitchLanguage(lang.code)}
-                                activeOpacity={0.7}
-                                accessibilityRole="button"
-                                accessibilityLabel={`${lang.flag} ${lang.label}`}
-                            >
-                                <Text style={styles.langFlag}>{lang.flag}</Text>
-                                <Text
-                                    style={[styles.menuLabel, { color: colors.text }]}
-                                    numberOfLines={1}
-                                    ellipsizeMode="tail"
-                                >
-                                    {lang.label}
+                    {/* Selector compacto de idioma (toca para abrir modal de selección) */}
+                    <TouchableOpacity
+                        style={styles.languagePickerButton}
+                        onPress={() => setShowLanguageModal(true)}
+                        activeOpacity={0.75}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('profile.languagePicker') ?? `Idioma actual: ${currentLangLabel}`}
+                    >
+                        <View style={styles.languagePickerLeft}>
+                            <Text style={styles.languagePickerFlag}>{currentLangFlag}</Text>
+                            <View>
+                                <Text style={[styles.languagePickerLabel, { color: colors.text }]} numberOfLines={1}>
+                                    {currentLangLabel}
                                 </Text>
-                                {language === lang.code && (
-                                    <View style={styles.menuChevronFixed}>
-                                        <Ionicons name="checkmark" size={18} color="#2563eb" />
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                                <Text style={[styles.languagePickerSub, { color: colors.textMuted }]}>
+                                    {language === i18n.language ? t('profile.languageCurrent') : t('profile.languageTapToChange')}
+                                </Text>
+                            </View>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} style={styles.languagePickerChevron} />
+                    </TouchableOpacity>
 
-                    {/* Comunidades extranjeras residentes en España */}
-                    <Text style={styles.languageGroupTitle}>{t('profile.languageInternational')}</Text>
-                    <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                        {SUPPORTED_LANGUAGES.filter((lang) => lang.group === 'international').map((lang, index, arr) => (
-                            <TouchableOpacity
-                                key={lang.code}
-                                style={[
-                                    styles.menuRow,
-                                    index < arr.length - 1 && styles.menuRowBorder,
-                                ]}
-                                onPress={() => handleSwitchLanguage(lang.code)}
-                                activeOpacity={0.7}
-                                accessibilityRole="button"
-                                accessibilityLabel={`${lang.flag} ${lang.label}`}
-                            >
-                                <Text style={styles.langFlag}>{lang.flag}</Text>
-                                <Text
-                                    style={[styles.menuLabel, { color: colors.text }]}
-                                    numberOfLines={1}
-                                    ellipsizeMode="tail"
+                    {/* Modal de selección de idioma */}
+                    <Modal
+                        visible={showLanguageModal}
+                        transparent
+                        animationType="fade"
+                        statusBarTranslucent
+                        onRequestClose={() => setShowLanguageModal(false)}
+                    >
+                        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+                            <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                                <View style={styles.modalHeader}>
+                                    <Text style={[styles.modalTitle, { color: colors.text }]}>
+                                        {t('profile.languagePicker') ?? 'Seleccionar idioma'}
+                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={() => setShowLanguageModal(false)}
+                                        activeOpacity={0.7}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={t('common.close') ?? 'Cerrar'}
+                                    >
+                                        <Ionicons name="close-outline" size={24} color={colors.text} />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <ScrollView
+                                    style={styles.modalContent}
+                                    contentContainerStyle={styles.modalContentPadding}
+                                    keyboardShouldPersistTaps="handled"
                                 >
-                                    {lang.label}
-                                </Text>
-                                {language === lang.code && (
-                                    <View style={styles.menuChevronFixed}>
-                                        <Ionicons name="checkmark" size={18} color="#2563eb" />
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                                    {/* Idiomas nacionales y regionales de España */}
+                                    <Text style={[styles.languageGroupTitle, { color: colors.primary }]}>
+                                        {t('profile.languageSpain')}
+                                    </Text>
+                                    {SUPPORTED_LANGUAGES.filter((lang) => lang.group === 'spain').map((lang) => (
+                                        <TouchableOpacity
+                                            key={lang.code}
+                                            style={[
+                                                styles.modalLangRow,
+                                                { backgroundColor: colors.chip },
+                                                language === lang.code && styles.modalLangRowActive,
+                                            ]}
+                                            onPress={() => {
+                                                handleSwitchLanguage(lang.code);
+                                                setShowLanguageModal(false);
+                                            }}
+                                            activeOpacity={0.75}
+                                            accessibilityRole="button"
+                                            accessibilityLabel={`${lang.flag} ${lang.label}${language === lang.code ? ' (actual)' : ''}`}
+                                        >
+                                            <Text style={styles.languagePickerFlag}>{lang.flag}</Text>
+                                            <Text style={[styles.menuLabel, { color: colors.text }]} numberOfLines={1}>
+                                                {lang.label}
+                                            </Text>
+                                            {language === lang.code && (
+                                                <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                                            )}
+                                        </TouchableOpacity>
+                                    ))}
+
+                                    {/* Comunidades extranjeras en España */}
+                                    <Text style={[styles.languageGroupTitle, { color: colors.primary, marginTop: 16 }]}>
+                                        {t('profile.languageInternational')}
+                                    </Text>
+                                    {SUPPORTED_LANGUAGES.filter((lang) => lang.group === 'international').map((lang) => (
+                                        <TouchableOpacity
+                                            key={lang.code}
+                                            style={[
+                                                styles.modalLangRow,
+                                                { backgroundColor: colors.chip },
+                                                language === lang.code && styles.modalLangRowActive,
+                                            ]}
+                                            onPress={() => {
+                                                handleSwitchLanguage(lang.code);
+                                                setShowLanguageModal(false);
+                                            }}
+                                            activeOpacity={0.75}
+                                            accessibilityRole="button"
+                                            accessibilityLabel={`${lang.flag} ${lang.label}${language === lang.code ? ' (actual)' : ''}`}
+                                        >
+                                            <Text style={styles.languagePickerFlag}>{lang.flag}</Text>
+                                            <Text style={[styles.menuLabel, { color: colors.text }]} numberOfLines={1}>
+                                                {lang.label}
+                                            </Text>
+                                            {language === lang.code && (
+                                                <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                                            )}
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        </View>
+                    </Modal>
 
                     {/* ===== APPEARANCE SECTION (tema) ===== */}
                     <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('profile.sections.appearance')}</Text>
@@ -673,4 +737,84 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         textAlign: 'center',
         lineHeight: 16,
     },
+    // Componentes del selector compacto de idioma y modal (Item 4, v1.2.7)
+    languagePickerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: colors.chip,
+        borderRadius: 14,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        marginTop: 8,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    languagePickerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        gap: 12,
+    },
+    languagePickerFlag: {
+        fontSize: 22,
+        lineHeight: 24,
+    },
+    languagePickerLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+        flex: 1,
+    },
+    languagePickerSub: {
+        fontSize: 12,
+        marginTop: 2,
+    },
+    languagePickerChevron: {
+        marginLeft: 4,
+    },
+    modalOverlay: {
+        flex: 1,
+        justifyContent: 'flex-end',
+        alignItems: 'stretch',
+        padding: 0,
+    },
+    modalCard: {
+        borderRadius: 20,
+        padding: 0,
+        maxHeight: '60%',
+        borderWidth: 1,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+    },
+    modalTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        flex: 1,
+    },
+    modalContent: {
+        maxHeight: 420,
+    },
+    modalContentPadding: {
+        padding: 8,
+    },
+    modalLangRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        borderRadius: 12,
+        marginBottom: 8,
+    },
+    modalLangRowActive: {
+        borderWidth: 2,
+        borderColor: colors.primary,
+    },
+
 });

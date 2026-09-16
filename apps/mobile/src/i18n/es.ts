@@ -37,6 +37,10 @@ export const es = {
     languageSubtitle: 'Elige el idioma de la interfaz',
     languageSpain: 'Idiomas de España',
     languageInternational: 'Otros idiomas',
+    languagePicker: 'Seleccionar idioma',
+    languageCurrent: 'Idioma actual',
+    languageTapToChange: 'Toca para cambiar',
+
     rtlNoticeTitle: 'Idioma de derecha a izquierda',
     rtlNoticeMsg: 'El árabe se escribe de derecha a izquierda. Reinicia la aplicación para aplicar la nueva disposición de los textos.',
     legalItems: {

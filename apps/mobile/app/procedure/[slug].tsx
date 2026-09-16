@@ -189,8 +189,10 @@ export default function ProcedureDetailScreen() {
     };
 
     if (isLoading) {
+        // Contenedor de carga con fondo explícito colors.background: nunca
+        // muestra blanco mientras se obtiene el trámite (Item 1 v1.2.7).
         return (
-            <View style={styles.center}>
+            <View style={[styles.center, { backgroundColor: colors.background }]}>
                 <ActivityIndicator size="large" color="#2563eb" />
                 <Text style={styles.loadingText}>Cargando trámite...</Text>
             </View>
@@ -199,7 +201,7 @@ export default function ProcedureDetailScreen() {
 
     if (!procedure) {
         return (
-            <View style={styles.center}>
+            <View style={[styles.center, { backgroundColor: colors.background }]}>
                 <Text style={styles.errorText}>No se ha encontrado el trámite solicitado.</Text>
                 <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
                     <Text style={styles.backBtnText}>← Volver</Text>

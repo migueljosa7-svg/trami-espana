@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../constants/theme';
 import { useBottomInset } from '../../src/hooks/useBottomInset';
+import { useSegments } from 'expo-router';
 
 export default function TabsLayout() {
     const { t } = useTranslation();
@@ -37,22 +38,46 @@ export default function TabsLayout() {
     // handleBackPress), activo durante toda la vida del navegador
     // de pestañas.
     // ============================================================
+    // Deterministic "tabs root only" check (Item 5):
+    // Only show exit-app modal when the user is on the *root* of a tab
+    // (e.g. segments === ['(tabs)'] or ['(tabs)', 'index']).  In any
+    // secondary route (procedure/[slug], modals, sub-screens) we MUST
+    // just call router.back() and never show the exit modal.
+    const segments = useSegments();
     const handleBackPress = useCallback((): boolean => {
         if (Platform.OS !== 'android') return false;
-        // Pantallas principales ((tabs)): si no hay historial (!canGoBack),
-        // interceptar el cierre (return true) y mostrar SIEMPRE el modal
-        // "¿Estás seguro de que quieres salir de la aplicación?".
-        // Solo "Salir" ejecuta BackHandler.exitApp().
+
+        // Not at the root of a tab group → normal in-stack pop, never
+        // show the exit-app modal.
+        const segmentsLen = segments.length;
+        const currentPath = segments[segmentsLen - 1] ?? '';
+        const tabsRootNames = ['index', 'buscar', 'asistente', 'favoritos', 'recordatorios', 'perfil'];
+        const isTabRoot =
+            (segmentsLen === 1 && segments[0] === '(tabs)') ||
+            (segmentsLen === 2 && segments[0] === '(tabs)' && tabsRootNames.includes(currentPath));
+
+        if (!isTabRoot) {
+            // Secondary screen: just go back if possible.
+            if (router.canGoBack()) {
+                router.back();
+                return true;
+            }
+            // Nothing to pop on Android should be extremely rare here;
+            // return false to let the OS handle it (quit app).
+            return false;
+        }
+
+        // We are on a tab root.  If there is no history behind it,
+        // intercept the button and show the exit-app modal.
         if (!router.canGoBack()) {
             setShowExitModal(true);
             return true;
         }
-        // Pantallas secundarias (ej. procedure/[slug] o modal de nuevo
-        // recordatorio): NO mostrar el modal de la app. Volver limpio
-        // con router.back() manteniendo el listado cargado.
+
+        // Tab root with history behind it: pop silently (no exit modal).
         router.back();
         return true;
-    }, [router]);
+    }, [router, segments]);
 
     useEffect(() => {
         if (Platform.OS !== 'android') return undefined;

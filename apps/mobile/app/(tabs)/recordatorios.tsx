@@ -324,6 +324,20 @@ export default function RemindersScreen() {
             if (notifResult.dayBefore || notifResult.dayOf) successMsg += '\n🔔 Notificaciones programadas (24h antes y el día).';
 
             if (!calResult.ok) {
+                // ===========================================================
+                // FEEDBACK VISUAL AL USUARIO (Item 3, v1.2.7):
+                // En dispositivos donde getDefaultCalendarAsync() falla,
+                // no existe o no hay calendario modificable, mostrar un
+                // Alert explícito con el título "Calendario" y avisar que
+                // el recordatorio se ha guardado en Trami España de todos
+                // modos.  Esto da feedback visual inmediato en Xiaomi /
+                // Huawei donde la API puede fallar silenciosamente.
+                // ===========================================================
+                Alert.alert(
+                    'Calendario',
+                    'No se pudo sincronizar con la agenda local, pero se guardó el recordatorio en Trami España.',
+                );
+
                 // Aviso amistoso en pantalla: el dispositivo no dispone de
                 // Google Calendar / Play Services (p. ej. GrapheneOS), pero
                 // el recordatorio se ha guardado igualmente en la app con

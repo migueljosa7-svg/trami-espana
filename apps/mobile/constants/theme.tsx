@@ -9,7 +9,7 @@
 // activo mediante el hook useTheme().
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
@@ -45,6 +45,13 @@ export const lightColors = {
   warningBackground: '#fffbeb',
   warningBorder: '#fde68a',
   warningText: '#92400e',
+  // Tipografía unificada: fuente del sistema limpia (evita la degenerada
+  // «RobotoRegular» de Xiaomi/MIUI/HyperOS que recortaba pesos y curvas).
+  fontFamily: Platform.select({
+    android: 'sans-serif-medium',
+    ios: 'System',
+    default: 'System',
+  }),
 };
 
 export const darkColors = {
@@ -72,6 +79,12 @@ export const darkColors = {
   warningBackground: '#2d2210',
   warningBorder: '#4a3818',
   warningText: '#fcd34d',
+  // Tipografía unificada: misma familia de fuente en modo oscuro.
+  fontFamily: Platform.select({
+    android: 'sans-serif-medium',
+    ios: 'System',
+    default: 'System',
+  }),
 };
 
 export type ThemeColors = typeof lightColors;

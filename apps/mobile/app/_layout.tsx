@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { I18nextProvider } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
+import { Platform } from 'react-native';
 import { authService, getSupabaseClient, initializeSupabase } from '@trami-espana/shared';
 import { initI18n, getI18nInstance } from '../src/i18n';
 import { clearUserCaches, runLocalStorageMigration } from '../src/localCache';
@@ -163,7 +164,17 @@ function RootNavigation() {
             <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={colors.background} />
             <I18nextProvider i18n={getI18nInstance()}>
                 <AuthProvider>
-                    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+                    <Stack screenOptions={{
+                        headerShown: false,
+                        contentStyle: { backgroundColor: colors.background },
+                        headerStyle: { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' },
+                        headerTintColor: isDark ? '#FFFFFF' : '#0F172A',
+                        headerTitleStyle: {
+                            color: isDark ? '#FFFFFF' : '#0F172A',
+                            fontFamily: Platform.select({ android: 'sans-serif-medium', ios: 'System', default: 'System' }),
+                            fontWeight: '600',
+                        },
+                    }}>
                         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                         <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
                         <Stack.Screen name="login" options={{ headerShown: false }} />
@@ -180,7 +191,11 @@ function RootNavigation() {
                                 // con fondo blanco en modo oscuro.
                                 headerStyle: { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' },
                                 headerTintColor: isDark ? '#FFFFFF' : '#0F172A',
-                                headerTitleStyle: { color: isDark ? '#FFFFFF' : '#0F172A' },
+                                headerTitleStyle: {
+                            color: isDark ? '#FFFFFF' : '#0F172A',
+                            fontFamily: Platform.select({ android: 'sans-serif-medium', ios: 'System', default: 'System' }),
+                            fontWeight: '600',
+                        },
                             }}
                         />
                         <Stack.Screen name="error" options={{ headerShown: false }} />

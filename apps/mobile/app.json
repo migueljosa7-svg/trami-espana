@@ -26,8 +26,8 @@
         "backgroundColor": "#2563eb"
       },
       "package": "es.tramiespana.app",
-      "versionCode": 24,
-      "versionName": "1.2.7"
+      "versionCode": 25,
+      "versionName": "1.2.8"
     },
     "web": {
       "bundler": "metro",

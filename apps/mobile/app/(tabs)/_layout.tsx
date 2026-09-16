@@ -112,9 +112,11 @@ export default function TabsLayout() {
                 height: 56 + bottomInset,
             },
             tabBarLabelStyle: {
-                fontSize: 12,
-                fontWeight: '500'
-            }
+                fontSize: 10,
+                fontWeight: '500',
+                marginTop: -6,
+            },
+            tabBarAllowFontScaling: false,
         }}>
             <Tabs.Screen
                 name="index"

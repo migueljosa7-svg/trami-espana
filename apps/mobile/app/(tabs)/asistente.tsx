@@ -10,11 +10,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Linking,
+  BackHandler,
 } from "react-native";
-import { Link, useRouter } from "expo-router";
+import { Link, useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { authService, assistantService, AssistantChatMessage, ASSISTANT_DISCLAIMER } from "@trami-espana/shared";
 import { useTheme, ThemeColors } from "../../constants/theme";
+import { useExitModal } from '../../src/context/ExitModalContext';
 
 const MAX_CHARS = 1000;
 const SLOW_THRESHOLD_MS = 6000;
@@ -134,6 +136,22 @@ export default function AssistantScreen() {
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const router = useRouter();
+  const { setShowExitModal } = useExitModal();
+
+  // ============================================================
+  // Intercepta el botón atrás de Android en la pestaña raíz.
+  // ============================================================
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'android') return undefined;
+      const onBackPress = () => {
+        setShowExitModal(true);
+        return true;
+      };
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [setShowExitModal])
+  );
 
   const init = useCallback(async () => {
     let currentUser = null;

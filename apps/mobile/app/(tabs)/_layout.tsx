@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Tabs, useRouter } from 'expo-router';
+import { useCallback } from 'react';
+import { Tabs } from 'expo-router';
 import {
     BackHandler,
     Modal,
-    Platform,
     Text,
     TouchableOpacity,
     View,
@@ -12,100 +11,41 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomInset } from '../../src/hooks/useBottomInset';
-import { useSegments } from 'expo-router';
+import { ExitModalProvider, useExitModal } from '../../src/context/ExitModalContext';
 
-export default function TabsLayout() {
+// ============================================================
+// TabsContent — consumidor del ExitModalContext.
+// El BackHandler global se ha eliminado: ahora cada pantalla de
+// pestaña raíz registra su propio useFocusEffect + BackHandler
+// que llama a setShowExitModal(true) desde este contexto.
+// ============================================================
+function TabsContent() {
     const { t } = useTranslation();
     const { colors, isDark } = useTheme();
-    const router = useRouter();
+    const insets = useSafeAreaInsets();
     const bottomInset = useBottomInset();
-
-    // ============================================================
-    // Modal de confirmación de salida (Item 1): ¿Estás seguro de
-    // que quieres salir? Con botones Cancelar / Salir.
-    // ============================================================
-    const [showExitModal, setShowExitModal] = useState(false);
-
-    // ============================================================
-    // Intercepción del botón físico / gesto "atrás" de Android.
-    //
-    // IMPORTANTE: aquí NO se usa useFocusEffect. Los componentes
-    // _layout no son pantallas y no reciben el evento focus, por lo
-    // que el listener antiguo nunca llegaba a registrarse y el
-    // modal de salida dejaba de mostrarse. Se usa un useEffect
-    // normal con BackHandler.addEventListener('hardwareBackPress',
-    // handleBackPress), activo durante toda la vida del navegador
-    // de pestañas.
-    // ============================================================
-    // Deterministic "tabs root only" check (Item 5):
-    // Only show exit-app modal when the user is on the *root* of a tab
-    // (e.g. segments === ['(tabs)'] or ['(tabs)', 'index']).  In any
-    // secondary route (procedure/[slug], modals, sub-screens) we MUST
-    // just call router.back() and never show the exit modal.
-    const segments = useSegments();
-    const handleBackPress = useCallback((): boolean => {
-        if (Platform.OS !== 'android') return false;
-
-        // Not at the root of a tab group → normal in-stack pop, never
-        // show the exit-app modal.
-        const segmentsLen = segments.length;
-        const currentPath = segments[segmentsLen - 1] ?? '';
-        const tabsRootNames = ['index', 'buscar', 'asistente', 'favoritos', 'recordatorios', 'perfil'];
-        const isTabRoot =
-            (segmentsLen === 1 && segments[0] === '(tabs)') ||
-            (segmentsLen === 2 && segments[0] === '(tabs)' && tabsRootNames.includes(currentPath));
-
-        if (!isTabRoot) {
-            // Secondary screen: just go back if possible.
-            if (router.canGoBack()) {
-                router.back();
-                return true;
-            }
-            // Nothing to pop on Android should be extremely rare here;
-            // return false to let the OS handle it (quit app).
-            return false;
-        }
-
-        // We are on a tab root.  If there is no history behind it,
-        // intercept the button and show the exit-app modal.
-        if (!router.canGoBack()) {
-            setShowExitModal(true);
-            return true;
-        }
-
-        // Tab root with history behind it: pop silently (no exit modal).
-        router.back();
-        return true;
-    }, [router, segments]);
-
-    useEffect(() => {
-        if (Platform.OS !== 'android') return undefined;
-        const subscription = BackHandler.addEventListener(
-            'hardwareBackPress',
-            handleBackPress
-        );
-        return () => subscription.remove();
-    }, [handleBackPress]);
+    const { showExitModal, setShowExitModal } = useExitModal();
 
     // "Sí/Salir" en el modal: cierra la app explícitamente.
     const handleExitApp = useCallback(() => {
         setShowExitModal(false);
         BackHandler.exitApp();
-    }, []);
+    }, [setShowExitModal]);
 
-    const handleExitCancel = useCallback(() => setShowExitModal(false), []);
+    const handleExitCancel = useCallback(() => setShowExitModal(false), [setShowExitModal]);
 
     const exitModalStyles = getExitModalStyles(colors);
 
     return (
-        <>
+        <View style={{ flex: 1, backgroundColor: '#0F172A', paddingBottom: insets.bottom }}>
             <Tabs screenOptions={{
             headerShown: false,
             tabBarActiveTintColor: colors.tabBarActive,
             tabBarInactiveTintColor: colors.tabBarInactive,
             tabBarStyle: {
-                backgroundColor: colors.card,
+                backgroundColor: isDark ? '#0F172A' : colors.card,
                 borderTopColor: colors.border,
                 paddingTop: 8,
                 paddingBottom: bottomInset,
@@ -176,6 +116,8 @@ export default function TabsLayout() {
 
             {/* ============================================================
                 Modal personalizado de confirmación de salida.
+                Activado por useFocusEffect + BackHandler en cada pantalla
+                de pestaña raíz mediante ExitModalContext.
                 "Sí/Salir" ejecuta BackHandler.exitApp().
             ============================================================ */}
             <Modal
@@ -242,7 +184,20 @@ export default function TabsLayout() {
                     </View>
                 </View>
             </Modal>
-        </>
+        </View>
+    );
+}
+
+// ============================================================
+// TabsLayout — provee el ExitModalContext para todo el árbol
+// de pestañas. Las pantallas hijo consumen useExitModal() para
+// disparar el modal desde su propio useFocusEffect.
+// ============================================================
+export default function TabsLayout() {
+    return (
+        <ExitModalProvider>
+            <TabsContent />
+        </ExitModalProvider>
     );
 }
 

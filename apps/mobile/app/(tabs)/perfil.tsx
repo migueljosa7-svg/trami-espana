@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -8,8 +8,10 @@ import {
     ActivityIndicator,
     Alert,
     ScrollView,
+    BackHandler,
+    Platform,
 } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { Link, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +26,7 @@ import {
 import { clearUserCaches } from '../../src/localCache';
 import { useTheme, type ThemeColors, type ThemePreference } from '../../constants/theme';
 import { useAuth } from '../../src/context/AuthContext';
+import { useExitModal } from '../../src/context/ExitModalContext';
 
 export default function ProfileScreen() {
     const { t, i18n } = useTranslation();
@@ -33,6 +36,7 @@ export default function ProfileScreen() {
     const { colors, preference, setPreference } = useTheme();
     const styles = getStyles(colors);
     const { user, isLoading, signOut: authSignOut } = useAuth();
+    const { setShowExitModal } = useExitModal();
     const [deleting, setDeleting] = useState(false);
     // Idioma reactivo: se actualiza con i18n.language para forzar re-render
     const [language, setLanguage] = useState<AppLanguage>(
@@ -67,6 +71,21 @@ export default function ProfileScreen() {
         code: language,
         group: 'spain' as const,
     };
+    // ============================================================
+    // Intercepta el botón atrás de Android en la pestaña raíz.
+    // ============================================================
+    useFocusEffect(
+        useCallback(() => {
+            if (Platform.OS !== 'android') return undefined;
+            const onBackPress = () => {
+                setShowExitModal(true);
+                return true;
+            };
+            const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+            return () => subscription.remove();
+        }, [setShowExitModal])
+    );
+
     const currentLangLabel = currentLangDef.label;
     const currentLangFlag = currentLangDef.flag;
     const [showLanguageModal, setShowLanguageModal] = useState<boolean>(false);
@@ -646,7 +665,9 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         borderBottomColor: colors.chip,
     },
     menuIcon: {
-        marginRight: 14,
+        marginRight: 16, // Separación obligatoria respecto al texto
+        width: 24,
+        textAlign: 'center',
     },
     menuLabel: {
         flex: 1,
@@ -656,6 +677,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         color: colors.text,
     },
     menuChevron: {
+        marginLeft: 8,
         alignSelf: 'center',
         opacity: 0.5,
     },

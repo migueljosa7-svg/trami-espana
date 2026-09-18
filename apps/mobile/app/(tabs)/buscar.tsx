@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type ComponentProps } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { Link, useLocalSearchParams } from 'expo-router';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, BackHandler, Platform } from 'react-native';
+import { Link, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { procedureService, ProcedureWithDetails } from '@trami-espana/shared';
@@ -10,6 +10,7 @@ import { cacheProcedures, readCachedProcedures } from '../../src/localCache';
 import { useTheme, ThemeColors } from '../../constants/theme';
 import { useSearchHistory } from '../../src/hooks/useSearchHistory';
 import { SkeletonItem } from '../../components/SkeletonLoader';
+import { useExitModal } from '../../src/context/ExitModalContext';
 
 const QUICK_CHIPS = [
     { label: 'DNI / Pasaporte', query: 'DNI' },
@@ -180,6 +181,22 @@ export default function SearchScreen() {
     const [error, setError] = useState<string | null>(null);
     const [isFocused, setIsFocused] = useState(false);
     const searchInputRef = useRef<TextInput>(null);
+    const { setShowExitModal } = useExitModal();
+
+    // ============================================================
+    // Intercepta el botón atrás de Android en la pestaña raíz.
+    // ============================================================
+    useFocusEffect(
+        useCallback(() => {
+            if (Platform.OS !== 'android') return undefined;
+            const onBackPress = () => {
+                setShowExitModal(true);
+                return true;
+            };
+            const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+            return () => subscription.remove();
+        }, [setShowExitModal])
+    );
 
     // Historial de búsquedas
     const { history, addToHistory, removeFromHistory, clearHistory } = useSearchHistory();

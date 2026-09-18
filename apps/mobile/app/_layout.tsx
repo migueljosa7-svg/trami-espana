@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { I18nextProvider } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
-import { Platform } from 'react-native';
 import { authService, getSupabaseClient, initializeSupabase } from '@trami-espana/shared';
 import { initI18n, getI18nInstance } from '../src/i18n';
 import { clearUserCaches, runLocalStorageMigration } from '../src/localCache';
@@ -72,6 +71,7 @@ function RootNavigation() {
     const [storageReady, setStorageReady] = useState(false);
 
     useSupabaseAutoRefresh();
+    useAndroidNavigationBar();
 
     // Captura del deep link de confirmación de Supabase (tramiespana:///auth/callback?code=...).
     // Sin esto, al pulsar el enlace del email el SO abre la app pero la sesión PKCE

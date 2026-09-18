@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Alert, Modal } from 'react-native';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Alert, Modal, BackHandler } from 'react-native';
+import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -49,8 +49,20 @@ export default function ProcedureDetailScreen() {
     // Determinar si el usuario es invitado (no autenticado)
     const isGuest = !user && !authLoading;
 
-    // NOTA v1.2.5: sin modal de salida aqui. Atras = router.back(). El modal de salida vive solo en (tabs)/_layout.
-
+    // ============================================================
+    // NOTA v1.2.9: el botón atrás SIEMPRE ejecuta router.back().
+    // Sin modal de salida en esta pantalla secundaria del stack.
+    // ============================================================
+    useFocusEffect(
+        useCallback(() => {
+            const onBackPress = () => {
+                router.back(); // Regresa al listado anterior
+                return true;  // Evita que el evento escale al sistema o cierre la app
+            };
+            const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+            return () => subscription.remove();
+        }, [router])
+    );
 
     useEffect(() => {
         const fetchProcedure = async () => {
@@ -190,7 +202,7 @@ export default function ProcedureDetailScreen() {
 
     if (isLoading) {
         // Contenedor de carga con fondo explícito colors.background: nunca
-        // muestra blanco mientras se obtiene el trámite (Item 1 v1.2.7).
+        // muestra blanco mientras se obtiene el trámite.
         return (
             <View style={[styles.center, { backgroundColor: colors.background }]}>
                 <ActivityIndicator size="large" color="#2563eb" />
@@ -225,6 +237,21 @@ export default function ProcedureDetailScreen() {
                     headerTintColor: isDark ? '#FFFFFF' : '#0F172A',
                     headerTitleStyle: { color: isDark ? '#FFFFFF' : '#0F172A' },
                     headerShadowVisible: false,
+                    // Botón atrás explícito en la cabecera (v1.2.9)
+                    headerLeft: () => (
+                        <TouchableOpacity
+                            onPress={() => router.back()}
+                            style={{ marginLeft: 4, padding: 8 }}
+                            accessibilityLabel="Volver"
+                            accessibilityRole="button"
+                        >
+                            <Ionicons
+                                name="chevron-back"
+                                size={24}
+                                color={isDark ? '#FFFFFF' : '#0F172A'}
+                            />
+                        </TouchableOpacity>
+                    ),
                 }}
             />
             {/* StatusBar aplicada de forma uniforme en esta vista: con
@@ -506,7 +533,7 @@ export default function ProcedureDetailScreen() {
             </View>
         </Modal>
 
-        {/* v1.2.5: sin modal de salida en detalle; atras = router.back(). */}
+        {/* v1.2.9: sin modal de salida en detalle; atrás = router.back(). */}
         </SafeAreaView>
     );
 }
@@ -853,7 +880,6 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         textAlign: 'center',
         color: colors.textMuted,
     },
-    // Modal de confirmación al salir
     // PDF Modal styles
     pdfModalContainer: {
         flex: 1,

@@ -10,8 +10,9 @@ import {
     TextInput,
     Alert,
     Platform,
+    BackHandler,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { reminderService, ReminderWithProcedure } from '@trami-espana/shared';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -20,6 +21,7 @@ import { scheduleDeadlineNotifications, syncUpcomingDeadlineNotifications } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../constants/theme';
 import { useAuth } from '../../src/context/AuthContext';
+import { useExitModal } from '../../src/context/ExitModalContext';
 
 // Lazy-load expo-calendar (permisos gestionados al usarlo). Las
 // notificaciones locales se centralizan en src/services/notifications.ts.
@@ -195,6 +197,22 @@ export default function RemindersScreen() {
     const { user, isLoading: authLoading } = useAuth();
     // Insets para que el FAB y el modal nunca queden bajo la barra del sistema.
     const insets = useSafeAreaInsets();
+    const { setShowExitModal } = useExitModal();
+
+    // ============================================================
+    // Intercepta el botón atrás de Android en la pestaña raíz.
+    // ============================================================
+    useFocusEffect(
+        useCallback(() => {
+            if (Platform.OS !== 'android') return undefined;
+            const onBackPress = () => {
+                setShowExitModal(true);
+                return true;
+            };
+            const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+            return () => subscription.remove();
+        }, [setShowExitModal])
+    );
     const [reminders, setReminders] = useState<ReminderWithProcedure[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);

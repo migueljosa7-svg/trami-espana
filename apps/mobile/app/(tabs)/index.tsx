@@ -1,12 +1,33 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
+import { useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions, BackHandler, Platform } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { Link } from 'expo-router';
 import { PROCEDURE_CATEGORIES } from '@trami-espana/shared';
 import { useTheme } from '../../constants/theme';
+import { useExitModal } from '../../src/context/ExitModalContext';
 
 export default function HomeScreen() {
     const { colors } = useTheme();
     const { width } = useWindowDimensions();
     const isTablet = width >= 768;
+    const { setShowExitModal } = useExitModal();
+
+    // ============================================================
+    // Intercepta el botón atrás de Android en la pestaña raíz.
+    // Muestra el modal de confirmación de salida; nunca cierra la
+    // app directamente.
+    // ============================================================
+    useFocusEffect(
+        useCallback(() => {
+            if (Platform.OS !== 'android') return undefined;
+            const onBackPress = () => {
+                setShowExitModal(true);
+                return true; // Bloquea la salida directa de Android
+            };
+            const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+            return () => subscription.remove();
+        }, [setShowExitModal])
+    );
     const cardWidth = isTablet ? '31%' : '48%';
 
     return (

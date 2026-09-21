@@ -269,11 +269,8 @@ export const authService = {
             if (!error && data.session) {
                 return data.session;
             }
-            if (error) {
-                console.log('[AUTH] getSession devolvió error (se intentará el storage):', error.message);
-            }
-        } catch (error) {
-            console.log('[AUTH] getSession lanzó error (se intentará el storage):', error);
+        } catch {
+            // Error puntual del cliente: se intentará el storage persistido.
         }
 
         // 2) FALLBACK DE PERSISTENCIA: leer el token directamente del disco.
@@ -281,7 +278,6 @@ export const authService = {
             if (typeof readPersistedSupabaseSession === 'function') {
                 const persisted = await readPersistedSupabaseSession();
                 if (persisted) {
-                    console.log('[AUTH] Sesión recuperada del almacenamiento persistido');
                     try {
                         // Reintroducir la sesión en el cliente para que
                         // autoRefreshToken y las peticiones la utilicen.
@@ -293,19 +289,16 @@ export const authService = {
                         if (retry?.session) {
                             return retry.session;
                         }
-                    } catch (restoreError) {
-                        console.log(
-                            '[AUTH] No se pudo restaurar en el cliente; se usa la sesión en disco:',
-                            restoreError
-                        );
+                    } catch {
+                        // Sin restauración en cliente: se usa la sesión en disco.
                     }
                     // La sesión existe en disco: se devuelve siempre para
                     // NO forzar un cierre de sesión injusto (p. ej. offline).
                     return persisted;
                 }
             }
-        } catch (fallbackError) {
-            console.log('[AUTH] Fallback de storage falló:', fallbackError);
+        } catch {
+            // Fallback de storage falló: no hay sesión recuperable.
         }
 
         return null;

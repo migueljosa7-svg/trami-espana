@@ -94,22 +94,24 @@ export default function ProfileScreen() {
 
     const handleSignOut = async () => {
         Alert.alert(
-            'Cerrar sesión',
-            '¿Estás seguro de que deseas cerrar sesión?',
+            t('profile.logoutConfirmTitle'),
+            t('profile.logoutConfirmMsg'),
             [
-                { text: 'Cancelar', style: 'cancel' },
+                { text: t('profile.auth.cancel'), style: 'cancel' },
                 {
-                    text: 'Cerrar sesión',
+                    text: t('profile.auth.signOutConfirm'),
                     style: 'destructive',
                     onPress: async () => {
-                        console.log('[PERFIL] Cerrando sesión...');
                         // Aislamiento estricto: al cerrar sesión se purgan de inmediato la
                         // caché local de favoritos y recordatorios (AsyncStorage) para que un
                         // usuario invitado o distinto no vea datos de una sesión anterior.
-                        await clearUserCaches();
-                        await authSignOut();
-                        console.log('[PERFIL] Sesión cerrada exitosamente');
-                        // Redirigir al login
+                        try {
+                            await clearUserCaches();
+                            await authSignOut();
+                        } catch {
+                            // Nunca bloquear la redirección por un fallo de purga local.
+                        }
+                        // Redirigir al login. replace() no requiere canGoBack().
                         router.replace('/login');
                     },
                 },
@@ -237,28 +239,21 @@ export default function ProfileScreen() {
                         </View>
                     )}
 
-                    {/* ===== LEGAL SECTION ===== */}
+                    {/* ===== LEGAL SECTION (enlaces en línea, centrados) ===== */}
                     <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('profile.sections.legal')}</Text>
-                    <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                        {legalItems.map((item, index) => (
+                    <View style={[styles.legalChipsWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        {legalItems.map((item) => (
                             <Link key={item.href} href={item.href} asChild>
                                 <TouchableOpacity
-                                    style={[
-                                        styles.menuRow,
-                                        index < legalItems.length - 1 && styles.menuRowBorder,
-                                    ]}
-                                    accessibilityRole="button"
+                                    style={[styles.legalChip, { backgroundColor: colors.chip, borderColor: colors.border }]}
                                     activeOpacity={0.7}
+                                    accessibilityRole="link"
+                                    accessibilityLabel={item.label}
                                 >
-                                    <Ionicons name={item.icon} size={22} color="#64748b" style={styles.menuIcon} />
-                                    <Text
-                                        style={styles.menuLabel}
-                                        numberOfLines={1}
-                                        ellipsizeMode="tail"
-                                    >
+                                    <Ionicons name={item.icon} size={14} color={colors.primary} />
+                                    <Text style={[styles.legalChipText, { color: colors.text }]} numberOfLines={1}>
                                         {item.label}
                                     </Text>
-                                    <Ionicons name="chevron-forward" size={20} color="#cbd5e1" style={styles.menuChevron} />
                                 </TouchableOpacity>
                             </Link>
                         ))}
@@ -676,10 +671,34 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         textAlign: 'left',
         color: colors.text,
     },
-    menuChevron: {
-        marginLeft: 8,
-        alignSelf: 'center',
-        opacity: 0.5,
+    // Chips legales: los 6 enlaces (privacidad, términos, cookies, aviso,
+    // datos y contacto) se muestran en línea horizontal CENTRADA dentro de
+    // la tarjeta — no pegados a la izquierda — con salto automático a la
+    // línea siguiente solo si no caben en pantallas muy estrechas.
+    legalChipsWrap: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 8,
+        borderRadius: 16,
+        borderWidth: 1,
+        paddingHorizontal: 12,
+        paddingVertical: 14,
+        marginBottom: 20,
+    },
+    legalChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 7,
+        paddingHorizontal: 12,
+        borderRadius: 999,
+        borderWidth: 1,
+    },
+    legalChipText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
     // Chevron de fila: nunca se encoge ni salta de línea; centrado
     // verticalmente respecto a la fila (alineación del icono) y con el

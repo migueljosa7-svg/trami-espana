@@ -225,7 +225,8 @@ export default function AssistantScreen() {
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (messages.length > 0) {
-      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+      const scrollTimer = setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+      return () => clearTimeout(scrollTimer);
     }
   }, [messages]);
 

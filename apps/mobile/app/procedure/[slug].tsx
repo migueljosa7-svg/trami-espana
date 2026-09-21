@@ -14,6 +14,22 @@ import { useChecklist } from '../../src/hooks/useChecklist';
 export default function ProcedureDetailScreen() {
     const { slug } = useLocalSearchParams<{ slug: string }>();
     const router = useRouter();
+    // ============================================================
+    // v1.3.0: vuelta atrás segura. router.back() SOLO se invoca si
+    // el stack de navegación está listo (canGoBack()); en caso
+    // contrario se regresa al listado de pestañas. Evita crashes
+    // sobre referencias no montadas en arranque frío, deep links
+    // o al pulsar atrás en el último screen del stack.
+    // ============================================================
+    const goBackSafely = useCallback((): boolean => {
+        if (router?.canGoBack?.()) {
+            router.back();
+            return true;
+        }
+        router.replace('/(tabs)');
+        return false;
+    }, [router]);
+
     const { colors, isDark } = useTheme();
     const styles = getStyles(colors, isDark);
     const { user, isLoading: authLoading } = useAuth();
@@ -50,18 +66,16 @@ export default function ProcedureDetailScreen() {
     const isGuest = !user && !authLoading;
 
     // ============================================================
-    // NOTA v1.2.9: el botón atrás SIEMPRE ejecuta router.back().
-    // Sin modal de salida en esta pantalla secundaria del stack.
+    // NOTA v1.2.9: el botón atrás SIEMPRE ejecuta la vuelta atrás
+    // segura (goBackSafely). Sin modal de salida en esta pantalla
+    // secundaria del stack.
     // ============================================================
     useFocusEffect(
         useCallback(() => {
-            const onBackPress = () => {
-                router.back(); // Regresa al listado anterior
-                return true;  // Evita que el evento escale al sistema o cierre la app
-            };
+            const onBackPress = () => goBackSafely();
             const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
             return () => subscription.remove();
-        }, [router])
+        }, [goBackSafely])
     );
 
     useEffect(() => {
@@ -103,11 +117,8 @@ export default function ProcedureDetailScreen() {
     // Valida autenticación ANTES de hacer cualquier petición
     // ============================================================
     const handleToggleFavorite = async (proc: ProcedureWithDetails) => {
-        console.log('[FAVORITES] Intento de toggle favorito:', proc.slug, 'Estado previo:', isFavorite, 'isGuest:', isGuest);
-
         // Validar autenticación ANTES de proceder
         if (isGuest || !user) {
-            console.log('[FAVORITES] Usuario no autenticado - bloqueando acción');
             Alert.alert(
                 'Inicio de sesión obligatorio',
                 'Es obligatorio iniciar sesión para añadir o actualizar trámites en tus favoritos.'
@@ -126,20 +137,16 @@ export default function ProcedureDetailScreen() {
         try {
             // Usuario autenticado: usar Supabase
             if (wasFavorite) {
-                console.log('[FAVORITES] Eliminando de favoritos en Supabase...');
                 const result = await favoriteService.removeFavorite(proc.id);
                 if (!result.success) {
                     throw new Error(result.error?.message || 'No se pudo eliminar de favoritos');
                 }
-                console.log('[FAVORITES] Eliminado correctamente');
                 Alert.alert('Eliminado', 'Trámite eliminado de tus favoritos.');
             } else {
-                console.log('[FAVORITES] Añadiendo a favoritos en Supabase...');
                 const result = await favoriteService.addFavorite(proc.id);
                 if (!result.success) {
                     throw new Error(result.error?.message || 'No se pudo añadir a favoritos');
                 }
-                console.log('[FAVORITES] Añadido correctamente');
                 Alert.alert('¡Guardado! 💙', 'Trámite añadido a tus favoritos.');
             }
         } catch (error) {
@@ -215,7 +222,7 @@ export default function ProcedureDetailScreen() {
         return (
             <View style={[styles.center, { backgroundColor: colors.background }]}>
                 <Text style={styles.errorText}>No se ha encontrado el trámite solicitado.</Text>
-                <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+                <TouchableOpacity style={styles.backBtn} onPress={() => goBackSafely()}>
                     <Text style={styles.backBtnText}>← Volver</Text>
                 </TouchableOpacity>
             </View>
@@ -240,7 +247,7 @@ export default function ProcedureDetailScreen() {
                     // Botón atrás explícito en la cabecera (v1.2.9)
                     headerLeft: () => (
                         <TouchableOpacity
-                            onPress={() => router.back()}
+                            onPress={() => goBackSafely()}
                             style={{ marginLeft: 4, padding: 8 }}
                             accessibilityLabel="Volver"
                             accessibilityRole="button"
@@ -261,7 +268,7 @@ export default function ProcedureDetailScreen() {
             <ScrollView style={styles.container} contentContainerStyle={{ padding: 16, paddingBottom: 60 + insets.bottom, backgroundColor: colors.background }}>
             {/* Back + Bookmark header row */}
             <View style={styles.topBar}>
-                <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.7}>
+                <TouchableOpacity style={styles.backButton} onPress={() => goBackSafely()} activeOpacity={0.7}>
                     <Ionicons name="chevron-back" size={20} color="#2563eb" />
                     <Text style={styles.backButtonText}>Volver</Text>
                 </TouchableOpacity>

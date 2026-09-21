@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { procedureService, ProcedureWithDetails } from '@trami-espana/shared';
 import { useTranslation } from 'react-i18next';
-import { useBottomInset } from '../../src/hooks/useBottomInset';
 import { cacheProcedures, readCachedProcedures } from '../../src/localCache';
 import { useTheme, ThemeColors } from '../../constants/theme';
 import { useSearchHistory } from '../../src/hooks/useSearchHistory';
@@ -169,7 +168,6 @@ export default function SearchScreen() {
     const { t } = useTranslation();
     const { colors, isDark } = useTheme();
     const styles = getStyles(colors, isDark);
-    useBottomInset(); /* eslint-disable-line @typescript-eslint/no-unused-vars */
     const params = useLocalSearchParams<{ categoria?: string }>();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(params.categoria || '');

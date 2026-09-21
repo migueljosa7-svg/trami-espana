@@ -87,13 +87,10 @@ export function AuthProvider({ children }: AuthProviderProps): React.ReactElemen
             timeoutId = null;
             setIsLoading(false);
             setIsInitialized(true);
-            console.log('[AUTH] Inicialización completada');
         };
 
         try {
             const { data: authData } = authService.onAuthStateChange((event, currentSession) => {
-                console.log('[AUTH] Cambio de estado:', event);
-
                 if (
                     event === 'SIGNED_IN' ||
                     event === 'TOKEN_REFRESHED' ||
@@ -107,7 +104,6 @@ export function AuthProvider({ children }: AuthProviderProps): React.ReactElemen
                     if (currentSession) {
                         setSession(currentSession);
                         setUser(currentSession.user ?? null);
-                        console.log('[AUTH] Usuario actualizado:', currentSession.user?.email);
                     }
                     // INITIAL_SESSION = el cliente ya terminó de leer el
                     // storage persistido: es seguro cerrar la pantalla de carga.
@@ -117,7 +113,6 @@ export function AuthProvider({ children }: AuthProviderProps): React.ReactElemen
                 } else if (event === 'SIGNED_OUT') {
                     setSession(null);
                     setUser(null);
-                    console.log('[AUTH] Sesión cerrada');
                 }
             });
             // Preparar la limpieza de forma segura.
@@ -126,20 +121,17 @@ export function AuthProvider({ children }: AuthProviderProps): React.ReactElemen
                 unsubscribe = () => {
                     try {
                         sub.unsubscribe();
-                    } catch (cleanupError) {
+                    } catch {
                         // Silencioso en limpieza.
-                        console.log('[AUTH] Error al limpiar listener:', cleanupError);
                     }
                 };
             }
-        } catch (subscribeError) {
-            // Supabase no disponible.
-            console.log('[AUTH] No disponible el listener de auth:', subscribeError);
+        } catch {
+            // Supabase no disponible: la app arranca sin listener de auth.
         }
 
         const initializeAuth = async () => {
             try {
-                console.log('[AUTH] Inicializando autenticación...');
                 // getSession() espera obligatoriamente la rehidratación
                 // desde AsyncStorage (incluye fallback de lectura directa
                 // del token persistido en disco).
@@ -150,18 +142,15 @@ export function AuthProvider({ children }: AuthProviderProps): React.ReactElemen
                 if (currentSession) {
                     setSession(currentSession);
                     setUser(currentSession.user);
-                    console.log('[AUTH] Sesión rehidratada para:', currentSession.user?.email);
                 } else if (!sawInitialSession) {
                     // No hay sesión ni en memoria ni en disco.
                     setSession(null);
                     setUser(null);
-                    console.log('[AUTH] No hay sesión activa');
                 }
-            } catch (error) {
+            } catch {
                 // IMPORTANTE: un error aquí NO debe cerrar la sesión. Si el
                 // token persiste en disco, INITIAL_SESSION/readPersisted lo
                 // repondrá; solo se registra el fallo.
-                console.log('[AUTH] Error en inicialización (se conserva la sesión si existe):', error);
             } finally {
                 // El cliente ya leyó el storage (getSession aguarda la
                 // rehidratación): se puede cerrar la pantalla de carga.
@@ -174,7 +163,6 @@ export function AuthProvider({ children }: AuthProviderProps): React.ReactElemen
         // Red de seguridad definitiva: nunca dejar la app bloqueada en
         // carga aunque el cliente tarde demasiado en rehidratar.
         timeoutId = setTimeout(() => {
-            console.log('[AUTH] Timeout de inicialización: liberando pantalla de carga');
             markReady();
         }, 5000);
 
@@ -188,20 +176,17 @@ export function AuthProvider({ children }: AuthProviderProps): React.ReactElemen
     }, []);
 
     const signOut = useCallback(async () => {
-        console.log('[AUTH] Cerrando sesión...');
         await authService.logout();
         setSession(null);
         setUser(null);
-        console.log('[AUTH] Sesión cerrada exitosamente');
     }, []);
 
     const refreshUser = useCallback(async () => {
         try {
             const currentUser = await authService.getCurrentUser();
             setUser(currentUser);
-            console.log('[AUTH] Usuario refrescado:', currentUser?.email);
-        } catch (error) {
-            console.log('[AUTH] Error al refrescar usuario:', error);
+        } catch {
+            // Usuario no disponible (sin sesión o fallo de red): se conserva el estado actual.
         }
     }, []);
 

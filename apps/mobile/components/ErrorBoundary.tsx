@@ -27,9 +27,16 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     }
 
     componentDidCatch(error: Error, info: ErrorInfo): void {
-        if (__DEV__) {
-            console.error('[ErrorBoundary] Error capturado:', error, info.componentStack);
-        }
+        // Registro SIEMPRE activo (también en release): visible en desarrollo
+        // por consola y en producción vía `adb logcat -s ReactNativeJS`.
+        // Incluye error.message, stack y componentStack para identificar
+        // exactamente qué componente/hook disparó la excepción.
+        console.error(
+            '[ErrorBoundary] Error capturado:',
+            error,
+            '\nComponent stack:',
+            info.componentStack,
+        );
     }
 
     private handleReset = (): void => {

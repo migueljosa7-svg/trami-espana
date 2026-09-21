@@ -52,8 +52,8 @@ async function getGooglePrimaryCalendarId(): Promise<CalendarResult> {
     try {
         const { status } = await Calendar.requestCalendarPermissionsAsync();
         if (status !== 'granted') return { ok: false, reason: 'permission' };
-    } catch (error) {
-        console.log('[CALENDARIO] requestCalendarPermissionsAsync lanzó excepción (sin Play Services?):', error);
+    } catch {
+        // Sin Play Services el módulo puede lanzar: degradar a 'unavailable'.
         return { ok: false, reason: 'unavailable' };
     }
     // 2) Listado de calendarios: también protegido con try/catch.
@@ -86,10 +86,9 @@ async function getGooglePrimaryCalendarId(): Promise<CalendarResult> {
         const writable = calendars.find((c) => c.allowsModifications);
         if (writable) return { ok: true, reason: null, id: writable.id };
         return { ok: false, reason: 'empty' };
-    } catch (error) {
+    } catch {
         // Error de la API de Google (proveedor no disponible / SecurityException
         // en GrapheneOS): no propagar, degradar con motivo 'unavailable'.
-        console.log('[CALENDARIO] getCalendarsAsync lanzó excepción (proveedor no disponible?):', error);
         return { ok: false, reason: 'unavailable' };
     }
 }
@@ -111,10 +110,9 @@ async function addToDeviceCalendar(title: string, date: Date, notes?: string): P
             alarms: [{ relativeOffset: -60 }], // 1h before
         });
         return { ok: true, reason: null };
-    } catch (error) {
+    } catch {
         // createEventAsync puede lanzar en dispositivos sin proveedor de
         // Google Calendar. Se captura SIEMPRE y se degrada con aviso.
-        console.log('[CALENDARIO] createEventAsync lanzó excepción:', error);
         return { ok: false, reason: 'unavailable' };
     }
 }
@@ -247,17 +245,14 @@ export default function RemindersScreen() {
         try {
             // Usar el usuario del AuthContext en lugar de llamar a authService directamente
             if (!user) {
-                console.log('[RECORDATORIOS] Usuario no autenticado - redirigiendo a login');
                 router.replace('/login');
                 return;
             }
-            console.log('[RECORDATORIOS] Cargando recordatorios para:', user.email);
             const data = await reminderService.getReminders();
             if (data) {
                 setReminders(data);
                 // Copia local (aislada por usuario) para acceso offline.
                 await cacheReminders(data);
-                console.log('[RECORDATORIOS] Recordatorios cargados:', data.length);
             }
         } catch (error) {
             console.error('[RECORDATORIOS] Error al cargar recordatorios:', error);
@@ -292,7 +287,6 @@ export default function RemindersScreen() {
 
         // Validar autenticación ANTES de proceder
         if (!user) {
-            console.log('[RECORDATORIOS] Usuario no autenticado - no se puede guardar');
             Alert.alert(
                 'Inicio de sesión obligatorio',
                 'Debes iniciar sesión para crear recordatorios.'
@@ -300,7 +294,6 @@ export default function RemindersScreen() {
             return;
         }
 
-        console.log('[RECORDATORIOS] Guardando recordatorio para usuario:', user.email);
         setSaving(true);
         try {
             // Recordatorio manual: sin trámite asociado -> procedure_id NULL.
@@ -315,7 +308,6 @@ export default function RemindersScreen() {
 
             if (newReminder) {
                 setReminders((prev) => [newReminder, ...prev]);
-                console.log('[RECORDATORIOS] Recordatorio guardado correctamente:', newReminder.id);
             }
 
             // Add to device calendar. En GrapheneOS / dispositivos sin

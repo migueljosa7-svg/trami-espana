@@ -71,7 +71,15 @@ function RootNavigation() {
     const [storageReady, setStorageReady] = useState(false);
 
     useSupabaseAutoRefresh();
-    useAndroidNavigationBar();
+
+    // NOTA v1.3.0 (CAUSA RAÍZ del crash "Algo ha ido mal"): aquí existía una
+    // llamada a useAndroidNavigationBar() cuya función había sido eliminada
+    // en la refactorización de expo-navigation-bar. El bundle se generaba
+    // correctamente (Babel no comprueba identificadores) pero en runtime
+    // lanzaba `ReferenceError: Can't find variable: useAndroidNavigationBar`
+    // al montar RootNavigation, capturado por el ErrorBoundary global.
+    // El color de la barra de navegación nativa lo gestiona ahora el tema
+    // del sistema; expo-navigation-bar se ha retirado de dependencias.
 
     // Captura del deep link de confirmación de Supabase (tramiespana:///auth/callback?code=...).
     // Sin esto, al pulsar el enlace del email el SO abre la app pero la sesión PKCE

@@ -10,9 +10,8 @@ import {
     TextInput,
     Alert,
     Platform,
-    BackHandler,
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { reminderService, ReminderWithProcedure } from '@trami-espana/shared';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -22,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../constants/theme';
 import { useAuth } from '../../src/context/AuthContext';
 import { useExitModal } from '../../src/context/ExitModalContext';
+import { useExitBackHandler } from '../../src/hooks/useBackHandler';
 
 // Lazy-load expo-calendar (permisos gestionados al usarlo). Las
 // notificaciones locales se centralizan en src/services/notifications.ts.
@@ -200,17 +200,7 @@ export default function RemindersScreen() {
     // ============================================================
     // Intercepta el botón atrás de Android en la pestaña raíz.
     // ============================================================
-    useFocusEffect(
-        useCallback(() => {
-            if (Platform.OS !== 'android') return undefined;
-            const onBackPress = () => {
-                setShowExitModal(true);
-                return true;
-            };
-            const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-            return () => subscription.remove();
-        }, [setShowExitModal])
-    );
+    useExitBackHandler(useCallback(() => setShowExitModal(true), [setShowExitModal]));
     const [reminders, setReminders] = useState<ReminderWithProcedure[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -255,7 +245,9 @@ export default function RemindersScreen() {
                 await cacheReminders(data);
             }
         } catch (error) {
-            console.error('[RECORDATORIOS] Error al cargar recordatorios:', error);
+            if (__DEV__) {
+                console.error('[RECORDATORIOS] Error al cargar recordatorios:', error);
+            }
         } finally {
             setIsLoading(false);
         }
@@ -370,7 +362,9 @@ export default function RemindersScreen() {
             // Log detallado del error para depuración
             const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
             const errorCode = error instanceof Error && 'code' in error ? (error as { code?: string }).code : undefined;
-            console.error('[RECORDATORIOS] Error al guardar recordatorio:', errorMessage, 'Código:', errorCode);
+            if (__DEV__) {
+                console.error('[RECORDATORIOS] Error al guardar recordatorio:', errorMessage, 'Código:', errorCode);
+            }
             
             // Mensaje de error más específico según el tipo de error
             if (/not authenticated|not_authenticated|auth/i.test(errorMessage)) {
@@ -406,7 +400,9 @@ export default function RemindersScreen() {
                         Alert.alert('Aviso', 'No se pudo guardar el recordatorio (ni en el servidor ni de forma local). Inténtalo de nuevo.');
                     }
                 } catch (localError) {
-                    console.error('[RECORDATORIOS] Fallback local también falló:', localError);
+                    if (__DEV__) {
+                        console.error('[RECORDATORIOS] Fallback local también falló:', localError);
+                    }
                     Alert.alert('Error', 'No se pudo guardar el recordatorio. Inténtalo de nuevo.');
                 }
             }

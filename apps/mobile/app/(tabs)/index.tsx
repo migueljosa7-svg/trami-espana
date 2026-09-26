@@ -1,10 +1,10 @@
 import { useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions, BackHandler, Platform } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Link } from 'expo-router';
 import { PROCEDURE_CATEGORIES } from '@trami-espana/shared';
 import { useTheme } from '../../constants/theme';
 import { useExitModal } from '../../src/context/ExitModalContext';
+import { useExitBackHandler } from '../../src/hooks/useBackHandler';
 
 export default function HomeScreen() {
     const { colors } = useTheme();
@@ -15,19 +15,11 @@ export default function HomeScreen() {
     // ============================================================
     // Intercepta el botón atrás de Android en la pestaña raíz.
     // Muestra el modal de confirmación de salida; nunca cierra la
-    // app directamente.
+    // app directamente. El hook se re-registra al volver de
+    // segundo plano (AppState -> active).
     // ============================================================
-    useFocusEffect(
-        useCallback(() => {
-            if (Platform.OS !== 'android') return undefined;
-            const onBackPress = () => {
-                setShowExitModal(true);
-                return true; // Bloquea la salida directa de Android
-            };
-            const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-            return () => subscription.remove();
-        }, [setShowExitModal])
-    );
+    useExitBackHandler(useCallback(() => setShowExitModal(true), [setShowExitModal]));
+
     const cardWidth = isTablet ? '31%' : '48%';
 
     return (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import * as SystemUI from 'expo-system-ui';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { I18nextProvider } from 'react-i18next';
@@ -12,6 +13,8 @@ import { clearUserCaches, runLocalStorageMigration } from '../src/localCache';
 import { ENV, validateEnv } from '../config/env';
 import { ThemeProvider, useTheme } from '../constants/theme';
 import { AuthProvider } from '../src/context/AuthContext';
+import { ForegroundRevisionProvider } from '../src/context/ForegroundRevisionContext';
+import { useBackHandlerResync } from '../src/hooks/useBackHandler';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 // Inicializar i18n y Supabase una única vez en el ciclo de vida de la app.
@@ -21,7 +24,8 @@ function ensureRuntimeInit() {
         try {
             initI18n();
         } catch (e) {
-            console.warn('[init] Error inicializando i18n:', e);
+            // Solo en desarrollo: en release el fallo ya se manifiesta en la UI.
+            if (__DEV__) console.warn('[init] Error inicializando i18n:', e);
         }
         i18nReady = true;
     }
@@ -37,7 +41,7 @@ function ensureRuntimeInit() {
                 storage: AsyncStorage,
             });
         } catch (e) {
-            console.warn('[init] Error inicializando Supabase:', e);
+            if (__DEV__) console.warn('[init] Error inicializando Supabase:', e);
         }
         globalThis.__supabaseInitialized = true;
     }
@@ -71,6 +75,25 @@ function RootNavigation() {
     const [storageReady, setStorageReady] = useState(false);
 
     useSupabaseAutoRefresh();
+
+    // ============================================================
+    // v1.3.1: re-aplica los estilos de la barra del sistema al volver
+    // de segundo plano. En Android 15/16 (edge-to-edge) y en ROMs como
+    // MIUI/HyperOS, al restaurar la app la barra de navegacion puede
+    // volver al color por defecto del sistema, dando un parpadeo feo
+    // entre la barra de la app y la barra nativa.
+    // ============================================================
+    useBackHandlerResync(() => {
+        try {
+            // Re-aplica el color de fondo de la ventana del sistema para que
+            // la barra nativa no parpadee al volver de segundo plano.
+            void SystemUI.setBackgroundColorAsync(colors.background).catch(
+                () => undefined,
+            );
+        } catch {
+            // expo-system-ui puede no estar disponible: la app sigue igual.
+        }
+    });
 
     // NOTA v1.3.0 (CAUSA RAÍZ del crash "Algo ha ido mal"): aquí existía una
     // llamada a useAndroidNavigationBar() cuya función había sido eliminada
@@ -169,6 +192,7 @@ function RootNavigation() {
 
     return (
         <SafeAreaProvider>
+            <ForegroundRevisionProvider>
             <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={colors.background} />
             <I18nextProvider i18n={getI18nInstance()}>
                 <AuthProvider>
@@ -207,9 +231,46 @@ function RootNavigation() {
                             }}
                         />
                         <Stack.Screen name="error" options={{ headerShown: false }} />
+
+                        {/* ============================================================
+                            KILLER FEATURES v1.3.1 — fuera del grupo (tabs) para que
+                            el botón atrás logicalmente haga `router.back()` y no
+                            dispare el modal de confirmación de salida de las pestañas.
+                        ============================================================ */}
+                        <Stack.Screen
+                            name="mi-carpeta"
+                            options={{
+                                headerShown: true,
+                                title: 'Mi Carpeta de Caducidades',
+                                headerBackTitle: 'Atras',
+                                headerStyle: { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' },
+                                headerTintColor: isDark ? '#FFFFFF' : '#0F172A',
+                            }}
+                        />
+                        <Stack.Screen
+                            name="tasas"
+                            options={{
+                                headerShown: true,
+                                title: 'Tasas y Modelo 790',
+                                headerBackTitle: 'Atras',
+                                headerStyle: { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' },
+                                headerTintColor: isDark ? '#FFFFFF' : '#0F172A',
+                            }}
+                        />
+                        <Stack.Screen
+                            name="guia-identidad"
+                            options={{
+                                headerShown: true,
+                                title: 'Cl@ve y Certificado Digital',
+                                headerBackTitle: 'Atras',
+                                headerStyle: { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' },
+                                headerTintColor: isDark ? '#FFFFFF' : '#0F172A',
+                            }}
+                        />
                     </Stack>
                 </AuthProvider>
             </I18nextProvider>
+            </ForegroundRevisionProvider>
         </SafeAreaProvider>
     );
 }

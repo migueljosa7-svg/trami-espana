@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, BackHandler, Platform } from 'react-native';
-import { Link } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
+import { Link, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { authService, favoriteService, FavoriteWithProcedure } from '@trami-espana/shared';
@@ -9,6 +8,7 @@ import { cacheFavorites, readCachedFavorites } from '../../src/localCache';
 import { useTheme } from '../../constants/theme';
 import { SkeletonItem } from '../../components/SkeletonLoader';
 import { useExitModal } from '../../src/context/ExitModalContext';
+import { useExitBackHandler } from '../../src/hooks/useBackHandler';
 
 export default function FavoritesScreen() {
     const { colors } = useTheme();
@@ -21,17 +21,7 @@ export default function FavoritesScreen() {
     // ============================================================
     // Intercepta el botón atrás de Android en la pestaña raíz.
     // ============================================================
-    useFocusEffect(
-        useCallback(() => {
-            if (Platform.OS !== 'android') return undefined;
-            const onBackPress = () => {
-                setShowExitModal(true);
-                return true;
-            };
-            const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-            return () => subscription.remove();
-        }, [setShowExitModal])
-    );
+    useExitBackHandler(useCallback(() => setShowExitModal(true), [setShowExitModal]));
 
     const loadFavs = useCallback(async () => {
         setIsLoading(true);

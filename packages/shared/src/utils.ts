@@ -4,6 +4,33 @@
 // Funciones utilitarias compartidas
 
 /**
+ * ============================================================
+ * Cálculo dinámico de progreso (v1.3.1)
+ * ============================================================
+ * Fuente ÚNICA de verdad del porcentaje de trámites completados. Al
+ * residir aquí (y no duplicarse en componentes) se garantiza que web y
+ * mobile calculan exactamente el mismo valor.
+ *
+ * Requisitos funcionales:
+ *  - `total === 0`                  -> 0   (lista vacía nunca es NaN/Infinity)
+ *  - `completados === 0`           -> 0
+ *  - `completados === total`       -> 100 (SIEMPRE, nunca 60 ni 99)
+ *  - valores intermedios           -> proporción exacta redondeada
+ *  - valores fuera de rango (0..total) se saturan para no producir
+ *    barras de progreso rotas (p. ej. 120% o -30%).
+ *
+ * @param completados Número de elementos marcados como completados.
+ * @param total       Número REAL de elementos de la lista activa.
+ */
+export const calcProgressPercent = (completados: number, total: number): number => {
+  if (!Number.isFinite(total) || total <= 0) return 0;
+  if (!Number.isFinite(completados) || completados <= 0) return 0;
+  const safeTotal = Math.floor(total);
+  const safeDone = Math.min(Math.floor(completados), safeTotal);
+  return Math.round((safeDone / safeTotal) * 100);
+};
+
+/**
  * Formatea una fecha a formato español
  */
 export const formatDate = (date: string | Date): string => {

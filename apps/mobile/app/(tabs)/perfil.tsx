@@ -8,10 +8,8 @@ import {
     ActivityIndicator,
     Alert,
     ScrollView,
-    BackHandler,
-    Platform,
 } from 'react-native';
-import { Link, useRouter, useFocusEffect } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +25,7 @@ import { clearUserCaches } from '../../src/localCache';
 import { useTheme, type ThemeColors, type ThemePreference } from '../../constants/theme';
 import { useAuth } from '../../src/context/AuthContext';
 import { useExitModal } from '../../src/context/ExitModalContext';
+import { useExitBackHandler } from '../../src/hooks/useBackHandler';
 
 export default function ProfileScreen() {
     const { t, i18n } = useTranslation();
@@ -74,17 +73,7 @@ export default function ProfileScreen() {
     // ============================================================
     // Intercepta el botón atrás de Android en la pestaña raíz.
     // ============================================================
-    useFocusEffect(
-        useCallback(() => {
-            if (Platform.OS !== 'android') return undefined;
-            const onBackPress = () => {
-                setShowExitModal(true);
-                return true;
-            };
-            const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-            return () => subscription.remove();
-        }, [setShowExitModal])
-    );
+    useExitBackHandler(useCallback(() => setShowExitModal(true), [setShowExitModal]));
 
     const currentLangLabel = currentLangDef.label;
     const currentLangFlag = currentLangDef.flag;
@@ -155,6 +144,34 @@ export default function ProfileScreen() {
         { label: t('profile.legalItems.disclaimer'), href: '/legal/aviso', icon: 'information-circle-outline' as const },
         { label: t('profile.legalItems.data'), href: '/legal/datos', icon: 'lock-closed-outline' as const },
         { label: t('profile.legalItems.contact'), href: '/legal/contacto', icon: 'mail-outline' as const },
+    ];
+
+    // ============================================================
+    // KILLER FEATURES v1.3.1: accesos directos a las tres
+    // funcionalidades diferenciales desde el Perfil.
+    // ============================================================
+    const TOOL_ITEMS = [
+        {
+            label: t('profile.tools.carpeta'),
+            subtitle: t('profile.tools.carpetaSub'),
+            href: '/mi-carpeta' as const,
+            icon: 'folder-open-outline',
+            color: '#f59e0b',
+        },
+        {
+            label: t('profile.tools.fees'),
+            subtitle: t('profile.tools.feesSub'),
+            href: '/tasas' as const,
+            icon: 'pricetag-outline',
+            color: '#10b981',
+        },
+        {
+            label: t('profile.tools.identity'),
+            subtitle: t('profile.tools.identitySub'),
+            href: '/guia-identidad' as const,
+            icon: 'key-outline',
+            color: '#8b5cf6',
+        },
     ];
 
     return (
@@ -238,6 +255,59 @@ export default function ProfileScreen() {
                             </Link>
                         </View>
                     )}
+
+                    {/* ===== KILLER FEATURES v1.3.1 =====
+                        Accesos directos a las tres funcionalidades diferenciales. */}
+                    <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+                        {t('profile.sections.tools')}
+                    </Text>
+                    <View style={styles.toolsList}>
+                        {TOOL_ITEMS.map((tool) => (
+                            <Link key={tool.href} href={tool.href} asChild>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.toolCard,
+                                        {
+                                            backgroundColor: colors.card,
+                                            borderColor: colors.border,
+                                        },
+                                    ]}
+                                    activeOpacity={0.8}
+                                    accessibilityRole="link"
+                                    accessibilityLabel={tool.label}
+                                >
+                                    <View
+                                        style={[
+                                            styles.toolIcon,
+                                            { backgroundColor: `${tool.color}1A` },
+                                        ]}
+                                    >
+                                        <Ionicons
+                                            name={tool.icon as never}
+                                            size={20}
+                                            color={tool.color}
+                                        />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.toolTitle, { color: colors.text }]}>
+                                            {tool.label}
+                                        </Text>
+                                        <Text
+                                            style={[styles.toolSubtitle, { color: colors.textSecondary }]}
+                                            numberOfLines={2}
+                                        >
+                                            {tool.subtitle}
+                                        </Text>
+                                    </View>
+                                    <Ionicons
+                                        name="chevron-forward"
+                                        size={18}
+                                        color={colors.textMuted}
+                                    />
+                                </TouchableOpacity>
+                            </Link>
+                        ))}
+                    </View>
 
                     {/* ===== LEGAL SECTION (enlaces en línea, centrados) ===== */}
                     <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('profile.sections.legal')}</Text>
@@ -686,6 +756,35 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 14,
         marginBottom: 20,
+    },
+    // KILLER FEATURES v1.3.1
+    toolsList: {
+        gap: 8,
+        marginBottom: 20,
+    },
+    toolCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        borderRadius: 14,
+        borderWidth: 1,
+        padding: 13,
+    },
+    toolIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 11,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    toolTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    toolSubtitle: {
+        fontSize: 12,
+        lineHeight: 17,
+        marginTop: 2,
     },
     legalChip: {
         flexDirection: 'row',

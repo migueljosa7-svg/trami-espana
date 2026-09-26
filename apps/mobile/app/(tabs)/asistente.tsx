@@ -10,13 +10,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Linking,
-  BackHandler,
 } from "react-native";
-import { Link, useRouter, useFocusEffect } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { authService, assistantService, AssistantChatMessage, ASSISTANT_DISCLAIMER } from "@trami-espana/shared";
 import { useTheme, ThemeColors } from "../../constants/theme";
 import { useExitModal } from '../../src/context/ExitModalContext';
+import { useExitBackHandler } from '../../src/hooks/useBackHandler';
 
 const MAX_CHARS = 1000;
 const SLOW_THRESHOLD_MS = 6000;
@@ -65,7 +65,12 @@ function detectStatus(msg: AssistantChatMessage): MessageStatus {
   return "normal";
 }
 
-// Detect if the message is a greeting/salutation
+/**
+ * Detecta si el mensaje es un saludo PURO, es decir, sin ninguna petición
+ * concreta. Si el usuario escribe "Hola, soy Miguel y quiero renovar el
+ * DNI", NO es un saludo puro: es una consulta que debe procesarse de
+ * inmediato contra el motor de IA.
+ */
 function isGreeting(query: string): boolean {
   const greetings = [
     "hola", "buenos dias", "buenas tardes", "buenas noches", "buenas",
@@ -74,7 +79,15 @@ function isGreeting(query: string): boolean {
     "gracias por la ayuda", "muchas gracias por la ayuda"
   ];
   const normalized = query.toLowerCase().trim();
-  return greetings.some(g => normalized === g || normalized.startsWith(g + " ") || normalized.endsWith(" " + g));
+  // Elimina la puntuación para no fallar con "Hola!" o "¿Qué tal?".
+  const clean = normalized.replace(/[¿?¡!.,;]/g, " ").replace(/\s+/g, " ").trim();
+  const isPureGreeting = greetings.some(
+    (g) => clean === g || clean.startsWith(`${g} `) || clean.endsWith(` ${g}`),
+  );
+  // Un saludo acompañado de contenido NO debe tratarse como saludo: si hay
+  // más de 3 palabras, hay una consulta real que procesar.
+  const wordCount = clean.split(" ").filter(Boolean).length;
+  return isPureGreeting && wordCount <= 3;
 }
 
 // Generate a friendly greeting response
@@ -141,17 +154,7 @@ export default function AssistantScreen() {
   // ============================================================
   // Intercepta el botón atrás de Android en la pestaña raíz.
   // ============================================================
-  useFocusEffect(
-    useCallback(() => {
-      if (Platform.OS !== 'android') return undefined;
-      const onBackPress = () => {
-        setShowExitModal(true);
-        return true;
-      };
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-      return () => subscription.remove();
-    }, [setShowExitModal])
-  );
+  useExitBackHandler(useCallback(() => setShowExitModal(true), [setShowExitModal]));
 
   const init = useCallback(async () => {
     let currentUser = null;
@@ -243,7 +246,23 @@ export default function AssistantScreen() {
         created_at: new Date().toISOString(),
       };
 
-      setMessages((prev) => [...prev, userMsg]);
+      // Flujo directo v1.3.1: si el PRIMER mensaje ya es una consulta con
+      // contenido real (p. ej. "Hola, soy Miguel y quiero renovar el DNI"),
+      // se descarta el saludo precargado y se responde de inmediato con la
+      // guía. Antes había que repetir el mensaje porque el bot saludaba.
+      const isFirstRealQuery = !messages.some((m) => m.role === "user");
+      const directQuery = extractDirectProcedureQuery(text);
+      // `shouldDropWelcome` solo cuando el mensaje NO es un saludo puro:
+      // si el usuario escribe "hola" sí queremos conservar el saludo.
+      const shouldDropWelcome = isFirstRealQuery && !isGreeting(text);
+
+      setMessages((prev) => {
+        const base = shouldDropWelcome
+          ? prev.filter((m) => !m.isGreeting)
+          : prev;
+        return [...base, userMsg];
+      });
+
       if (!textOverride) setInputQuery("");
       setIsLoading(true);
       setIsSlowResponse(false);
@@ -252,11 +271,6 @@ export default function AssistantScreen() {
         () => setIsSlowResponse(true),
         SLOW_THRESHOLD_MS,
       );
-
-      // Flujo directo: si el primer mensaje ya indica nombre y trámite
-      // (ej. "Hola, me llamo X y quiero renovar el DNI"), respondemos de
-      // inmediato con la guía sin volver a preguntar qué trámite desea.
-      const directQuery = extractDirectProcedureQuery(text);
 
       try {
         let response;
@@ -334,7 +348,7 @@ export default function AssistantScreen() {
         setIsSlowResponse(false);
       }
     },
-    [inputQuery, conversationId, isLoading],
+    [inputQuery, conversationId, isLoading, messages],
   );
 
   const handleRetry = () => {

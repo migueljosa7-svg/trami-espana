@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Alert, Modal, BackHandler } from 'react-native';
-import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-router';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Alert, Modal } from 'react-native';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,25 +10,25 @@ import { readCachedFavorites } from '../../src/localCache';
 import { useTheme, ThemeColors } from '../../constants/theme';
 import { useAuth } from '../../src/context/AuthContext';
 import { useChecklist } from '../../src/hooks/useChecklist';
+import { createGoBackSafely, useStackBackHandler } from '../../src/hooks/useBackHandler';
+import { hapticTick, hapticSuccess } from '../../src/services/notifications';
 
 export default function ProcedureDetailScreen() {
     const { slug } = useLocalSearchParams<{ slug: string }>();
     const router = useRouter();
     // ============================================================
-    // v1.3.0: vuelta atrás segura. router.back() SOLO se invoca si
-    // el stack de navegación está listo (canGoBack()); en caso
-    // contrario se regresa al listado de pestañas. Evita crashes
-    // sobre referencias no montadas en arranque frío, deep links
-    // o al pulsar atrás en el último screen del stack.
+    // v1.3.1: vuelta atrás segura y CONSUMIDA.
+    //
+    // BUG CORREGIDO: la versión anterior devolvía `false` en la rama
+    // `router.replace('/(tabs)')`. En Android, devolver `false` desde
+    // un `hardwareBackPress` significa "NO he consumido el evento", por
+    // lo que el SO ejecutaba `finishActivity()` y la app se cerraba
+    // en lugar de navegar. Ahora SIEMPRE devuelve `true`.
     // ============================================================
-    const goBackSafely = useCallback((): boolean => {
-        if (router?.canGoBack?.()) {
-            router.back();
-            return true;
-        }
-        router.replace('/(tabs)');
-        return false;
-    }, [router]);
+    const goBackSafely = useMemo(
+        () => createGoBackSafely(router as Parameters<typeof createGoBackSafely>[0]),
+        [router],
+    );
 
     const { colors, isDark } = useTheme();
     const styles = getStyles(colors, isDark);
@@ -66,16 +66,21 @@ export default function ProcedureDetailScreen() {
     const isGuest = !user && !authLoading;
 
     // ============================================================
-    // NOTA v1.2.9: el botón atrás SIEMPRE ejecuta la vuelta atrás
-    // segura (goBackSafely). Sin modal de salida en esta pantalla
-    // secundaria del stack.
+    // v1.3.1: el botón atrás ejecuta SIEMPRE la vuelta atrás segura y
+    // consume el evento. `useStackBackHandler` re-registra el listener
+    // al volver de segundo plano (AppState -> active) para que el SO no
+    // cierre la app en dispositivos Xiaomi/MIUI.
     // ============================================================
-    useFocusEffect(
-        useCallback(() => {
-            const onBackPress = () => goBackSafely();
-            const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-            return () => subscription.remove();
-        }, [goBackSafely])
+    useStackBackHandler(goBackSafely);
+
+    // Feedback háptico discreto al marcar/desmarcar requisitos, documentos
+    // y pasos: confirma el toque sin necesidad de mirar la pantalla.
+    const handleToggleWithHaptics = useCallback(
+        (itemId: string) => {
+            toggleItem(itemId);
+            hapticTick();
+        },
+        [toggleItem]
     );
 
     useEffect(() => {
@@ -147,13 +152,17 @@ export default function ProcedureDetailScreen() {
                 if (!result.success) {
                     throw new Error(result.error?.message || 'No se pudo añadir a favoritos');
                 }
+                hapticSuccess();
                 Alert.alert('¡Guardado! 💙', 'Trámite añadido a tus favoritos.');
             }
         } catch (error) {
             // Revertir el cambio optimista en caso de error
             setIsFavorite(wasFavorite);
             const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-            console.error('[FAVORITES] Error al actualizar favoritos:', errorMessage);
+            // Sin logs en produccion: el detalle ya se muestra en el Alert.
+            if (__DEV__) {
+                console.error('[FAVORITES] Error al actualizar favoritos:', errorMessage);
+            }
             Alert.alert('Error', 'No se pudo actualizar favoritos. Inténtalo de nuevo.');
         } finally {
             setFavLoading(false);
@@ -371,7 +380,7 @@ export default function ProcedureDetailScreen() {
                             <TouchableOpacity
                                 key={req.id || idx}
                                 style={[styles.listItem, done && styles.listItemDone]}
-                                onPress={() => toggleItem(id)}
+                                onPress={() => handleToggleWithHaptics(id)}
                                 activeOpacity={0.7}
                                 accessibilityRole="checkbox"
                                 accessibilityState={{ checked: done }}
@@ -400,7 +409,7 @@ export default function ProcedureDetailScreen() {
                             <TouchableOpacity
                                 key={doc.id || idx}
                                 style={[styles.listItem, done && styles.listItemDone]}
-                                onPress={() => toggleItem(id)}
+                                onPress={() => handleToggleWithHaptics(id)}
                                 activeOpacity={0.7}
                                 accessibilityRole="checkbox"
                                 accessibilityState={{ checked: done }}
@@ -432,7 +441,7 @@ export default function ProcedureDetailScreen() {
                             <TouchableOpacity
                                 key={step.id || idx}
                                 style={[styles.stepItem, done && styles.listItemDone]}
-                                onPress={() => toggleItem(id)}
+                                onPress={() => handleToggleWithHaptics(id)}
                                 activeOpacity={0.7}
                                 accessibilityRole="checkbox"
                                 accessibilityState={{ checked: done }}

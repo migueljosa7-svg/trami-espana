@@ -111,6 +111,65 @@ export async function scheduleOneShotNotification(
   }
 }
 
+/**
+ * ============================================================
+ * TRAMI ESPAÑA - Feedback háptico (v1.3.1)
+ * ============================================================
+ * Wrapper DEGRADABLE sobre `expo-haptics`. Si el módulo nativo no está
+ * disponible (Expo Go, web, tests, binario sin el módulo), TODAS las
+ * funciones son no-ops silenciosos: la app nunca falla por una vibración.
+ */
+
+type HapticsModule = typeof import('expo-haptics');
+
+let Haptics: HapticsModule | null = null;
+try {
+  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+  Haptics = require('expo-haptics') as HapticsModule;
+} catch {
+  // Binario no disponible: no-ops.
+}
+
+/** Feedback discreto al marcar/desmarcar un ítem de un checklist. */
+export function hapticTick(): void {
+  try {
+    void Haptics?.selectionAsync();
+  } catch {
+    // Silencioso.
+  }
+}
+
+/** Feedback de acción completada (guardar recordatorio, documento...). */
+export function hapticSuccess(): void {
+  try {
+    void Haptics?.notificationAsync(
+      Haptics?.NotificationFeedbackType.Success,
+    );
+  } catch {
+    // Silencioso.
+  }
+}
+
+/** Feedback de error/aviso (validación fallida). */
+export function hapticWarning(): void {
+  try {
+    void Haptics?.notificationAsync(
+      Haptics?.NotificationFeedbackType.Warning,
+    );
+  } catch {
+    // Silencioso.
+  }
+}
+
+/** Impacto ligero al abrir modales o navegar entre secciones. */
+export function hapticLight(): void {
+  try {
+    void Haptics?.impactAsync(Haptics?.ImpactFeedbackStyle.Light);
+  } catch {
+    // Silencioso.
+  }
+}
+
 export interface DeadlineReminderInput {
   /** Identificador único del recordatorio (para logs). */
   id: string;
@@ -127,6 +186,10 @@ export interface DeadlineScheduleResult {
   dayBefore: boolean;
   /** Notificación programada el día del vencimiento (a las 09:00). */
   dayOf: boolean;
+  /** Aviso programado 3 meses antes del vencimiento. */
+  threeMonthsBefore: boolean;
+  /** Aviso programado 1 mes antes del vencimiento. */
+  oneMonthBefore: boolean;
 }
 
 /**
@@ -137,7 +200,12 @@ export interface DeadlineScheduleResult {
 export async function scheduleDeadlineNotifications(
   input: DeadlineReminderInput
 ): Promise<DeadlineScheduleResult> {
-  const result: DeadlineScheduleResult = { dayBefore: false, dayOf: false };
+  const result: DeadlineScheduleResult = {
+    dayBefore: false,
+    dayOf: false,
+    threeMonthsBefore: false,
+    oneMonthBefore: false,
+  };
   if (!Notifications) return result;
 
   const deadline = new Date(input.deadline);
@@ -162,7 +230,61 @@ export async function scheduleDeadlineNotifications(
     `Hoy es la fecha límite${notes}. No lo dejes para el último momento.`
   );
 
+  // 3) Anticipos largos (Mi Carpeta): 3 meses y 1 mes antes. Son los que
+  //    generan el uso recurrente de la app, ya que dan tiempo real al
+  //    usuario para renovar el documento.
+  const threeMonths = new Date(deadline.getTime());
+  threeMonths.setMonth(threeMonths.getMonth() - 3);
+  result.threeMonthsBefore = await scheduleOneShotNotification(
+    threeMonths,
+    `🗓️ ${input.title} caduca en 3 meses`,
+    `Empieza ahora: pide cita previa para la renovación. ${input.title}${notes}`
+  );
+
+  const oneMonth = new Date(deadline.getTime());
+  oneMonth.setMonth(oneMonth.getMonth() - 1);
+  result.oneMonthBefore = await scheduleOneShotNotification(
+    oneMonth,
+    `⚠️ ${input.title} caduca en 1 mes`,
+    `Queda menos de un mes. Comprueba los requisitos y pide cita. ${input.title}${notes}`
+  );
+
   return result;
+}
+
+export interface DocumentExpiryInput {
+  /** Identificador único del documento. */
+  id: string;
+  /** Tipo de documento (DNI, Pasaporte, Carnet de conducir, NIE/TIE, Padrón). */
+  docType: string;
+  /** Fecha de caducidad. */
+  expiresAt: Date;
+}
+
+/**
+ * Programa la cadena completa de avisos de un documento de "Mi Carpeta":
+ * 3 meses → 1 mes → 24 h → día del vencimiento. Cada aviso incluye un
+ * acceso directo a la cita previa correspondiente.
+ *
+ * Devuelve cuántos avisos se han programado realmente (los triggers en
+ * pasado se omiten de forma segura).
+ */
+export async function scheduleDocumentExpiryAlerts(
+  input: DocumentExpiryInput
+): Promise<number> {
+  if (!Notifications) return 0;
+  const expiresAt = new Date(input.expiresAt);
+  if (Number.isNaN(expiresAt.getTime())) return 0;
+
+  const result = await scheduleDeadlineNotifications({
+    id: input.id,
+    title: input.docType,
+    notes: null,
+    deadline: expiresAt,
+  });
+
+  return [result.threeMonthsBefore, result.oneMonthBefore, result.dayBefore, result.dayOf]
+    .filter(Boolean).length;
 }
 
 /**

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { calcProgressPercent } from '@trami-espana/shared';
 
 const CHECKLIST_PREFIX = 'trami_checklist_';
 
@@ -10,18 +11,20 @@ interface ChecklistState {
 /**
  * Calcula el porcentaje de progreso de un checklist.
  *
- * Fórmula estricta v1.2.5:
+ * Fórmula estricta (v1.3.1, fuente única de verdad en @trami-espana/shared):
  *   total > 0 ? Math.round((completados / total) * 100) : 0
  *
  * - `total` es SIEMPRE el `length` real del array de ítems cargados
  *   (requisitos + documentos + pasos) para ese trámite.
  * - Prohibido dividir entre bases fijas (p. ej. /10).
  * - `completados === total` devuelve siempre 100.
+ * - `total === 0` devuelve 0 (nunca NaN ni Infinity).
+ *
+ * Se reexporta desde aquí para mantener compatibilidad con los imports
+ * históricos (`import { calcChecklistPercent } from '.../useChecklist'`).
  */
 export function calcChecklistPercent(completados: number, total: number): number {
-  if (total <= 0) return 0;
-  const done = Math.min(Math.max(completados, 0), total);
-  return Math.round((done / total) * 100);
+  return calcProgressPercent(completados, total);
 }
 
 export function useChecklist(procedureSlug: string, itemIds: string[]) {

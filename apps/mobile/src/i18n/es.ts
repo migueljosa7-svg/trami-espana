@@ -29,6 +29,16 @@ export const es = {
       legal: 'Legal y privacidad',
       app: 'Aplicación',
       appearance: 'Apariencia',
+      tools: 'Herramientas útiles',
+    },
+    // KILLER FEATURES v1.3.1
+    tools: {
+      carpeta: 'Mi Carpeta de Caducidades',
+      carpetaSub: 'Controla el vencimiento de tu DNI, pasaporte o carnet y recibe avisos.',
+      fees: 'Tasas y Modelo 790',
+      feesSub: 'Consulta los precios oficiales y comprueba si tienes exención del 100%.',
+      identity: 'Cl@ve y Certificado Digital',
+      identitySub: 'Guía paso a paso para firmar trámites desde el móvil.',
     },
     theme: 'Tema',
     themeSystem: 'Automático (sistema)',

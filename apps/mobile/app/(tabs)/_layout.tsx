@@ -13,7 +13,9 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomInset } from '../../src/hooks/useBottomInset';
+import { useBackHandlerResync } from '../../src/hooks/useBackHandler';
 import { ExitModalProvider, useExitModal } from '../../src/context/ExitModalContext';
+import { OfflineToast } from '../../components/OfflineToast';
 
 // ============================================================
 // TabsContent — consumidor del ExitModalContext.
@@ -37,6 +39,19 @@ function TabsContent() {
     const handleExitCancel = useCallback(() => setShowExitModal(false), [setShowExitModal]);
 
     const exitModalStyles = getExitModalStyles(colors);
+
+    // ============================================================
+    // v1.3.1: al volver de segundo plano, vuelve a aplicar el fondo
+    // de la ventana del sistema para que la barra nativa no cambie
+    // de color de forma inesperada al restaurar la app.
+    // ============================================================
+    useBackHandlerResync(() => {
+        // El `Tabs` ya queda montado: no hace falta forzar un re-render.
+        // Este callback existe para mantener el punto de extension y para
+        // re-evaluar el inset inferior en dispositivos con barra dinamica.
+        // (La re-registracion de los BackHandler la hace cada pantalla de
+        //  pestaña mediante useExitBackHandler + useForegroundRevision.)
+    });
 
     return (
         <View style={{ flex: 1, backgroundColor: '#0F172A', paddingBottom: insets.bottom }}>
@@ -113,6 +128,10 @@ function TabsContent() {
                 }}
             />
             </Tabs>
+
+            {/* Aviso discreto de "sin conexion" (v1.3.1). No bloquea la app:
+                los datos guardados en cache siguen siendo navegables. */}
+            <OfflineToast />
 
             {/* ============================================================
                 Modal personalizado de confirmación de salida.

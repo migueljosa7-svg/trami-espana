@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { calcProgressPercent } from '@trami-espana/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../constants/theme';
 import { useStackBackHandler, createGoBackSafely } from '../src/hooks/useBackHandler';
@@ -58,8 +59,10 @@ export default function GuiaIdentidadScreen() {
     [method, completedSteps],
   );
   // Porcentaje dinamico respecto a los pasos REALES del metodo elegido.
-  const progress =
-    method.steps.length > 0 ? Math.round((doneCount / method.steps.length) * 100) : 0;
+  // v1.3.2: se delega en `calcProgressPercent` (@trami-espana/shared) para
+  // que esta pantalla NO duplique la formula. Garantiza 0 completados -> 0%
+  // y todos completados -> 100%, sin NaN/Infinity ni barras > 100%.
+  const progress = calcProgressPercent(doneCount, method.steps.length);
 
   const resetProgress = useCallback(() => {
     setCompletedSteps(() => ({}));

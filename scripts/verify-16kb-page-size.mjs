@@ -221,7 +221,8 @@ function report(analysis, aabPath) {
   console.log('CAUSA: estas .so llegan precompiladas en los AAR de npm de React Native');
   console.log('(Expo SDK 50 / RN 0.73). El proyecto no las genera, por lo que un flag de');
   console.log('Gradle NO puede alinearlas: solo un relink con NDK r27+ o una migración a');
-  console.log('Expo SDK 52+ / RN 0.76+ lo resuelven. Ver docs/EXPO_SDK_52_MIGRATION_16KB.md');
+  console.log('Expo SDK 53+ / RN 0.77+ lo resuelven (SDK 52 NO cumple).');
+  console.log('Ver docs/EXPO_SDK_53_MIGRATION_16KB.md');
   return false;
 }
 

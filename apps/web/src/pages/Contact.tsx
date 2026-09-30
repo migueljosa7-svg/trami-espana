@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Mail, AlertTriangle, ExternalLink } from 'lucide-react';
-import { LEGAL_EMAIL_CONTACT, LEGAL_EMAIL_UNVERIFIED_NOTICE } from '@trami-espana/shared';
+import { Mail, Info, ExternalLink } from 'lucide-react';
+import { LEGAL_EMAIL_CONTACT, LEGAL_CONTACT_NOTICE } from '@trami-espana/shared';
 
 export default function Contact() {
     const [formData, setFormData] = useState({ name: '', email: '', message: '' });
@@ -55,18 +55,21 @@ export default function Contact() {
                                 <p className="text-sm font-medium text-gray-900">Correo de contacto</p>
                                 <a
                                     href={`mailto:${LEGAL_EMAIL_CONTACT}`}
-                                    className="text-blue-700 hover:underline text-sm inline-flex items-center gap-1"
+                                    className="text-blue-700 hover:underline text-sm inline-flex items-center gap-1 break-all"
                                 >
                                     {LEGAL_EMAIL_CONTACT}
-                                    <ExternalLink className="w-3 h-3" />
+                                    <ExternalLink className="w-3 h-3 flex-shrink-0" />
                                 </a>
                             </div>
                         </div>
 
-                        <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
-                            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                            <p className="text-xs text-amber-800">
-                                {LEGAL_EMAIL_UNVERIFIED_NOTICE}
+                        {/* v1.3.3: el aviso ya no es una advertencia (el correo está
+                            verificado), por lo que pasa de ámbar AlertTriangle a un
+                            bloque informativo neutro. */}
+                        <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-blue-800">
+                                {LEGAL_CONTACT_NOTICE}
                             </p>
                         </div>
                     </div>

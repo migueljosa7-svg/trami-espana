@@ -53,9 +53,24 @@ export function SkeletonItem({ width = '100%', height = 20, borderRadius = 8, st
   );
 }
 
+/**
+ * Esquema de una tarjeta de lista.
+ *
+ * v1.3.3 (auditoría UI/UX): la geometría replica EXACTAMENTE la de las
+ * tarjetas reales (`borderRadius: 16` + borde + fondo `colors.card`). Antes
+ * este esqueleto era una caja sin fondo ni borde y con `borderRadius: 14`, por
+ * lo que al terminar la carga la tarjeta "aparecía de golpe" con borde y radio
+ * distintos: un salto visual perceptible en cada carga de lista.
+ */
 export function SkeletonCard() {
+  const { colors } = useTheme();
   return (
-    <View style={styles.card}>
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: colors.card, borderColor: colors.border },
+      ]}
+    >
       <SkeletonItem width="60%" height={18} borderRadius={6} style={{ marginBottom: 10 }} />
       <SkeletonItem width="90%" height={14} borderRadius={6} style={{ marginBottom: 6 }} />
       <SkeletonItem width="75%" height={14} borderRadius={6} style={{ marginBottom: 6 }} />
@@ -80,10 +95,13 @@ export function SkeletonProcedureDetail() {
 }
 
 const styles = StyleSheet.create({
+  // v1.3.3: `borderRadius: 16` y `marginBottom: 12` replican la tarjeta real
+  // (`mi-carpeta.tsx` → `card`) para que no haya salto al pasar skeleton → dato.
   card: {
     padding: 16,
     marginBottom: 12,
-    borderRadius: 14,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   container: {
     padding: 16,

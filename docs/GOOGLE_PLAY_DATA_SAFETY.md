@@ -56,7 +56,7 @@
 - **Cifrado en reposo:** Sí (Supabase/PostgreSQL).
 - **Eliminación por el usuario:** Sí. El usuario puede **eliminar su cuenta** desde
   Perfil → Ajustes → Eliminar cuenta (RPC `delete_my_account`), o solicitarlo por correo
-  (`contacto@tramiespana.es` provisional — pendiente de verificación).
+  (`tramiespana.app@gmail.com`, correo oficial verificado).
 - **Exportación/portabilidad:** Sí (web: "Exportar mis datos"; móvil: solicitud manual).
 
 ---

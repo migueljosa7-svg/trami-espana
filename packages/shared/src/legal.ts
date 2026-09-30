@@ -7,14 +7,18 @@
 // - No inventar datos reales (nombre legal, NIF, domicilio, proveedor LLM,
 //   plazos de conservación, transferencias). Los campos que requieren un dato
 //   real no disponible se marcan con el literal [REQUIERE DATO REAL: ...].
-// - El correo contacto@tramiespana.es es PROVISIONAL (aparece en el README).
-//   No verificado: el dominio definitivo aún no está operativo.
+// - El correo oficial de contacto es tramiespana.app@gmail.com (Gmail verificado
+//   y operativo). Sustituye al anterior provisional contacto@tramiespana.es,
+//   cuyo dominio nunca estuvo operativo.
 // - Este contenido es de preparación; no sustituye una revisión jurídica.
 
 import { LEGAL_DISCLAIMER } from './constants';
 
-/** Correo de contacto PROVISIONAL (aparece en README). NO verificado. */
-export const LEGAL_EMAIL_CONTACT = 'contacto@tramiespana.es';
+/**
+ * Correo OFICIAL de contacto y soporte.
+ * Fuente única de verdad para móvil, web y textos legales.
+ */
+export const LEGAL_EMAIL_CONTACT = 'tramiespana.app@gmail.com';
 
 /** Marcador para el dominio web definitivo (aún no operativo). */
 export const LEGAL_DOMAIN_DEFINITIVE = '[REQUIERE DATO REAL: DOMINIO DEFINITIVO]';
@@ -140,8 +144,8 @@ export const PRIVACY_SECTIONS = [
   {
     title: '18. Contacto',
     body:
-      'Para ejercer tus derechos o cualquier duda, escribe a ' + LEGAL_EMAIL_CONTACT +
-      ' (' + LEGAL_DOMAIN_DEFINITIVE + ' para verificar el email definitivo).'
+      'Para ejercer tus derechos o resolver cualquier duda, escribe a ' + LEGAL_EMAIL_CONTACT +
+      '. Trataremos tu solicitud en los plazos legales previstos.'
   }
 ];
 
@@ -268,7 +272,23 @@ export const LEGAL_PENDING_NOTICE =
   'Parte de la información jurídica de este documento está pendiente de confirmación por el responsable ' +
   'y se completará antes de la publicación del servicio. No se muestran aquí datos no verificados.';
 
-/** Aviso de correo de contacto no verificado. */
-export const LEGAL_EMAIL_UNVERIFIED_NOTICE =
-  'El correo ' + LEGAL_EMAIL_CONTACT +
-  ' es provisional y debe verificarse antes de la publicación (el dominio definitivo aún no está operativo).';
+/**
+ * Aviso de contacto mostrado en las pantallas de Contacto (móvil y web).
+ *
+ * v1.3.3: el correo pasa de "provisional / sin verificar" a OFICIAL y verificado.
+ * El aviso anterior era incorrecto para una app ya publicada en Google Play:
+ * además de desactualizarse, pintaba un badge ámbar de "advertencia" sobre un
+ * dato que ya era correcto, proyectando desconfianza innecesaria al usuario.
+ */
+export const LEGAL_CONTACT_NOTICE =
+  'Este es el correo oficial de contacto y soporte de Trami España. ' +
+  'Respondemos en horario de lunes a viernes. Para ejercer tus derechos de acceso, ' +
+  'rectificación, supresión, oposición, limitación y portabilidad, indícalo en el ' +
+  'asunto del correo y lo tramitaremos en los plazos legales.';
+
+/**
+ * @deprecated Usa {@link LEGAL_CONTACT_NOTICE}. Se conserva como alias para no
+ * romper consumidores externos del paquete. El nombre histórico ("unverified")
+ * ya no describe la realidad: el correo está verificado.
+ */
+export const LEGAL_EMAIL_UNVERIFIED_NOTICE = LEGAL_CONTACT_NOTICE;

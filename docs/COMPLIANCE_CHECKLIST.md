@@ -30,7 +30,7 @@
 - [ ] Clasificación de contenido IARC completada • HUMAN_REQUIRED
 - [ ] Data safety declarada (sin ads, no compartir datos) • HUMAN_REQUIRED (checklist en `docs/GOOGLE_PLAY_DATA_SAFETY.md`)
 - [ ] Política de privacidad y términos enlazados • HUMAN_REQUIRED
-- [ ] Detalles de contacto verificados (`contacto@tramiespana.es` / dominio) • HUMAN_REQUIRED
+- [x] Detalles de contacto verificados (`tramiespana.app@gmail.com`) • CORREGIDO v1.3.3
 
 ## Cumplido a nivel de código (verificado en FASE 7.1)
 - [x] Footer web global con Privacidad, Términos, Cookies, Contacto + disclaimer de independencia

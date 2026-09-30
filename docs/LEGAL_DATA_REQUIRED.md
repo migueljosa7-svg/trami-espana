@@ -16,7 +16,7 @@
 | 1 | **Nombre legal del responsable** (persona física o razón social) | Política de privacidad, Aviso legal | `[REQUIERE DATO REAL: ...]` |
 | 2 | **Domicilio fiscal / postal** (si aplica) | Política de privacidad § Responsable | — |
 | 3 | **Dominio web definitivo** | Todos los documentos legales, contactos, footers | `LEGAL_DOMAIN_DEFINITIVE` |
-| 4 | **Correo de contacto verificado** (`contacto@tramiespana.es` provisional) | Contacto, derechos ARCO, privacidad | `LEGAL_EMAIL_UNVERIFIED_NOTICE` |
+| 4 | ~~**Correo de contacto verificado**~~ → **RESUELTO v1.3.3**: `tramiespana.app@gmail.com` (Gmail verificado y operativo) | Contacto, derechos ARCO, privacidad | `LEGAL_CONTACT_NOTICE` |
 | 5 | **Proveedor LLM exacto desplegado** (la Edge Function `assistant/index.ts` usa **OpenAI** por defecto o **Google Gemini** según `LLM_PROVIDER`; confirmar el que esté configurado con `LLM_API_KEY` en Supabase Secrets) | Privacidad § Proveedor IA/LLM y § Datos enviados a terceros | `[REQUIERE DATO REAL: ...]` |
 | 6 | **Plazos de conservación** concretos | Privacidad § Conservación | `[REQUIERE DATO REAL: ...]` |
 | 7 | **Base jurídica concreta definitiva** (decisión de asesor jurídico) | Privacidad § Bases jurídicas | `[REQUIERE DATO REAL: ...]` |
@@ -31,7 +31,7 @@
 
 | Dato | Valor provisional | Acción requerida |
 |---|---|---|
-| Email de contacto | `contacto@tramiespana.es` | **Verificar que la cuenta existe y está operativa** antes de publicar. |
+| ~~Email de contacto~~ | `tramiespana.app@gmail.com` | **RESUELTO v1.3.3**: correo oficial verificado y operativo. Sustituye a `contacto@tramiespana.es` (dominio que nunca estuvo operativo). |
 | Dominio | `tramiespana.es` (referido en README) | **Verificar titularidad y funcionalidad.** Usar en URL de política de privacidad del Play Console. |
 | Assets (icono/splash/favicon) | PNG placeholders de color marca | **Diseño definitivo requerido** (ver `docs/ASSETS_NOTAS.md` si existe; si no, ver README). |
 

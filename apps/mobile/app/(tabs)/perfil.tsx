@@ -8,6 +8,7 @@ import {
     ActivityIndicator,
     Alert,
     ScrollView,
+    useWindowDimensions,
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -74,6 +75,13 @@ export default function ProfileScreen() {
     // Intercepta el botón atrás de Android en la pestaña raíz.
     // ============================================================
     useExitBackHandler(useCallback(() => setShowExitModal(true), [setShowExitModal]));
+
+    // v1.3.3 (auditoría UI/UX): margen lateral adaptativo (16 px móvil /
+    // 32 px tablet) para igualar esta pestaña con Inicio, Favoritos, Buscar
+    // y Recordatorios. En tablet el contenido quedaba pegado a los bordes.
+    const { width } = useWindowDimensions();
+    const isTablet = width >= 768;
+    const horizontalPadding = isTablet ? 32 : 16;
 
     const currentLangLabel = currentLangDef.label;
     const currentLangFlag = currentLangDef.flag;
@@ -179,8 +187,10 @@ export default function ProfileScreen() {
             style={[styles.container, { backgroundColor: colors.background }]}
             contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 16) + 32 }]}
         >
-            {/* Header */}
-            <View style={[styles.header, { paddingTop: insets.top + 16, backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+            {/* Header: el banner va a sangre completa (fondo propio), pero su
+                TÍTULO debe compartir margen con el contenido de abajo. Por eso
+                `paddingHorizontal` va inyectado y no fijo en el StyleSheet. */}
+            <View style={[styles.header, { paddingTop: insets.top + 16, paddingHorizontal: horizontalPadding, backgroundColor: colors.card, borderBottomColor: colors.border }]}>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>{t('profile.title')}</Text>
             </View>
 
@@ -189,7 +199,7 @@ export default function ProfileScreen() {
                     <ActivityIndicator size="large" color="#2563eb" />
                 </View>
             ) : (
-                <View style={styles.content}>
+                <View style={[styles.content, { paddingHorizontal: horizontalPadding }]}>
 
                     {/* ===== AUTHENTICATED USER CARD ===== */}
                     {user ? (
@@ -527,7 +537,8 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         paddingBottom: 48,
     },
     header: {
-        paddingHorizontal: 16,
+        // `paddingHorizontal` lo inyecta la pantalla (16 px móvil / 32 px
+        // tablet) para que el título quede alineado con el contenido inferior.
         paddingBottom: 16,
         backgroundColor: colors.card,
         borderBottomWidth: 1,
@@ -543,7 +554,10 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         alignItems: 'center',
     },
     content: {
-        padding: 16,
+        // El `paddingHorizontal` real lo inyecta la pantalla (16 px móvil /
+        // 32 px tablet). La cabecera (`header`) sí va a sangre completa porque
+        // funciona como banner con fondo propio.
+        paddingVertical: 16,
     },
 
     // Authenticated profile card

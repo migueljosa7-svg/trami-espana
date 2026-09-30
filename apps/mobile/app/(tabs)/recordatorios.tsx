@@ -10,6 +10,7 @@ import {
     TextInput,
     Alert,
     Platform,
+    useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -196,6 +197,12 @@ export default function RemindersScreen() {
     // Insets para que el FAB y el modal nunca queden bajo la barra del sistema.
     const insets = useSafeAreaInsets();
     const { setShowExitModal } = useExitModal();
+
+    // v1.3.3 (auditoría UI/UX): margen lateral adaptativo (16 px móvil /
+    // 32 px tablet) para igualar esta pestaña con Inicio, Favoritos y Buscar.
+    const { width } = useWindowDimensions();
+    const isTablet = width >= 768;
+    const horizontalPadding = isTablet ? 32 : 16;
 
     // ============================================================
     // Intercepta el botón atrás de Android en la pestaña raíz.
@@ -443,8 +450,9 @@ export default function RemindersScreen() {
 
     return (
         <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
+            {/* Header: el banner va a sangre completa, pero su contenido debe
+                compartir margen lateral con la lista que hay debajo. */}
+            <View style={[styles.header, { paddingHorizontal: horizontalPadding }]}>
                 <View style={styles.headerRow}>
                     <View style={styles.headerTextWrap}>
                         <Text style={styles.headerTitle}>Mis Recordatorios</Text>
@@ -478,7 +486,14 @@ export default function RemindersScreen() {
                     </TouchableOpacity>
                 </View>
             ) : (
-                <ScrollView style={styles.list} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+                <ScrollView
+                    style={styles.list}
+                    contentContainerStyle={{
+                        paddingHorizontal: horizontalPadding,
+                        paddingTop: 16,
+                        paddingBottom: 100,
+                    }}
+                >
                     {/* Upcoming */}
                     {upcomingReminders.length > 0 && (
                         <>
@@ -797,7 +812,8 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     },
     header: {
         paddingTop: 48,
-        paddingHorizontal: 16,
+        // `paddingHorizontal` lo inyecta la pantalla (16 px móvil / 32 px
+        // tablet) para alinear la cabecera con la lista inferior.
         paddingBottom: 16,
         backgroundColor: colors.card,
         borderBottomWidth: 1,

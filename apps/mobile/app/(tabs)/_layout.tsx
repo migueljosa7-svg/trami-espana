@@ -156,7 +156,7 @@ function TabsContent() {
                         <View
                             style={[
                                 exitModalStyles.iconWrap,
-                                { backgroundColor: isDark ? colors.primarySoft : colors.primarySoft },
+                                { backgroundColor: colors.primarySoft },
                             ]}
                         >
                             <Ionicons name="log-out-outline" size={30} color={colors.primary} />

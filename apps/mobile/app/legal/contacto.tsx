@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
-import { LEGAL_EMAIL_CONTACT, LEGAL_EMAIL_UNVERIFIED_NOTICE, LEGAL_DISCLAIMER } from '@trami-espana/shared';
+import { LEGAL_EMAIL_CONTACT, LEGAL_CONTACT_NOTICE, LEGAL_DISCLAIMER } from '@trami-espana/shared';
 import LegalScreen from '../../components/LegalScreen';
 import { useTheme, ThemeColors } from '../../constants/theme';
 
@@ -7,7 +7,9 @@ export default function ContactoScreen() {
     const { colors } = useTheme();
     const styles = getStyles(colors);
     const openMail = () => {
-        Linking.openURL(`mailto:${LEGAL_EMAIL_CONTACT}`).catch(() => {});
+        Linking.openURL(
+            `mailto:${LEGAL_EMAIL_CONTACT}?subject=${encodeURIComponent('Trami España - Consulta')}`
+        ).catch(() => {});
     };
 
     return (
@@ -18,16 +20,31 @@ export default function ContactoScreen() {
         >
             <View style={styles.card}>
                 <Text style={styles.label}>Correo de contacto</Text>
-                <TouchableOpacity onPress={openMail} accessibilityRole="link">
-                    <Text style={styles.email}>{LEGAL_EMAIL_CONTACT}</Text>
+                <TouchableOpacity
+                    onPress={openMail}
+                    accessibilityRole="link"
+                    accessibilityLabel={`Escribir a ${LEGAL_EMAIL_CONTACT}`}
+                >
+                    {/* `selectable` permite copiar la dirección sin abrir el cliente
+                        de correo: en Android, el texto de un TouchableOpacity no es
+                        seleccionable por defecto. */}
+                    <Text style={styles.email} selectable numberOfLines={1} ellipsizeMode="middle">
+                        {LEGAL_EMAIL_CONTACT}
+                    </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.button} onPress={openMail} accessibilityRole="button">
+                <TouchableOpacity
+                    style={styles.button}
+                    onPress={openMail}
+                    accessibilityRole="button"
+                    accessibilityLabel="Abrir el cliente de correo para escribir a Trami España"
+                    activeOpacity={0.85}
+                >
                     <Text style={styles.buttonText}>Enviar correo</Text>
                 </TouchableOpacity>
             </View>
 
             <View style={styles.notice}>
-                <Text style={styles.noticeText}>{LEGAL_EMAIL_UNVERIFIED_NOTICE}</Text>
+                <Text style={styles.noticeText}>{LEGAL_CONTACT_NOTICE}</Text>
             </View>
 
             <Text style={styles.info}>
@@ -53,7 +70,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         marginBottom: 4,
     },
     email: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '600',
         color: colors.primary,
         textDecorationLine: 'underline',
@@ -70,17 +87,20 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         fontWeight: '600',
         fontSize: 14,
     },
+    // v1.3.3: el aviso ya no comunica una advertencia (el correo está
+    // verificado), así que usa los tokens `success` en lugar de `warning`.
+    // Mantener ámbar aquí proyectaba una advertencia falsa al usuario.
     notice: {
-        backgroundColor: colors.warningBackground,
+        backgroundColor: colors.successBackground,
         borderWidth: 1,
-        borderColor: colors.warningBorder,
+        borderColor: colors.successBorder,
         borderRadius: 10,
         padding: 12,
         marginBottom: 16,
     },
     noticeText: {
         fontSize: 12,
-        color: colors.warningText,
+        color: colors.successText,
         lineHeight: 17,
     },
     info: {

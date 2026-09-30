@@ -32,4 +32,4 @@ Derecho a modificar los términos con notificación previa. [REQUIERE: mecanismo
 [REQUIERE: indicar legislación española y tribunal competente]
 
 ## 10. Contacto
-[REQUIERE: email real — verificar `contacto@tramiespana.es`]
+[REQUIERE: email real — `tramiespana.app@gmail.com` (oficial y verificado)]

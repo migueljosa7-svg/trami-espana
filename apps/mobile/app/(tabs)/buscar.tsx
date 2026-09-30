@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type ComponentProps } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Link, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
@@ -181,6 +181,15 @@ export default function SearchScreen() {
     const [isFocused, setIsFocused] = useState(false);
     const searchInputRef = useRef<TextInput>(null);
     const { setShowExitModal } = useExitModal();
+
+    // v1.3.3 (auditoría UI/UX): el margen lateral se adapta al ancho igual que
+    // ya hacen Inicio y Favoritos. Antes esta pantalla mantenía 16 px fijos en
+    // tablet, de modo que las tarjetas quedaban pegadas a los bordes mientras
+    // en las otras pestañas flotaban con 32 px: rótulos de sección y tarjetas
+    // desalineados entre pestañas.
+    const { width } = useWindowDimensions();
+    const isTablet = width >= 768;
+    const horizontalPadding = isTablet ? 32 : 16;
 
     // ============================================================
     // Intercepta el botón atrás de Android en la pestaña raíz.
@@ -496,7 +505,13 @@ export default function SearchScreen() {
                     )}
                     keyExtractor={(item) => item.id}
                     estimatedItemSize={120}
-                    contentContainerStyle={styles.resultsContent}
+                    contentContainerStyle={{
+                        // v1.3.3: margen lateral adaptativo. `FlashList` exige un
+                        // único objeto (no admite array) para contentContainerStyle.
+                        paddingHorizontal: horizontalPadding,
+                        paddingVertical: 16,
+                        paddingBottom: 32,
+                    }}
                     ListHeaderComponent={
                         <>
                             {isFromCache && (
@@ -679,10 +694,9 @@ const getStyles = (colors: ThemeColors, _isDark: boolean) => StyleSheet.create({
     resultsList: {
         flex: 1
     },
-    resultsContent: {
-        padding: 16,
-        paddingBottom: 32,
-    },
+    // v1.3.3: `resultsContent` ya no se usa en el `contentContainerStyle`
+    // (FlashList no admite arrays de estilos). Se elimina para no dejar
+    // estilos muertos que inducen a error en futuras ediciones.
     resultsCount: {
         fontSize: 12,
         fontWeight: '600',

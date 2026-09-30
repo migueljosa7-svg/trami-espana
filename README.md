@@ -524,7 +524,7 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para
 > pendientes de confirmación/registro por el titular (ver `docs/LEGAL_DATA_REQUIRED.md`,
 > §2). No constituyen direcciones operativas verificadas.
 
-- **Email**: contacto@tramiespana.es *(provisional)*
+- **Email**: tramiespana.app@gmail.com *(correo oficial de contacto y soporte)*
 - **Web**: https://tramiespana.es *(provisional, pendiente de confirmar titularidad del dominio)*
 
 ## 🙏 Agradecimientos

@@ -10,7 +10,7 @@
 ## 1. Responsable del tratamiento
 
 - **Titular / Razón social:** [REQUIERE: nombre legal de la entidad]
-- **Email de contacto:** [REQUIERE: email real — verificar si `contacto@tramiespana.es` es el oficial]
+- **Email de contacto:** [REQUIERE: email real — `tramiespana.app@gmail.com` (oficial y verificado)]
 - **Web:** [REQUIERE: dominio real — verificar si `https://tramiespana.es` es el oficial]
 - **Domicilio:** [REQUIERE: dirección postal, si aplica]
 

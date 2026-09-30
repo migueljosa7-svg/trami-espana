@@ -1,0 +1,66 @@
+name: 16 KB page size audit
+
+# Auditoría del requisito de páginas de memoria de 16 KB de Google Play.
+#
+# NO bloquea el pipeline a propósito: la app v1.3.3 se publica con esta
+# advertencia (es una cuestión de rendimiento, no de instalación). El job
+# informa del estado y, tras la migración a Expo SDK 52+, sirve como criterio
+# objetivo de aceptación (deberá pasar a "conforme").
+#
+# Ver: docs/EXPO_SDK_52_MIGRATION_16KB.md
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - 'apps/mobile/app.json'
+      - 'apps/mobile/package.json'
+      - 'scripts/verify-16kb-page-size.mjs'
+      - '.github/workflows/16kb-page-size-audit.yml'
+  schedule:
+    # Auditoría semanal aunque no haya cambios.
+    - cron: '0 7 * * 1'
+
+jobs:
+  audit:
+    name: Verificar alineación 16 KB del .aab
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - name: Repositorio
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: ¿Existe un .aab que auditar?
+        id: aab
+        run: |
+          AAB=apps/mobile/android/app/build/outputs/bundle/release/app-release.aab
+          if [ -f "$AAB" ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Auditando $AAB"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No hay .aab en el repositorio (se genera en la build de Android). Se omite la auditoría."
+          fi
+
+      - name: Auditar alineación ELF
+        if: steps.aab.outputs.found == 'true'
+        run: |
+          node scripts/verify-16kb-page-size.mjs --json > 16kb-report.json || true
+          node scripts/verify-16kb-page-size.mjs || true
+
+      - name: Resumen
+        if: steps.aab.outputs.found == 'true'
+        run: |
+          if [ -f 16kb-report.json ]; then
+            echo "### Resultado" >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            head -c 4000 16kb-report.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi

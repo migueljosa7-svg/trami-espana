@@ -18,6 +18,7 @@
     "test": "npm run test --workspaces --if-present",
     "db:migrate": "npx supabase migration up",
     "db:status": "npx supabase migration list",
+    "verify:16kb": "node scripts/verify-16kb-page-size.mjs",
     "postinstall": "node scripts/postinstall-expo-cli-win-fix.js",
     "android": "expo run:android",
     "ios": "expo run:ios"

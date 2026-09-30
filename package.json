@@ -40,10 +40,10 @@
   "devDependencies": {
     "@expo/config-plugins": "~7.9.2",
     "@testing-library/jest-dom": "^7.0.0",
-    "@types/react": "~18.2.55",
-    "@types/react-dom": "~18.3.0",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.3",
+    "@types/react": "~18.2.55",
+    "@types/react-dom": "~18.3.0",
     "@vitest/coverage-v8": "^4.1.10",
     "happy-dom": "^20.11.2",
     "jsdom": "^30.0.1",
@@ -53,11 +53,16 @@
     "vitest": "^4.1.10"
   },
   "//": [
-    "MIGRACIÓN EXPO SDK 53: `expo` y `react-native` se eliminaron de la raíz.",
-    "Con npm workspaces no deben declararse aquí: son exclusivos de apps/mobile, que ya",
-    "los declara. Mantenerlos en la raíz forzaba un único React para todo el monorepo y",
-    "chocaba con apps/web (React 18: cmdk, lucide-react, radix) mientras el móvil exige",
-    "React 19 (RN 0.79). Ahora conviven: web anida React 18 y móvil React 19.",
+    "`react-native` se eliminó de la raíz: es exclusivo de apps/mobile, que ya lo declara.",
+    "Mantenerlo en la raíz forzaba un único React para todo el monorepo y chocaba con",
+    "apps/web (React 18: cmdk, lucide-react, radix) mientras el móvil exige React 19",
+    "(RN 0.79). Ahora conviven: web anida React 18 y móvil React 19.",
+    "",
+    "`expo` SÍ debe estar en la raíz: `@expo/cli` (que npm hoistea allí) hace",
+    "`require('expo/package.json')` desde node_modules/@expo/cli, y sin esta dependencia",
+    "el paso :app:createBundleReleaseJsAndAssets falla con 'Cannot find module'.",
+    "Se declara con el MISMO rango que apps/mobile (~53.0.0), así que npm deduplica una",
+    "única copia hoisted en la raíz y no reintroduce el conflicto de versiones.",
     "",
     "`@expo/config-plugins` se fija a propósito: eas-cli@21.8.0 depende de la 55.0.7",
     "(SDK 55) y npm la hoisteaba a la raíz, donde `expo-system-ui@5` la resolvía y",
@@ -69,5 +74,7 @@
     "tipos que espera web. apps/mobile anida su propio @types/react 19 (RN 0.79) y su",
     "tsconfig acota `typeRoots` para no cargar ambas versiones a la vez."
   ],
-  "dependencies": {}
+  "dependencies": {
+    "expo": "~53.0.0"
+  }
 }

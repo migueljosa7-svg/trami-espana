@@ -120,3 +120,93 @@ CI: `.github/workflows/16kb-page-size-audit.yml` (no bloqueante; semanal + manua
 
 > **Criterio de aceptación de la migración:** tras completar el salto a
 > Expo SDK 53+ con `expo@>=53.0.14`, este comando **debe devolver exit 0**.
+
+---
+
+## 7. Build de producción en monorepo (hallazgos de la compilación)
+
+Tras migrar, `gradlew bundleRelease` encadenó cinco problemas que **no** aparecen
+en documentación oficial. Aquí queda la receta para reproducir el build:
+
+### 7.1 Variable de entorno obligatoria
+
+```bash
+EXPO_NO_METRO_WORKSPACE_ROOT=true
+```
+
+`expo export:embed` calcula el `serverRoot` con `getMetroServerRoot()`, que
+retorna la **raíz del monorepo** (donde hay `package.json` con `workspaces`).
+Pero React Native Gradle Plugin pasa el `--entry-file` **relativo a
+`apps/mobile`** (`File.cliPath(root)`). Con `serverRoot` = raíz, Metro resuelve
+dos niveles más arriba y falla:
+
+```
+Unable to resolve module ./../../node_modules/expo-router/entry.js
+```
+
+*Valor*: **`true`** — no `1`. Expo valida los booleanos y `1` provoca
+`GetEnv.NoBoolean: 1 is not a boolean`.
+
+> Fijada a nivel de usuario en la máquina de build (`[Environment]::SetEnvironmentVariable
+> ('EXPO_NO_METRO_WORKSPACE_ROOT','true','User')`). El daemon de Gradle **no recoge
+> cambios de entorno de sesiones vivas**: hay que hacer `gradlew --stop` y luego
+> relanzar con la variable ya presente, o establecerla en la misma invocación.
+
+### 7.2 `metro.config.js` en `apps/mobile`
+
+```js
+config.watchFolders = [workspaceRoot];                 // vigila la raíz
+config.resolver.nodeModulesPaths = [                     // orden de resolución
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(workspaceRoot, 'node_modules'),
+];
+```
+
+Obligatorio porque npm hoistea `expo`, `expo-router` y el stack a la raíz.
+
+### 7.3 `minSdkVersion: 24` (era 23)
+
+**Expo SDK 53 exige API 24.** `expo.modules.font@13.3.2` lo declara en su
+manifest y con 23 el `Manifest merger` bloquea el build:
+
+```
+uses-sdk:minSdkVersion 23 cannot be smaller than version 24 declared in
+library [host.exp.exponent:expo.modules.font:13.3.2]
+```
+
+> Implicación: la app deja de instalarse en Android 5.x y 6.x (< 1 % de la base
+> instalada). Se actualizó en `app.json` y en `android/gradle.properties`.
+
+### 7.4 `query-string` no declarada en `expo-router`
+
+`expo-router@5.1.11` hace `require("query-string")` en
+`build/fork/getPathFromState-forks.js`, pero **no la declara** en sus
+dependencias (bug de empaquetado). Se añadió explícitamente a
+`apps/mobile/package.json` (`^7.1.3`; la 8+ es ESM puro y no funciona con Metro).
+
+### 7.5 Instalación con `--legacy-peer-deps`
+
+Necesaria porque el monorepo mantiene **React 18 en `apps/web` y React 19 en
+`apps/mobile`** a la vez. `expo` (raíz) arrastra peers que exigen
+`@types/react` 19 mientras `cmdk` exige React 18: sin `--legacy-peer-deps`,
+npm aborta con `ERESOLVE`.
+
+### 7.6 Separación de tipos React 18 / 19
+
+| Sitio | `@types/react` |
+|---|---|
+| raíz (`node_modules`) | **18** — lo comparten `react-router`, `radix`, `lucide` con `apps/web` |
+| `apps/web/node_modules` | 18 (anidado) |
+| `apps/mobile/node_modules` | **19** — el que exige RN 0.79 |
+
+Sin esta separación hay ~72 errores `TS2786` en `apps/web`. Y en
+`apps/mobile/tsconfig.json` además se mapea `react` → tipos locales:
+
+```json
+"typeRoots": ["./node_modules/@types"],
+"paths": { "react": ["./node_modules/@types/react"] }
+```
+
+…porque `react-native` está hoisted en la raíz y, sin el mapeo, sus `.d.ts`
+resuelven React 18 mientras el código resuelve 19 → `TS2769`
+(`ReactNode` de la 19 incluye `bigint`, la 18 no).

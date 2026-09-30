@@ -9,7 +9,19 @@
         // Sin `typeRoots`, TypeScript recorrería también la raíz y cargaría
         // AMBAS versiones del namespace JSX en el mismo programa, provocando
         // errores TS2786. Acotamos la búsqueda al @types de este workspace.
-        "typeRoots": ["./node_modules/@types"]
+        "typeRoots": ["./node_modules/@types"],
+        // `react-native` está hoisted en la raíz del monorepo, y sus .d.ts
+        // importan `react` resolviendo el @types/react de LA RAÍZ (18.x, el de
+        // apps/web). El código de esta app, en cambio, resuelve el suyo local
+        // (19.x, el de RN 0.79). Dos versiones distintas de ReactNode en el
+        // mismo programa => "No overload matches this call" (TS2769) porque la
+        // 19 añade `bigint` a ReactNode y la 18 no lo incluye.
+        // Mapeamos `react` a los tipos locales para que todo el programa use 19.
+        "baseUrl": ".",
+        "paths": {
+            "react": ["./node_modules/@types/react"],
+            "react/*": ["./node_modules/@types/react/*"]
+        }
     },
     "include": [
         "app/**/*",

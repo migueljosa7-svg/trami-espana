@@ -35,7 +35,7 @@
  * Código 2 = error de uso o binario ilegible.
  */
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { inflateRawSync } from 'node:zlib';
 import path from 'node:path';
 
@@ -272,4 +272,74 @@ function main() {
   process.exitCode = ok ? 0 : 1;
 }
 
-main();
+// ============================================================
+// AUDITORÍA DIRECTA DE LOS AAR (sin necesidad de compilar)
+// ============================================================
+// Los .so NO se generan en este proyecto: vienen precompilados dentro de los AAR
+// publicados en npm. Auditar esos AAR permite saber si el stack nuevo trae
+// binarios de 16 KB ANTES de invertir minutos en un `bundleRelease`.
+// Los .so de un AAR viven en `jni/<abi>/` (no en `base/lib/` como en un .aab).
+function listAllSoFiles(root) {
+  const found = [];
+  const walk = (dir, depth) => {
+    if (depth > 6) return;
+    let entries;
+    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (e.name === 'node_modules' && depth > 0) continue;
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) walk(full, depth + 1);
+      else if (e.name.endsWith('.aar')) found.push(full);
+    }
+  };
+  walk(root, 0);
+  return found;
+}
+
+function auditAars(rootDir) {
+  const aars = listAllSoFiles(rootDir);
+  let ok = 0, bad = 0, total = 0;
+  const offenders = [];
+  for (const aarPath of aars) {
+    let buf;
+    try { buf = readFileSync(aarPath); } catch { continue; }
+    let entries;
+    try { entries = listZipEntries(buf); } catch { continue; }
+    for (const entry of entries) {
+      if (!entry.name.startsWith('jni/') || !entry.name.endsWith('.so')) continue;
+      const abi = entry.name.split('/')[1];
+      if (abi !== 'arm64-v8a') continue; // solo 64-bit es lo que importa en Play
+      let data;
+      try { data = readZipEntry(buf, entry); } catch { continue; }
+      let info;
+      try { info = elfMinLoadAlign(data, entry.name); } catch { continue; }
+      total++;
+      const rel = path.relative(rootDir, aarPath).replace(/\\/g, '/');
+      if (info.minAlign >= REQUIRED_ALIGN) { ok++; }
+      else { bad++; offenders.push({ aar: rel, so: entry.name.split('/').pop(), align: info.minAlign }); }
+    }
+  }
+  return { aars: aars.length, total, ok, bad, offenders };
+}
+
+if (process.argv.includes('--aars')) {
+  const root = process.argv[process.argv.indexOf('--aars') + 1] ?? process.cwd();
+  const r = auditAars(root);
+  console.log('');
+  console.log('=== Trami España · Alineacion 16 KB de los AAR precompilados ===');
+  console.log(`AAR analizados: ${r.aars}`);
+  console.log(`Binarios arm64-v8a: ${r.total}`);
+  console.log('');
+  if (r.total === 0) { console.log('Sin .so arm64-v8a encontrados.'); process.exitCode = 2; }
+  else if (r.bad === 0) { console.log(`OK: los ${r.total} binarios arm64-v8a estan alineados a 16 KB.`); process.exitCode = 0; }
+  else {
+    console.log(`FALLO: ${r.bad}/${r.total} binarios SIN alinear. Ejemplos:`);
+    r.offenders.slice(0, 12).forEach((o) => {
+      console.log(`  ${o.so.padEnd(34)} p_align=${o.align} (${Integer.toHexString(o.align)})  <- ${o.aar}`);
+    });
+    process.exitCode = 1;
+  }
+} else {
+  // Modo normal: audita el .aab compilado.
+  main();
+}

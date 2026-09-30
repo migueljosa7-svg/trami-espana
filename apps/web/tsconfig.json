@@ -3,7 +3,14 @@
     "compilerOptions": {
         "composite": true,
         "rootDir": "./src",
-        "outDir": "./dist"
+        "outDir": "./dist",
+        // apps/web usa React 18 y declara sus propios @types (18.x). Sin
+        // typeRoots, TypeScript recorre hacia arriba y carga TAMBIÉN el
+        // @types/react 19 que hay en la raíz (traído por apps/mobile / RN 0.79),
+        // juntando dos versiones del namespace JSX y provocando ~80 errores
+        // TS2786 ("X cannot be used as a JSX component"). Acotamos la búsqueda
+        // al @types propio de este workspace.
+        "typeRoots": ["./node_modules/@types"]
     },
     "include": [
         "src/**/*",

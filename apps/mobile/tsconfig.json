@@ -3,7 +3,13 @@
     "compilerOptions": {
         "composite": true,
         "rootDir": ".",
-        "outDir": "./dist"
+        "outDir": "./dist",
+        // apps/mobile usa React 19 (RN 0.79.6) y anida su propio
+        // @types/react 19. La raíz declara @types/react 18 para apps/web.
+        // Sin `typeRoots`, TypeScript recorrería también la raíz y cargaría
+        // AMBAS versiones del namespace JSX en el mismo programa, provocando
+        // errores TS2786. Acotamos la búsqueda al @types de este workspace.
+        "typeRoots": ["./node_modules/@types"]
     },
     "include": [
         "app/**/*",

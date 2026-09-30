@@ -132,6 +132,9 @@ apps/mobile/android/
 *.keystore
 *.jks
 keystore.properties
+# Clave de subida de Google Play, conservada FUERA de android/ para que
+# `npx expo prebuild --clean` no la destruya (ver docs/EXPO_SDK_53_MIGRATION_16KB.md)
+apps/mobile/keystore/
 
 # iOS
 ios/build/

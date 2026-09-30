@@ -38,7 +38,10 @@
   "author": "Trami España",
   "license": "MIT",
   "devDependencies": {
+    "@expo/config-plugins": "~7.9.2",
     "@testing-library/jest-dom": "^7.0.0",
+    "@types/react": "~18.2.55",
+    "@types/react-dom": "~18.3.0",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.3",
     "@vitest/coverage-v8": "^4.1.10",
@@ -54,7 +57,17 @@
     "Con npm workspaces no deben declararse aquí: son exclusivos de apps/mobile, que ya",
     "los declara. Mantenerlos en la raíz forzaba un único React para todo el monorepo y",
     "chocaba con apps/web (React 18: cmdk, lucide-react, radix) mientras el móvil exige",
-    "React 19 (RN 0.79). Ahora conviven: web anida React 18 y móvil React 19."
+    "React 19 (RN 0.79). Ahora conviven: web anida React 18 y móvil React 19.",
+    "",
+    "`@expo/config-plugins` se fija a propósito: eas-cli@21.8.0 depende de la 55.0.7",
+    "(SDK 55) y npm la hoisteaba a la raíz, donde `expo-system-ui@5` la resolvía y",
+    "fallaba con 'getAppThemeGroup is not a function' durante `expo prebuild`.",
+    "Fijándola aquí, la raíz queda en la versión de SDK 53 y eas-cli anida la suya.",
+    "",
+    "`@types/react` se fija en 18 (la versión de apps/web) para que las librerías",
+    "compartidas que se hoistan a la raíz (react-router, radix...) resuelvan los",
+    "tipos que espera web. apps/mobile anida su propio @types/react 19 (RN 0.79) y su",
+    "tsconfig acota `typeRoots` para no cargar ambas versiones a la vez."
   ],
   "dependencies": {}
 }

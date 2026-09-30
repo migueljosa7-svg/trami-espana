@@ -109,7 +109,11 @@ export const debounce = <T extends (...args: any[]) => any>(
     func: T,
     wait: number
 ): ((...args: Parameters<T>) => void) => {
-    let timeout: NodeJS.Timeout | null = null;
+    // `ReturnType<typeof setTimeout>` en lugar de `NodeJS.Timeout`: este paquete
+    // es portable (web + móvil nativo). Los tipos de Node no existen en React
+    // Native, y referenciarlos obligaba a que cada workspace arrastrase
+    // `@types/node` para compilar esta línea.
+    let timeout: ReturnType<typeof setTimeout> | null = null;
 
     return (...args: Parameters<T>) => {
         if (timeout) clearTimeout(timeout);

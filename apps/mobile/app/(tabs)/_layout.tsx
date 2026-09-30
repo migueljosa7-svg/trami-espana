@@ -59,6 +59,12 @@ function TabsContent() {
             headerShown: false,
             tabBarActiveTintColor: colors.tabBarActive,
             tabBarInactiveTintColor: colors.tabBarInactive,
+            // v1.4.1 - Con el teclado abierto la barra de pestanas (198 px)
+            // ocupa justo la franja que necesita la barra de escritura del
+            // Asistente y la deja medio tapada. `tabBarHideOnKeyboard` la
+            // retira con animacion y devuelve ese espacio al contenido, que es
+            // el comportamiento esperado en cualquier app de chat.
+            tabBarHideOnKeyboard: true,
             tabBarStyle: {
                 backgroundColor: isDark ? '#0F172A' : colors.card,
                 borderTopColor: colors.border,

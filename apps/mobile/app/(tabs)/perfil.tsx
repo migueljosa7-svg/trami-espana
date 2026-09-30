@@ -145,13 +145,18 @@ export default function ProfileScreen() {
         );
     };
 
+    // `as const` en cada `href` conserva el literal de la ruta en vez de
+    // degradarlo a `string`. Con la experiment `typedRoutes` activada, `<Link>`
+    // acepta un conjunto cerrado de rutas, así que un `string` no encaja
+    // (TS2322). Además el literal sigue siendo `string`, de modo que también
+    // vale como `key`. Mismo criterio que `TOOL_ITEMS` más abajo.
     const legalItems = [
-        { label: t('profile.legalItems.privacy'), href: '/legal/politica-privacidad', icon: 'shield-checkmark-outline' as const },
-        { label: t('profile.legalItems.terms'), href: '/legal/terminos', icon: 'document-text-outline' as const },
-        { label: t('profile.legalItems.cookies'), href: '/legal/cookies', icon: 'eye-outline' as const },
-        { label: t('profile.legalItems.disclaimer'), href: '/legal/aviso', icon: 'information-circle-outline' as const },
-        { label: t('profile.legalItems.data'), href: '/legal/datos', icon: 'lock-closed-outline' as const },
-        { label: t('profile.legalItems.contact'), href: '/legal/contacto', icon: 'mail-outline' as const },
+        { label: t('profile.legalItems.privacy'), href: '/legal/politica-privacidad' as const, icon: 'shield-checkmark-outline' as const },
+        { label: t('profile.legalItems.terms'), href: '/legal/terminos' as const, icon: 'document-text-outline' as const },
+        { label: t('profile.legalItems.cookies'), href: '/legal/cookies' as const, icon: 'eye-outline' as const },
+        { label: t('profile.legalItems.disclaimer'), href: '/legal/aviso' as const, icon: 'information-circle-outline' as const },
+        { label: t('profile.legalItems.data'), href: '/legal/datos' as const, icon: 'lock-closed-outline' as const },
+        { label: t('profile.legalItems.contact'), href: '/legal/contacto' as const, icon: 'mail-outline' as const },
     ];
 
     // ============================================================

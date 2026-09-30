@@ -365,8 +365,27 @@ export default function AssistantScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      // ============================================================
+      // v1.4.1 — CORRECCION DEL TECLADO EN ANDROID
+      // El manifiesto ya declara android:windowSoftInputMode="adjustResize",
+      // asi que Android YA encoge la ventana cuando aparece el teclado. Aplicar
+      // aqui behavior="height" resta la altura del teclado una SEGUNDA vez y, como
+      // KeyboardAvoidingView.read _relativeKeyboardHeight() vuelve a sumar
+      // this.state.bottom en cada onLayout, el contenedor oscila hacia abajo
+      // hasta aplastar la barra de escritura (medido: 14 px en vez de ~187 px)
+      // y a ocultarla bajo la barra de pestanas opaca.
+      //
+      // En Android no hay que compensar nada (lo hace adjustResize), asi que
+      // `behavior` queda en `undefined` y el componente es un <View> normal.
+      // En iOS el teclado flota sobre la app y si hace falta `padding`.
+      // Es el mismo patron que ya usan login/registro/recuperar-contrasena.
+      //
+      // `keyboardVerticalOffset` es 0 porque `tabBarHideOnKeyboard` (ver
+      // app/(tabs)/_layout.tsx) oculta la barra de pestanas al escribir, de
+      // modo que ya no hay altura de tab bar que compensar.
+      // ============================================================
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={0}
     >
       {/* Header */}
       <View style={styles.header}>
@@ -768,6 +787,10 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   loadingSlowText: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
   inputContainer: {
     flexDirection: "row",
+    // La barra de escritura NUNCA debe comprimirse: si el contenedor padre
+    // encoge (teclado, barra de pestanas, orientacion), el flexShrink por
+    // defecto de Yoga aplasta este View y el campo de texto queda tapado.
+    flexShrink: 0,
     paddingHorizontal: 16,
     paddingVertical: 12,
     paddingBottom: Platform.OS === "ios" ? 28 : 12,

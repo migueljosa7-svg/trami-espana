@@ -47,12 +47,14 @@
     "lightningcss": "^1.33.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "react-native": "0.73.6",
     "vitest": "^4.1.10"
   },
-  "dependencies": {
-    "expo": "~50.0.17",
-    "react": "18.2.0",
-    "react-native": "0.73.6"
-  }
+  "//": [
+    "MIGRACIÓN EXPO SDK 53: `expo` y `react-native` se eliminaron de la raíz.",
+    "Con npm workspaces no deben declararse aquí: son exclusivos de apps/mobile, que ya",
+    "los declara. Mantenerlos en la raíz forzaba un único React para todo el monorepo y",
+    "chocaba con apps/web (React 18: cmdk, lucide-react, radix) mientras el móvil exige",
+    "React 19 (RN 0.79). Ahora conviven: web anida React 18 y móvil React 19."
+  ],
+  "dependencies": {}
 }

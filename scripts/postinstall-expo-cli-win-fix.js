@@ -5,26 +5,50 @@
  * Este script normaliza el prefijo node: en externals.js si el bug está
  * presente. Es idempotente e inocuo en otras plataformas.
  *
+ * MIGRACIÓN SDK 53: con npm workspaces, `expo` vive en apps/mobile/node_modules
+ * (ya no está declarado en la raíz). Se buscan AMBAS ubicaciones para que el
+ * parche siga aplicándose sin importar dónde lo resuelva npm.
+ *
  * Origen del parche: tapNodeShims() en start/server/metro/externals.js
  */
 const fs = require('fs');
 const path = require('path');
 
-const target = path.join(
-  __dirname,
-  '..',
-  'node_modules',
-  '@expo',
-  'cli',
-  'build',
-  'src',
-  'start',
-  'server',
-  'metro',
-  'externals.js'
-);
+const candidateTargets = [
+  path.join(
+    __dirname,
+    '..',
+    'node_modules',
+    '@expo',
+    'cli',
+    'build',
+    'src',
+    'start',
+    'server',
+    'metro',
+    'externals.js'
+  ),
+  // Móvil hoisted a su propio node_modules (npm workspaces).
+  path.join(
+    __dirname,
+    '..',
+    'apps',
+    'mobile',
+    'node_modules',
+    '@expo',
+    'cli',
+    'build',
+    'src',
+    'start',
+    'server',
+    'metro',
+    'externals.js'
+  ),
+];
 
-if (!fs.existsSync(target)) {
+const target = candidateTargets.find((p) => fs.existsSync(p));
+
+if (!target) {
   process.exit(0);
 }
 

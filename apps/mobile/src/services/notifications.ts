@@ -29,11 +29,15 @@ type NotificationTriggerInput = NonNullable<
 const ANDROID_CHANNEL_ID = 'trami-reminders';
 
 // Handler global: muestra la notificación incluso en primer plano.
+// SDK 53 (expo-notifications 0.31): `shouldShowAlert` pasa a estar DEPRECADO y
+// son obligatorios `shouldShowBanner` y `shouldShowList`. Equivale a la
+// recomendación oficial de Expo para el salto desde SDK 52.
 if (Notifications) {
   try {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
-        shouldShowAlert: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
         shouldPlaySound: true,
         shouldSetBadge: false,
       }),

@@ -525,7 +525,10 @@ export default function ProcedureDetailScreen() {
             onRequestClose={() => setShowPdfPreview(false)}
         >
             <View style={styles.pdfModalContainer}>
-                <View style={styles.pdfModalHeader}>
+                {/* FASE 1 — `paddingTop` inyectado desde `insets.top`: el
+                    `paddingTop: 48` fijo recortaba el título bajo la muesca
+                    de cámara en los `pageSheet` a pantalla completa. */}
+                <View style={[styles.pdfModalHeader, { paddingTop: insets.top + 12 }]}>
                     <Text style={styles.pdfModalTitle}>Vista previa del PDF</Text>
                     <TouchableOpacity onPress={() => setShowPdfPreview(false)} style={styles.pdfCloseButton}>
                         <Ionicons name="close" size={24} color="#64748b" />
@@ -905,8 +908,9 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
-        paddingTop: 48,
+        paddingHorizontal: 16,
+        // `paddingTop` real se inyecta desde `insets.top + 12` en el JSX.
+        paddingTop: 12,
         backgroundColor: colors.card,
         borderBottomWidth: 1,
         borderBottomColor: colors.border,

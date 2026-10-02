@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Link, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { authService, favoriteService, FavoriteWithProcedure } from '@trami-espana/shared';
 import { cacheFavorites, readCachedFavorites } from '../../src/localCache';
@@ -14,6 +15,8 @@ export default function FavoritesScreen() {
     const { colors } = useTheme();
     const { width } = useWindowDimensions();
     const isTablet = width >= 768;
+    // FASE 1 — `insets.top` sustituye al `paddingTop: 48` fijo del header.
+    const insets = useSafeAreaInsets();
     const [favorites, setFavorites] = useState<FavoriteWithProcedure[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const { setShowExitModal } = useExitModal();
@@ -69,7 +72,7 @@ export default function FavoritesScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+            <View style={[styles.header, { paddingTop: insets.top + 16, backgroundColor: colors.card, borderBottomColor: colors.border }]}>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Mis Favoritos</Text>
                 <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>Trámites guardados para acceso rápido</Text>
             </View>
@@ -162,7 +165,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        paddingTop: 48,
+        // FASE 1 — `paddingTop` se inyecta desde `insets.top` en el JSX.
         paddingHorizontal: 16,
         paddingBottom: 16,
         borderBottomWidth: 1,

@@ -14,12 +14,15 @@ import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { authService } from '@trami-espana/shared';
 import { useTheme, ThemeColors } from '../constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export default function ForgotPasswordScreen() {
     const { colors } = useTheme();
     const styles = getStyles(colors);
+    // FASE 1 — Insets reales para el formulario (muesca + barra de gestos).
+    const insets = useSafeAreaInsets();
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -82,7 +85,7 @@ export default function ForgotPasswordScreen() {
         >
             <ScrollView
                 style={styles.container}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}
                 keyboardShouldPersistTaps="handled"
             >
                 <View style={styles.logoContainer}>
@@ -154,12 +157,14 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background,
-        padding: 24,
-        paddingTop: 72,
     },
     scrollContent: {
         flexGrow: 1,
-        paddingBottom: 40,
+        // FASE 1 — Los valores reales se inyectan desde `insets` en el JSX
+        // (los 72/40 px fijos chocaban con la muesca y la barra de gestos).
+        paddingHorizontal: 24,
+        paddingTop: 24,
+        paddingBottom: 24,
     },
     logoContainer: {
         alignItems: 'center',

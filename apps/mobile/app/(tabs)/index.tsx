@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Link } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PROCEDURE_CATEGORIES } from '@trami-espana/shared';
 import { useTheme } from '../../constants/theme';
 import { useExitModal } from '../../src/context/ExitModalContext';
@@ -10,6 +11,10 @@ export default function HomeScreen() {
     const { colors } = useTheme();
     const { width } = useWindowDimensions();
     const isTablet = width >= 768;
+    // FASE 1 — Insets reales en lugar del `paddingTop: 48` fijo anterior,
+    // que en pantallas de 2340 px con Punch-hole dejaba el contenido bajo
+    // la muesca y en las de menor densidad lo separaba de la barra de estado.
+    const insets = useSafeAreaInsets();
     const { setShowExitModal } = useExitModal();
 
     // ============================================================
@@ -24,7 +29,7 @@ export default function HomeScreen() {
 
     return (
         <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.scrollContent}>
-            <View style={[styles.content, { paddingHorizontal: isTablet ? 32 : 16 }]}>
+            <View style={[styles.content, { paddingHorizontal: isTablet ? 32 : 16, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}>
                 {/* Banner Disclaimer */}
                 <View style={[styles.disclaimerBanner, { backgroundColor: colors.warningBackground, borderColor: colors.warningBorder }]}>
                     <Text style={[styles.disclaimerText, { color: colors.warningText }]}>
@@ -95,7 +100,7 @@ const styles = StyleSheet.create({
         flexGrow: 1,
     },
     content: {
-        paddingTop: 48,
+        // FASE 1 — `paddingTop` se inyecta desde `insets.top` en el JSX.
         paddingBottom: 80,
     },
     disclaimerBanner: {

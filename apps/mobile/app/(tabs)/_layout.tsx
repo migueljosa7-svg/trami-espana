@@ -25,7 +25,7 @@ import { OfflineToast } from '../../components/OfflineToast';
 // ============================================================
 function TabsContent() {
     const { t } = useTranslation();
-    const { colors, isDark } = useTheme();
+    const { colors } = useTheme();
     const insets = useSafeAreaInsets();
     const bottomInset = useBottomInset();
     const { showExitModal, setShowExitModal } = useExitModal();
@@ -54,7 +54,18 @@ function TabsContent() {
     });
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#0F172A', paddingBottom: insets.bottom }}>
+        // ============================================================
+        // FASE 1 — BUG CORREGIDO: el envoltorio aplicaba
+        // `paddingBottom: insets.bottom` Y la `tabBarStyle` aplicaba
+        // `paddingBottom: bottomInset` (= max(insets.bottom, 16)).
+        // El inset se contaba DOS veces y quedaba una franja muerta
+        // (~24-48 px) bajo la barra de pestañas, pintada con el color
+        // fijo `#0F172A` — visible como una banda azul oscura en
+        // modo claro. Ahora el inset lo aplica SOLO la tabBarStyle
+        // (que ya crece con `height: 56 + bottomInset`) y el fondo
+        // respeta el tema.
+        // ============================================================
+        <View style={{ flex: 1, minHeight: 0, backgroundColor: colors.background }}>
             <Tabs screenOptions={{
             headerShown: false,
             tabBarActiveTintColor: colors.tabBarActive,
@@ -66,9 +77,16 @@ function TabsContent() {
             // el comportamiento esperado en cualquier app de chat.
             tabBarHideOnKeyboard: true,
             tabBarStyle: {
-                backgroundColor: isDark ? '#0F172A' : colors.card,
+                // FASE 3 — El color fijo `#0F172A` en modo oscuro era un
+                // TERCER tono (ni `background` #0b1220 ni `card` #111a2c) y
+                // producía un escalón cromático visible entre la barra de
+                // pestañas y las cabeceras. `colors.card` unifica ambos.
+                backgroundColor: colors.card,
                 borderTopColor: colors.border,
                 paddingTop: 8,
+                // FASE 1 — Único punto de aplicación del inset inferior:
+                // la barra crece (`height`) y reserva el hueco (`paddingBottom`)
+                // para no solaparse con la barra de gestos.
                 paddingBottom: bottomInset,
                 height: 56 + bottomInset,
             },
@@ -152,7 +170,16 @@ function TabsContent() {
                 statusBarTranslucent
                 onRequestClose={handleExitCancel}
             >
-                <View style={[exitModalStyles.overlay, { backgroundColor: colors.overlay }]}>
+                <View
+                    style={[
+                        exitModalStyles.overlay,
+                        // FASE 1 — `statusBarTranslucent` hace que el Modal
+                        // cubra la pantalla completa, así que el overlay debe
+                        // respetar los insets: si no, la tarjeta queda descentrada
+                        // y en vertical el botón "Salir" roza la barra de gestos.
+                        { backgroundColor: colors.overlay, paddingTop: insets.top, paddingBottom: insets.bottom },
+                    ]}
+                >
                     <View
                         style={[
                             exitModalStyles.card,

@@ -452,7 +452,7 @@ export default function RemindersScreen() {
         <View style={styles.container}>
             {/* Header: el banner va a sangre completa, pero su contenido debe
                 compartir margen lateral con la lista que hay debajo. */}
-            <View style={[styles.header, { paddingHorizontal: horizontalPadding }]}>
+            <View style={[styles.header, { paddingTop: insets.top + 16, paddingHorizontal: horizontalPadding }]}>
                 <View style={styles.headerRow}>
                     <View style={styles.headerTextWrap}>
                         <Text style={styles.headerTitle}>Mis Recordatorios</Text>
@@ -811,7 +811,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         backgroundColor: colors.background
     },
     header: {
-        paddingTop: 48,
+        // FASE 1 — `paddingTop` se inyecta desde `insets.top` en el JSX.
         // `paddingHorizontal` lo inyecta la pantalla (16 px móvil / 32 px
         // tablet) para alinear la cabecera con la lista inferior.
         paddingBottom: 16,

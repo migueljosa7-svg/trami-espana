@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../constants/theme';
 import { OFFLINE_TOAST_MESSAGE, useNetworkStatus } from '../src/hooks/useNetworkStatus';
 
@@ -22,6 +23,14 @@ interface OfflineToastProps {
 export function OfflineToast({ durationMs = 4000 }: OfflineToastProps) {
   const { colors } = useTheme();
   const { isOffline } = useNetworkStatus();
+  // ============================================================
+  // FASE 3 — El aviso es `position: absolute` sobre toda la app: sin
+  // este inset, `top: 0` lo colocaba POR DEBAJO de la barra de estado y
+  // la muesca de cámara lo recortaba. Además, en esta pantalla las
+  // cabeceras ya incorporan `insets.top`, así que el toast debe
+  // apoyarse sobre ellas, no taparlas a media pantalla.
+  // ============================================================
+  const insets = useSafeAreaInsets();
   const [visible, setVisible] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -52,7 +61,7 @@ export function OfflineToast({ durationMs = 4000 }: OfflineToastProps) {
 
   return (
     <View
-      style={styles.wrapper}
+      style={[styles.wrapper, { paddingTop: insets.top + 6 }]}
       pointerEvents="box-none"
       accessibilityLiveRegion="polite"
     >
@@ -86,8 +95,12 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     paddingHorizontal: 16,
+    // `paddingTop` real se inyecta desde `insets.top + 6` (respaldo aquí).
     paddingTop: 6,
     zIndex: 999,
+    // No captura toques fuera del propio aviso: el contenido de debajo
+    // (scroll, botones, listas) sigue siendo completamente usable.
+    pointerEvents: 'box-none',
   },
   toast: {
     flexDirection: 'row',

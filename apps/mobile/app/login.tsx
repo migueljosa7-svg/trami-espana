@@ -16,6 +16,7 @@ import * as Linking from 'expo-linking';
 import { authService, isEmailNotConfirmedError } from '@trami-espana/shared';
 import { clearUserCaches } from '../src/localCache';
 import { useTheme, ThemeColors } from '../constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Deep link de Expo al que apunta el email de activación (misma URL que el registro).
 const EMAIL_REDIRECT_URL = Linking.createURL('/auth/callback');
@@ -24,6 +25,8 @@ export default function LoginScreen() {
     const router = useRouter();
     const { colors } = useTheme();
     const styles = getStyles(colors);
+    // FASE 1 — Insets reales para el formulario (muesca + barra de gestos).
+    const insets = useSafeAreaInsets();
     const params = useLocalSearchParams<{ confirmed?: string }>();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -101,7 +104,7 @@ export default function LoginScreen() {
         >
             <ScrollView
                 style={styles.container}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}
                 keyboardShouldPersistTaps="handled"
             >
                 <View style={styles.logoContainer}>
@@ -237,9 +240,12 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         justifyContent: 'center',
-        padding: 24,
-        paddingTop: 56,
-        paddingBottom: 40,
+        paddingHorizontal: 24,
+        // FASE 1 — `paddingTop`/`paddingBottom` reales se inyectan desde
+        // `insets` en el JSX: los 56/40 px fijos dejaban el formulario
+        // bajo la muesca y rozando la barra de gestos.
+        paddingTop: 24,
+        paddingBottom: 24,
     },
     logoContainer: {
         alignItems: 'center',

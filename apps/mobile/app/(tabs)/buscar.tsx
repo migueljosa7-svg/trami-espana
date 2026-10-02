@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useMemo, useRef, type ComponentProps } from 'react';
+import { memo, useState, useEffect, useCallback, useMemo, useRef, type ComponentProps } from 'react';
 import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Link, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { procedureService, ProcedureWithDetails } from '@trami-espana/shared';
 import { useTranslation } from 'react-i18next';
@@ -82,6 +83,57 @@ const getProcedureIcon = (procedure: ProcedureWithDetails): ComponentProps<typeo
     if (scope.includes('estatal')) return 'flag';
     return 'document-text';
 };
+
+// ============================================================
+// FASE 3 — Tarjeta de trámite memoizada (React.memo).
+// Mientras el usuario teclea en el buscador, las tarjetas ya
+// montadas NO se repintan: `proc` conserva su identidad (el array
+// `visibleProcedures` se memoiza), `styles` es estable (useMemo) y
+// `primaryColor` es un string primitivo. Solo se redibuja la celda
+// cuyo trámite entra o sale del filtro.
+// ============================================================
+interface ProcedureCardProps {
+    proc: ProcedureWithDetails;
+    styles: ReturnType<typeof getStyles>;
+    primaryColor: string;
+}
+
+const ProcedureCard = memo(function ProcedureCard({
+    proc,
+    styles,
+    primaryColor,
+}: ProcedureCardProps) {
+    return (
+        <Link href={`/procedure/${proc.slug}`} asChild>
+            <TouchableOpacity style={styles.card} activeOpacity={0.8}>
+                <View style={styles.cardIcon}>
+                    {proc.category?.icon ? (
+                        <Text style={styles.cardIconEmoji}>{proc.category.icon}</Text>
+                    ) : (
+                        <Ionicons name={getProcedureIcon(proc)} size={24} color={primaryColor} />
+                    )}
+                </View>
+                <View style={styles.cardBody}>
+                    <View style={styles.cardHeader}>
+                        <Text style={styles.cardScope}>{proc.scope.toUpperCase()}</Text>
+                        {proc.cost && (
+                            <View style={[styles.costTag, proc.cost.toLowerCase().includes('gratuit') && styles.costTagFree]}>
+                                <Text style={[styles.cardCost, proc.cost.toLowerCase().includes('gratuit') && styles.cardCostFree]}>
+                                    {proc.cost.length > 18 ? proc.cost.slice(0, 18) + '…' : proc.cost}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                    <Text style={styles.cardTitle} numberOfLines={2}>{proc.title}</Text>
+                    <Text style={styles.cardDesc} numberOfLines={2}>{proc.short_description}</Text>
+                </View>
+                <View style={styles.cardChevron}>
+                    <Ionicons name="chevron-forward" size={20} color={primaryColor} />
+                </View>
+            </TouchableOpacity>
+        </Link>
+    );
+});
 
 // ===========================================
 // RESOLUCIÓN TOLERANTE DE CATEGORÍAS
@@ -168,7 +220,9 @@ async function fetchProceduresByCategory(
 export default function SearchScreen() {
     const { t } = useTranslation();
     const { colors, isDark } = useTheme();
-    const styles = getStyles(colors, isDark);
+    // FASE 3 — estilos memoizados: identidad estable para que las
+    // tarjetas envueltas en React.memo no se repinten en cada tecla.
+    const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
     const params = useLocalSearchParams<{ categoria?: string }>();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(params.categoria || '');
@@ -189,6 +243,8 @@ export default function SearchScreen() {
     // desalineados entre pestañas.
     const { width } = useWindowDimensions();
     const isTablet = width >= 768;
+    // FASE 1 — `insets.top` sustituye al `paddingTop: 48` fijo del header.
+    const insets = useSafeAreaInsets();
     const horizontalPadding = isTablet ? 32 : 16;
 
     // ============================================================
@@ -303,7 +359,7 @@ export default function SearchScreen() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
                 <Text style={styles.headerTitle}>Buscador de Trámites</Text>
 
                 {/* Search bar with icon */}
@@ -473,35 +529,15 @@ export default function SearchScreen() {
             ) : (
                 <FlashList
                     data={visibleProcedures}
+                    // FASE 3 — renderItem memoizado: la tarjeta es React.memo
+                    // y sus props son estables, así que el FlatList subyacente
+                    // no repinta el historial de resultados al teclear.
                     renderItem={({ item: proc }) => (
-                        <Link href={`/procedure/${proc.slug}`} asChild>
-                            <TouchableOpacity style={styles.card} activeOpacity={0.8}>
-                                <View style={styles.cardIcon}>
-                                    {proc.category?.icon ? (
-                                        <Text style={styles.cardIconEmoji}>{proc.category.icon}</Text>
-                                    ) : (
-                                        <Ionicons name={getProcedureIcon(proc)} size={24} color={colors.primary} />
-                                    )}
-                                </View>
-                                <View style={styles.cardBody}>
-                                    <View style={styles.cardHeader}>
-                                        <Text style={styles.cardScope}>{proc.scope.toUpperCase()}</Text>
-                                        {proc.cost && (
-                                            <View style={[styles.costTag, proc.cost.toLowerCase().includes('gratuit') && styles.costTagFree]}>
-                                                <Text style={[styles.cardCost, proc.cost.toLowerCase().includes('gratuit') && styles.cardCostFree]}>
-                                                    {proc.cost.length > 18 ? proc.cost.slice(0, 18) + '…' : proc.cost}
-                                                </Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                    <Text style={styles.cardTitle} numberOfLines={2}>{proc.title}</Text>
-                                    <Text style={styles.cardDesc} numberOfLines={2}>{proc.short_description}</Text>
-                                </View>
-                                <View style={styles.cardChevron}>
-                                    <Ionicons name="chevron-forward" size={20} color={colors.primary} />
-                                </View>
-                            </TouchableOpacity>
-                        </Link>
+                        <ProcedureCard
+                            proc={proc}
+                            styles={styles}
+                            primaryColor={colors.primary}
+                        />
                     )}
                     keyExtractor={(item) => item.id}
                     estimatedItemSize={120}
@@ -544,7 +580,7 @@ const getStyles = (colors: ThemeColors, _isDark: boolean) => StyleSheet.create({
         backgroundColor: colors.background,
     },
     header: {
-        paddingTop: 48,
+        // FASE 1 — `paddingTop` se inyecta desde `insets.top` en el JSX.
         paddingHorizontal: 16,
         paddingBottom: 8,
         backgroundColor: colors.card,

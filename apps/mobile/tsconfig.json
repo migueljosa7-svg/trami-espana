@@ -1,39 +1,35 @@
 {
-    "extends": "../../tsconfig.base.json",
-    "compilerOptions": {
-        "composite": true,
-        "rootDir": ".",
-        "outDir": "./dist",
-        // apps/mobile usa React 19 (RN 0.79.6) y anida su propio
-        // @types/react 19. La raíz declara @types/react 18 para apps/web.
-        // Sin `typeRoots`, TypeScript recorrería también la raíz y cargaría
-        // AMBAS versiones del namespace JSX en el mismo programa, provocando
-        // errores TS2786. Acotamos la búsqueda al @types de este workspace.
-        "typeRoots": ["./node_modules/@types"],
-        // `react-native` está hoisted en la raíz del monorepo, y sus .d.ts
-        // importan `react` resolviendo el @types/react de LA RAÍZ (18.x, el de
-        // apps/web). El código de esta app, en cambio, resuelve el suyo local
-        // (19.x, el de RN 0.79). Dos versiones distintas de ReactNode en el
-        // mismo programa => "No overload matches this call" (TS2769) porque la
-        // 19 añade `bigint` a ReactNode y la 18 no lo incluye.
-        // Mapeamos `react` a los tipos locales para que todo el programa use 19.
-        "baseUrl": ".",
-        "paths": {
-            "react": ["./node_modules/@types/react"],
-            "react/*": ["./node_modules/@types/react/*"]
-        }
-    },
-    "include": [
-        "app/**/*",
-        "components/**/*",
-        "config/**/*",
-        "constants/**/*",
-        "src/**/*",
-        "*.ts",
-        "*.tsx"
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": ".",
+    "outDir": "./dist",
+    "typeRoots": [
+      "./node_modules/@types"
     ],
-    "exclude": [
-        "node_modules",
-        "dist"
-    ]
+    "baseUrl": ".",
+    "paths": {
+      "react": [
+        "./node_modules/@types/react"
+      ],
+      "react/*": [
+        "./node_modules/@types/react/*"
+      ]
+    }
+  },
+  "include": [
+    "app/**/*",
+    "components/**/*",
+    "config/**/*",
+    "constants/**/*",
+    "src/**/*",
+    "*.ts",
+    "*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

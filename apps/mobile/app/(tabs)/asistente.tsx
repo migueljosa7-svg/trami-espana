@@ -1,18 +1,21 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
+  FlatList,
   StyleSheet,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Linking,
+  useWindowDimensions,
+  type ListRenderItemInfo,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { authService, assistantService, AssistantChatMessage, ASSISTANT_DISCLAIMER } from "@trami-espana/shared";
 import { useTheme, ThemeColors } from "../../constants/theme";
 import { useExitModal } from '../../src/context/ExitModalContext';
@@ -30,6 +33,12 @@ interface EnhancedMessage extends AssistantChatMessage {
   lastQuery?: string;
   isGreeting?: boolean;
 }
+
+// ============================================================
+// FASE 3 — Key extractor a nivel de módulo: identidad fija, no se
+// recrea en cada render del padre (requisito del FlatList PureComponent).
+// ============================================================
+const chatKeyExtractor = (msg: EnhancedMessage): string => msg.id;
 
 function detectStatus(msg: AssistantChatMessage): MessageStatus {
   if (!msg.content) return "error";
@@ -135,9 +144,160 @@ function extractDirectProcedureQuery(query: string): string | null {
   return procedure;
 }
 
+// ============================================================
+// FASE 3 — Burbuja de chat memoizada (React.memo).
+// Cada mensaje es un componente independiente: mientras el usuario
+// escribe en el input, las burbujas ya montadas NO se repintan
+// (sus props —msg, styles, isLoading, lastFailedQuery, onRetry—
+// mantienen identidad estable gracias a useMemo/useCallback en el
+// padre). Solo se redibuja la celda a la que llega un mensaje nuevo.
+// ============================================================
+interface ChatBubbleProps {
+  msg: EnhancedMessage;
+  styles: ReturnType<typeof getStyles>;
+  isLoading: boolean;
+  lastFailedQuery: string;
+  onRetry: () => void;
+}
+
+const ChatBubble = memo(function ChatBubble({
+  msg,
+  styles,
+  isLoading,
+  lastFailedQuery,
+  onRetry,
+}: ChatBubbleProps) {
+  return (
+    <View
+      style={[
+        styles.messageContainer,
+        msg.role === "user" ? styles.userContainer : styles.assistantContainer,
+      ]}
+    >
+      <View
+        style={[
+          styles.messageBubble,
+          msg.role === "user"
+            ? styles.userBubble
+            : msg.status === "error"
+              ? styles.errorBubble
+              : msg.status === "no-results"
+                ? styles.noResultsBubble
+                : styles.assistantBubble,
+        ]}
+      >
+        {/* Indicador de estado para error */}
+        {msg.role === "assistant" && msg.status === "error" && (
+          <Text style={styles.statusLabel}>⚡ Error de conexión</Text>
+        )}
+        {/* Indicador de sin resultados */}
+        {msg.role === "assistant" && msg.status === "no-results" && (
+          <Text style={styles.statusLabelNeutral}>
+            🔍 Sin resultados en base de datos
+          </Text>
+        )}
+        {/* Indicador de resultados parciales */}
+        {msg.role === "assistant" && msg.status === "partial" && (
+          <Text style={styles.statusLabelPartial}>
+            ✨ Resultados parciales (por palabras clave)
+          </Text>
+        )}
+
+        <Text
+          style={[
+            styles.messageText,
+            msg.role === "user" ? styles.userText : styles.assistantText,
+          ]}
+        >
+          {msg.content}
+        </Text>
+
+        {/* Badge Demo / Verified / Fallback */}
+        {msg.role === "assistant" && msg.is_demo !== undefined && (
+          <Text
+            style={[
+              styles.badge,
+              msg.is_demo ? styles.badgeDemo : styles.badgeVerified,
+            ]}
+          >
+            {msg.is_demo
+              ? "⚠️ Contenido Demo / Draft"
+              : "✅ Verificado por Trami"}
+          </Text>
+        )}
+        {msg.role === "assistant" && msg.status === "fallback" && (
+          <Text style={styles.badgeFallback}>
+            🗄️ Respuesta desde base de datos local
+          </Text>
+        )}
+
+        {/* Botón Reintentar si hay error */}
+        {msg.role === "assistant" &&
+          msg.status === "error" &&
+          lastFailedQuery !== "" && (
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={onRetry}
+              disabled={isLoading}
+            >
+              <Text style={styles.retryText}>↺ Reintentar</Text>
+            </TouchableOpacity>
+          )}
+
+        {/* Referenced Procedures */}
+        {msg.referenced_procedures &&
+          msg.referenced_procedures.length > 0 && (
+            <View style={styles.proceduresBox}>
+              <Text style={styles.boxTitle}>Trámites relacionados:</Text>
+              {msg.referenced_procedures.map((proc) => (
+                <Link key={proc.id} href={`/procedure/${proc.slug}`} asChild>
+                  <TouchableOpacity style={styles.procLink}>
+                    <Text style={styles.procTitle}>{proc.title} ↗</Text>
+                  </TouchableOpacity>
+                </Link>
+              ))}
+            </View>
+          )}
+
+        {/* Sources */}
+        {msg.sources && msg.sources.length > 0 && (
+          <View style={styles.sourcesBox}>
+            <Text style={styles.boxTitle}>Fuentes oficiales:</Text>
+            {msg.sources.map((src, idx) => (
+              <TouchableOpacity
+                key={idx}
+                onPress={() => Linking.openURL(src.url)}
+              >
+                <Text style={styles.sourceUrl}>{src.title} 🌐</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Disclaimer */}
+        {msg.disclaimer && (
+          <Text style={styles.disclaimerSubtext}>{msg.disclaimer}</Text>
+        )}
+      </View>
+    </View>
+  );
+});
+
 export default function AssistantScreen() {
   const { colors, isDark } = useTheme();
-  const styles = getStyles(colors, isDark);
+  // FASE 3 — estilos memoizados: identidad estable para que los hijos
+  // envueltos en React.memo no se repinten sin cambios reales.
+  const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
+  // ============================================================
+  // FASE 1 — Edge-to-edge. `useSafeAreaInsets()` sustituye a los
+  // valores fijos (48/28/12 px) que antes chocaban con la muesca de
+  // cámara y con la barra de gestos en Android 14/15 y HyperOS.
+  // `useWindowDimensions()` es reactivo: al plegar/desplegar el
+  // teclado o rotar, el límite de altura del input se recalcula sin
+  // dejar un `Dimensions.get('window')` congelado en el montaje.
+  // ============================================================
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const [conversationId, setConversationId] = useState<string>("");
   const [messages, setMessages] = useState<EnhancedMessage[]>([]);
   const [inputQuery, setInputQuery] = useState("");
@@ -147,7 +307,7 @@ export default function AssistantScreen() {
   const [isOffline, setIsOffline] = useState(false);
   const [inputHeight, setInputHeight] = useState(MIN_INPUT_HEIGHT);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<FlatList<EnhancedMessage>>(null);
   const router = useRouter();
   const { setShowExitModal } = useExitModal();
 
@@ -351,16 +511,77 @@ export default function AssistantScreen() {
     [inputQuery, conversationId, isLoading, messages],
   );
 
-  const handleRetry = () => {
+  const handleRetry = useCallback(() => {
     setIsOffline(false);
     if (lastFailedQuery) {
       handleSend(lastFailedQuery);
     } else {
       init();
     }
-  };
+  }, [handleSend, lastFailedQuery, init]);
+
+  // FASE 3 — callback de reintento con identidad ESTABLE: `handleRetry`
+  // cambia en cada pulsación de tecla (depende de `handleSend`, y esa
+  // depende de `inputQuery`), lo que re-renderizaría todas las burbujas
+  // memoizadas. Este envoltorio delega vía ref y solo se crea una vez.
+  const handleRetryRef = useRef(handleRetry);
+  handleRetryRef.current = handleRetry;
+  const handleRetryStable = useCallback(() => handleRetryRef.current(), []);
 
   const charsLeft = MAX_CHARS - inputQuery.length;
+
+  // ============================================================
+  // FASE 1 — Techo adaptativo del campo multilínea. Nunca puede
+  // superar MAX_INPUT_HEIGHT (120 px) ni el 22 % de la ventana: en
+  // horizontal o en un móvil de 5", el input no debe tapar el chat.
+  // ============================================================
+  const maxInputHeight = Math.min(MAX_INPUT_HEIGHT, windowHeight * 0.22);
+
+  // ============================================================
+  // FASE 3 — Virtualización agresiva del chat.
+  // `renderMessage` solo cambia de identidad cuando cambian las props
+  // reales de las burbujas; combinado con React.memo en ChatBubble,
+  // escribir en el input NO repinta el historial: solo se redibuja la
+  // celda que recibe el mensaje nuevo. `onContentSizeChange` y el
+  // footer de carga también van memoizados para que el FlatList
+  // (PureComponent) no se re-renderice en cada pulsación de tecla.
+  // ============================================================
+  const renderMessage = useCallback(
+    ({ item }: ListRenderItemInfo<EnhancedMessage>) => (
+      <ChatBubble
+        msg={item}
+        styles={styles}
+        isLoading={isLoading}
+        lastFailedQuery={lastFailedQuery}
+        onRetry={handleRetryStable}
+      />
+    ),
+    [styles, isLoading, lastFailedQuery, handleRetryStable],
+  );
+
+  const handleChatContentSizeChange = useCallback(() => {
+    scrollViewRef.current?.scrollToEnd({ animated: true });
+  }, []);
+
+  const chatListFooter = useMemo(
+    () =>
+      isLoading ? (
+        <View style={styles.loadingBubble}>
+          <ActivityIndicator size="small" color="#2563eb" />
+          <View>
+            <Text style={styles.loadingText}>
+              Consultando base de datos y respondiendo...
+            </Text>
+            {isSlowResponse && (
+              <Text style={styles.loadingSlowText}>
+                El asistente está tardando más de lo esperado...
+              </Text>
+            )}
+          </View>
+        </View>
+      ) : null,
+    [isLoading, isSlowResponse, styles],
+  );
 
   return (
     <KeyboardAvoidingView
@@ -387,8 +608,10 @@ export default function AssistantScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={0}
     >
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Header — `paddingTop` inyectado desde `insets.top` para no
+          solaparse con la muesca de cámara ni con la barra de estado
+          en dispositivos con Punch-hole / Dynamic Island. */}
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerContent}>
           <View style={styles.headerIcon}>
             <Ionicons name="sparkles" size={24} color="#ffffff" />
@@ -423,162 +646,51 @@ export default function AssistantScreen() {
         </View>
       )}
 
-      {/* Chat list */}
-      <ScrollView
+      {/* ============================================================
+          FASE 3 — Chat list virtualizado con FlatList.
+          · removeClippedSubviews (solo Android): descarga de memoria
+            las celdas fuera de pantalla (limpieza en tiempo real).
+          · initialNumToRender=10 / maxToRenderPerBatch=5: renderiza
+            por lotes pequeños para no saturar el hilo de UI en
+            dispositivos con poca RAM.
+          · renderItem/keyExtractor/onContentSizeChange memoizados:
+            el PureComponent del FlatList no se re-renderiza mientras
+            el usuario teclea en el input.
+          ============================================================ */}
+      <FlatList
         ref={scrollViewRef}
         style={styles.chatArea}
         contentContainerStyle={styles.chatContent}
+        data={messages}
+        keyExtractor={chatKeyExtractor}
+        renderItem={renderMessage}
         keyboardShouldPersistTaps="handled"
-        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-      >
-        {messages.map((msg) => (
-          <View
-            key={msg.id}
-            style={[
-              styles.messageContainer,
-              msg.role === "user"
-                ? styles.userContainer
-                : styles.assistantContainer,
-            ]}
-          >
-            <View
-              style={[
-                styles.messageBubble,
-                msg.role === "user"
-                  ? styles.userBubble
-                  : msg.status === "error"
-                    ? styles.errorBubble
-                    : msg.status === "no-results"
-                      ? styles.noResultsBubble
-                      : styles.assistantBubble,
-              ]}
-            >
-              {/* Indicador de estado para error */}
-              {msg.role === "assistant" && msg.status === "error" && (
-                <Text style={styles.statusLabel}>⚡ Error de conexión</Text>
-              )}
-              {/* Indicador de sin resultados */}
-              {msg.role === "assistant" && msg.status === "no-results" && (
-                <Text style={styles.statusLabelNeutral}>
-                  🔍 Sin resultados en base de datos
-                </Text>
-              )}
-              {/* Indicador de resultados parciales */}
-              {msg.role === "assistant" && msg.status === "partial" && (
-                <Text style={styles.statusLabelPartial}>
-                  ✨ Resultados parciales (por palabras clave)
-                </Text>
-              )}
+        onContentSizeChange={handleChatContentSizeChange}
+        removeClippedSubviews={Platform.OS === "android"}
+        initialNumToRender={10}
+        maxToRenderPerBatch={5}
+        windowSize={7}
+        updateCellsBatchingPeriod={50}
+        ListFooterComponent={chatListFooter}
+      />
 
-              <Text
-                style={[
-                  styles.messageText,
-                  msg.role === "user" ? styles.userText : styles.assistantText,
-                ]}
-              >
-                {msg.content}
-              </Text>
-
-              {/* Badge Demo / Verified / Fallback */}
-              {msg.role === "assistant" && msg.is_demo !== undefined && (
-                <Text
-                  style={[
-                    styles.badge,
-                    msg.is_demo ? styles.badgeDemo : styles.badgeVerified,
-                  ]}
-                >
-                  {msg.is_demo
-                    ? "⚠️ Contenido Demo / Draft"
-                    : "✅ Verificado por Trami"}
-                </Text>
-              )}
-              {msg.role === "assistant" && msg.status === "fallback" && (
-                <Text style={styles.badgeFallback}>
-                  🗄️ Respuesta desde base de datos local
-                </Text>
-              )}
-
-              {/* Botón Reintentar si hay error */}
-              {msg.role === "assistant" &&
-                msg.status === "error" &&
-                lastFailedQuery !== "" && (
-                  <TouchableOpacity
-                    style={styles.retryButton}
-                    onPress={handleRetry}
-                    disabled={isLoading}
-                  >
-                    <Text style={styles.retryText}>↺ Reintentar</Text>
-                  </TouchableOpacity>
-                )}
-
-              {/* Referenced Procedures */}
-              {msg.referenced_procedures &&
-                msg.referenced_procedures.length > 0 && (
-                  <View style={styles.proceduresBox}>
-                    <Text style={styles.boxTitle}>Trámites relacionados:</Text>
-                    {msg.referenced_procedures.map((proc) => (
-                      <Link
-                        key={proc.id}
-                        href={`/procedure/${proc.slug}`}
-                        asChild
-                      >
-                        <TouchableOpacity style={styles.procLink}>
-                          <Text style={styles.procTitle}>{proc.title} ↗</Text>
-                        </TouchableOpacity>
-                      </Link>
-                    ))}
-                  </View>
-                )}
-
-              {/* Sources */}
-              {msg.sources && msg.sources.length > 0 && (
-                <View style={styles.sourcesBox}>
-                  <Text style={styles.boxTitle}>Fuentes oficiales:</Text>
-                  {msg.sources.map((src, idx) => (
-                    <TouchableOpacity
-                      key={idx}
-                      onPress={() => Linking.openURL(src.url)}
-                    >
-                      <Text style={styles.sourceUrl}>{src.title} 🌐</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-
-              {/* Disclaimer */}
-              {msg.disclaimer && (
-                <Text style={styles.disclaimerSubtext}>{msg.disclaimer}</Text>
-              )}
-            </View>
-          </View>
-        ))}
-
-        {/* Estado de carga */}
-        {isLoading && (
-          <View style={styles.loadingBubble}>
-            <ActivityIndicator size="small" color="#2563eb" />
-            <View>
-              <Text style={styles.loadingText}>
-                Consultando base de datos y respondiendo...
-              </Text>
-              {isSlowResponse && (
-                <Text style={styles.loadingSlowText}>
-                  El asistente está tardando más de lo esperado...
-                </Text>
-              )}
-            </View>
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Input Bar */}
-        <View style={styles.inputContainer}>
+      {/* Input Bar — `paddingBottom: Math.max(insets.bottom, 12)` mantiene
+          el campo por encima de la barra de gestos (Android 14/15, HyperOS)
+          y añade 12 px de aire en dispositivos sin barra inferior. */}
+        <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <View style={styles.inputWrapper}>
             <TextInput
               style={[
                 styles.input,
                 {
-                  height: Math.min(MAX_INPUT_HEIGHT, Math.max(MIN_INPUT_HEIGHT, inputHeight)),
+                  // El tope se relativiza a la ventana en vez de fijar 120 px:
+                  // en un móvil pequeño o en horizontal el input no debe
+                  // comerse el chat. `useWindowDimensions` mantiene el valor
+                  // sincronizado con rotación y teclado.
+                  height: Math.min(
+                    Math.max(MIN_INPUT_HEIGHT, inputHeight),
+                    Math.max(MIN_INPUT_HEIGHT, maxInputHeight),
+                  ),
                 },
               ]}
               value={inputQuery}
@@ -628,9 +740,10 @@ export default function AssistantScreen() {
 }
 
 const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, minHeight: 0, backgroundColor: colors.background },
   header: {
-    paddingTop: 48,
+    // `paddingTop` NO va aquí: se inyecta desde `insets.top` en el JSX
+    // (un 48 px fijo se solapaba con la muesca en pantallas de 2340 px).
     paddingHorizontal: 16,
     paddingBottom: 12,
     backgroundColor: colors.card,
@@ -666,7 +779,14 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     color: colors.textSecondary,
   },
   disclaimerText: { fontSize: 11, color: colors.warningText, marginTop: 4, lineHeight: 15 },
-  chatArea: { flex: 1 },
+  // ============================================================
+  // FASE 1 — El contenedor del chat debe poder ENCOGER. Sin
+  // `minHeight: 0` + `flexShrink: 1`, el `flex: 1` de Yoga calcula la
+  // altura a partir del contenido y la lista no cede espacio
+  // cuando el teclado se despliega: en pantallas AMOLED de 120/144 Hz
+  // el layout vibra y la barra de escritura se aplasta.
+  // ============================================================
+  chatArea: { flex: 1, minHeight: 0, flexShrink: 1 },
   chatContent: { padding: 16, paddingBottom: 8 },
   messageContainer: { marginBottom: 12 },
   userContainer: { alignItems: "flex-end" },
@@ -792,8 +912,10 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     // defecto de Yoga aplasta este View y el campo de texto queda tapado.
     flexShrink: 0,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingBottom: Platform.OS === "ios" ? 28 : 12,
+    paddingTop: 12,
+    // `paddingBottom` se inyecta desde `Math.max(insets.bottom, 12)` en el
+    // JSX: aquí solo queda el valor de respaldo para el primer render.
+    paddingBottom: 12,
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,

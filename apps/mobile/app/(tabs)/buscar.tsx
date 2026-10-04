@@ -10,8 +10,6 @@ import { cacheProcedures, readCachedProcedures } from '../../src/localCache';
 import { useTheme, ThemeColors } from '../../constants/theme';
 import { useSearchHistory } from '../../src/hooks/useSearchHistory';
 import { SkeletonItem } from '../../components/SkeletonLoader';
-import { useExitModal } from '../../src/context/ExitModalContext';
-import { useExitBackHandler } from '../../src/hooks/useBackHandler';
 
 const QUICK_CHIPS = [
     { label: 'DNI / Pasaporte', query: 'DNI' },
@@ -234,7 +232,6 @@ export default function SearchScreen() {
     const [error, setError] = useState<string | null>(null);
     const [isFocused, setIsFocused] = useState(false);
     const searchInputRef = useRef<TextInput>(null);
-    const { setShowExitModal } = useExitModal();
 
     // v1.3.3 (auditoría UI/UX): el margen lateral se adapta al ancho igual que
     // ya hacen Inicio y Favoritos. Antes esta pantalla mantenía 16 px fijos en
@@ -246,11 +243,6 @@ export default function SearchScreen() {
     // FASE 1 — `insets.top` sustituye al `paddingTop: 48` fijo del header.
     const insets = useSafeAreaInsets();
     const horizontalPadding = isTablet ? 32 : 16;
-
-    // ============================================================
-    // Intercepta el botón atrás de Android en la pestaña raíz.
-    // ============================================================
-    useExitBackHandler(useCallback(() => setShowExitModal(true), [setShowExitModal]));
 
     // Historial de búsquedas
     const { history, addToHistory, removeFromHistory, clearHistory } = useSearchHistory();

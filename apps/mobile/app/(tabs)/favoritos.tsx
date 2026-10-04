@@ -8,8 +8,6 @@ import { authService, favoriteService, FavoriteWithProcedure } from '@trami-espa
 import { cacheFavorites, readCachedFavorites } from '../../src/localCache';
 import { useTheme } from '../../constants/theme';
 import { SkeletonItem } from '../../components/SkeletonLoader';
-import { useExitModal } from '../../src/context/ExitModalContext';
-import { useExitBackHandler } from '../../src/hooks/useBackHandler';
 
 export default function FavoritesScreen() {
     const { colors } = useTheme();
@@ -19,12 +17,6 @@ export default function FavoritesScreen() {
     const insets = useSafeAreaInsets();
     const [favorites, setFavorites] = useState<FavoriteWithProcedure[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const { setShowExitModal } = useExitModal();
-
-    // ============================================================
-    // Intercepta el botón atrás de Android en la pestaña raíz.
-    // ============================================================
-    useExitBackHandler(useCallback(() => setShowExitModal(true), [setShowExitModal]));
 
     const loadFavs = useCallback(async () => {
         setIsLoading(true);

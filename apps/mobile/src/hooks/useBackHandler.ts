@@ -2,24 +2,24 @@ import { useCallback, useEffect, useRef } from 'react';
 import { AppState, BackHandler, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useForegroundRevision } from '../context/ForegroundRevisionContext';
+export { useAppExitModal, type UseAppExitModalOptions, type UseAppExitModalReturn } from './useAppExitModal';
 
 // ============================================================
-// Hooks de interceptación del botón atrás físico (v1.3.1)
+// Hooks unificados de interceptación del botón/gesto atrás (Android)
 // ============================================================
-// Todos comparten la misma garantía:
-//   1. Devuelven ESTRICTAMENTE `true` para que el SO nunca ejecute su
-//      comportamiento por defecto (cerrar la app).
-//   2. Se re-registran al volver de segundo plano mediante
-//      `useForegroundRevision()` como dependencia del `useFocusEffect`,
-//      porque al restaurar la app el FOCO no cambia y, por tanto,
-//      `useFocusEffect` no volvería a ejecutarse por sí solo.
+// Principios arquitectónicos:
+// 1. Devuelven ESTRICTAMENTE `true` de forma síncrona en el callback.
+//    Esto garantiza que ni el SO (Android puro, MIUI/HyperOS, OneUI, etc.)
+//    ejecute su acción destructiva por defecto (`finishActivity()`).
+// 2. Manejo de referencias mutables para evitar cierres obsoletos (stale closures).
+// 3. Re-sincronización tras segundo plano.
 
-/** Evita que el SO ejecute su acción por defecto. */
+/** Constante que indica a Android que el evento 'hardwareBackPress' ha sido consumido. */
 const CONSUME_BACK_PRESS = true;
 
 /**
- * Botón atrás en una PESTAÑA RAÍZ: muestra el modal de confirmación de
- * salida en lugar de cerrar la app.
+ * Hook para interceptar la salida en una pantalla o pestaña.
+ * Se apoya en useFocusEffect para pantallas aisladas.
  */
 export function useExitBackHandler(onRequestExit: () => void): void {
     const revision = useForegroundRevision();
@@ -40,9 +40,8 @@ export function useExitBackHandler(onRequestExit: () => void): void {
 }
 
 /**
- * Botón atrás en una pantalla de STACK (p. ej. procedure/[slug]).
- * `onBackPress` ejecuta el retroceso seguro y su valor de retorno se
- * ignora: el evento SIEMPRE queda consumido.
+ * Botón atrás en una pantalla de STACK (p. ej. procedure/[slug], tasas, mi-carpeta).
+ * `onBackPress` ejecuta el retroceso seguro y su retorno se garantiza consumido.
  */
 export function useStackBackHandler(onBackPress: () => void): void {
     const revision = useForegroundRevision();
@@ -71,12 +70,8 @@ export interface SafeBackRouter {
 
 /**
  * `goBackSafely` unificado: vuelve atrás si el stack lo permite y, si no,
- * regresa a las pestañas.
- *
- * NOTA v1.3.1: la versión anterior devolvía `false` en la rama
- * `router.replace('/(tabs)')`. En Android eso indicaba al SO "no he
- * consumido el evento", por lo que ejecutaba `finishActivity()` y la app se
- * cerraba en lugar de navegar. Ahora SIEMPRE devuelve `true`.
+ * regresa a las pestañas de forma segura.
+ * SIEMPRE devuelve `true` síncronamente al sistema.
  */
 export function createGoBackSafely(
     router: SafeBackRouter | null | undefined
@@ -89,15 +84,14 @@ export function createGoBackSafely(
             }
             router?.replace('/(tabs)');
         } catch {
-            // Nunca propagamos: el botón atrás jamás debe romper la app.
+            // Protección: nunca propagar excepciones en el handler de hardware
         }
         return CONSUME_BACK_PRESS;
     };
 }
 
 /**
- * Re-sincroniza los oyentes nativos al volver de segundo plano y ejecuta
- * `onResume` (p. ej. re-aplicar los estilos de la barra del sistema).
+ * Re-sincroniza oyentes nativos y estado al volver de segundo plano (AppState -> active).
  */
 export function useBackHandlerResync(onResume?: () => void): void {
     const onResumeRef = useRef(onResume);
@@ -113,7 +107,7 @@ export function useBackHandlerResync(onResume?: () => void): void {
             try {
                 onResumeRef.current?.();
             } catch {
-                // Silencioso: un fallo de estilo nunca debe romper el resume.
+                // Silencioso: un fallo secundario nunca debe romper el resume
             }
         });
         return () => subscription.remove();

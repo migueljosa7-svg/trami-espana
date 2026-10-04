@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -25,8 +25,6 @@ import {
 import { clearUserCaches } from '../../src/localCache';
 import { useTheme, type ThemeColors, type ThemePreference } from '../../constants/theme';
 import { useAuth } from '../../src/context/AuthContext';
-import { useExitModal } from '../../src/context/ExitModalContext';
-import { useExitBackHandler } from '../../src/hooks/useBackHandler';
 
 export default function ProfileScreen() {
     const { t, i18n } = useTranslation();
@@ -36,7 +34,6 @@ export default function ProfileScreen() {
     const { colors, preference, setPreference } = useTheme();
     const styles = getStyles(colors);
     const { user, isLoading, signOut: authSignOut } = useAuth();
-    const { setShowExitModal } = useExitModal();
     const [deleting, setDeleting] = useState(false);
     // Idioma reactivo: se actualiza con i18n.language para forzar re-render
     const [language, setLanguage] = useState<AppLanguage>(
@@ -71,10 +68,6 @@ export default function ProfileScreen() {
         code: language,
         group: 'spain' as const,
     };
-    // ============================================================
-    // Intercepta el botón atrás de Android en la pestaña raíz.
-    // ============================================================
-    useExitBackHandler(useCallback(() => setShowExitModal(true), [setShowExitModal]));
 
     // v1.3.3 (auditoría UI/UX): margen lateral adaptativo (16 px móvil /
     // 32 px tablet) para igualar esta pestaña con Inicio, Favoritos, Buscar

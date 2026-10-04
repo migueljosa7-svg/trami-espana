@@ -1,9 +1,4 @@
-// =====================================================================
-// TRAMI ESPAÑA - Datos editoriales de trámites oficiales (Auditoría v9)
-// Verificado con sedes oficiales: SEPE, Seguridad Social, DGT, AEAT,
-// Registro Civil / Ministerio de Justicia, Policía Nacional y Extranjería.
-// =====================================================================
-module.exports = [
+[
   {
     "cat": "identidad",
     "t": "Primera expedición del Documento Nacional de Identidad (DNI)",
@@ -4215,4 +4210,4 @@ module.exports = [
       ]
     ]
   }
-];
+]

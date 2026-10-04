@@ -21,8 +21,6 @@ import { scheduleDeadlineNotifications, syncUpcomingDeadlineNotifications } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../constants/theme';
 import { useAuth } from '../../src/context/AuthContext';
-import { useExitModal } from '../../src/context/ExitModalContext';
-import { useExitBackHandler } from '../../src/hooks/useBackHandler';
 
 // Lazy-load expo-calendar (permisos gestionados al usarlo). Las
 // notificaciones locales se centralizan en src/services/notifications.ts.
@@ -196,18 +194,9 @@ export default function RemindersScreen() {
     const { user, isLoading: authLoading } = useAuth();
     // Insets para que el FAB y el modal nunca queden bajo la barra del sistema.
     const insets = useSafeAreaInsets();
-    const { setShowExitModal } = useExitModal();
-
-    // v1.3.3 (auditoría UI/UX): margen lateral adaptativo (16 px móvil /
-    // 32 px tablet) para igualar esta pestaña con Inicio, Favoritos y Buscar.
     const { width } = useWindowDimensions();
     const isTablet = width >= 768;
     const horizontalPadding = isTablet ? 32 : 16;
-
-    // ============================================================
-    // Intercepta el botón atrás de Android en la pestaña raíz.
-    // ============================================================
-    useExitBackHandler(useCallback(() => setShowExitModal(true), [setShowExitModal]));
     const [reminders, setReminders] = useState<ReminderWithProcedure[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);

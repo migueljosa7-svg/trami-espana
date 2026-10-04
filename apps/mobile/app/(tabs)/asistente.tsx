@@ -18,8 +18,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { authService, assistantService, AssistantChatMessage, ASSISTANT_DISCLAIMER } from "@trami-espana/shared";
 import { useTheme, ThemeColors } from "../../constants/theme";
-import { useExitModal } from '../../src/context/ExitModalContext';
-import { useExitBackHandler } from '../../src/hooks/useBackHandler';
 
 const MAX_CHARS = 1000;
 const SLOW_THRESHOLD_MS = 6000;
@@ -309,12 +307,6 @@ export default function AssistantScreen() {
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollViewRef = useRef<FlatList<EnhancedMessage>>(null);
   const router = useRouter();
-  const { setShowExitModal } = useExitModal();
-
-  // ============================================================
-  // Intercepta el botón atrás de Android en la pestaña raíz.
-  // ============================================================
-  useExitBackHandler(useCallback(() => setShowExitModal(true), [setShowExitModal]));
 
   const init = useCallback(async () => {
     let currentUser = null;

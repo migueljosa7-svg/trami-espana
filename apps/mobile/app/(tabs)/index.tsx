@@ -1,11 +1,8 @@
-import { useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Link } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PROCEDURE_CATEGORIES } from '@trami-espana/shared';
 import { useTheme } from '../../constants/theme';
-import { useExitModal } from '../../src/context/ExitModalContext';
-import { useExitBackHandler } from '../../src/hooks/useBackHandler';
 
 export default function HomeScreen() {
     const { colors } = useTheme();
@@ -15,15 +12,6 @@ export default function HomeScreen() {
     // que en pantallas de 2340 px con Punch-hole dejaba el contenido bajo
     // la muesca y en las de menor densidad lo separaba de la barra de estado.
     const insets = useSafeAreaInsets();
-    const { setShowExitModal } = useExitModal();
-
-    // ============================================================
-    // Intercepta el botón atrás de Android en la pestaña raíz.
-    // Muestra el modal de confirmación de salida; nunca cierra la
-    // app directamente. El hook se re-registra al volver de
-    // segundo plano (AppState -> active).
-    // ============================================================
-    useExitBackHandler(useCallback(() => setShowExitModal(true), [setShowExitModal]));
 
     const cardWidth = isTablet ? '31%' : '48%';
 

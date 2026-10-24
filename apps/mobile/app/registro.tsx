@@ -14,7 +14,7 @@ import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import { authService } from '@trami-espana/shared';
-import { useTheme, ThemeColors } from '../constants/theme';
+import { useTheme, createThemedStyles } from '../constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getCurrentLanguage } from '../src/i18n';
 
@@ -136,7 +136,7 @@ export default function RegisterScreen() {
             <View style={styles.container}>
                 <View style={styles.successCard}>
                     <View style={styles.successIcon}>
-                        <Ionicons name="mail-open-outline" size={34} color="#2563eb" />
+                        <Ionicons name="mail-open-outline" size={34} color={colors.primary} />
                     </View>
                     <Text style={styles.successTitle}>¡Revisa tu correo!</Text>
                     <Text style={styles.successText}>
@@ -150,7 +150,7 @@ export default function RegisterScreen() {
                     </Text>
                     {resendInfo && (
                         <View style={styles.resendInfoBox}>
-                            <Ionicons name="checkmark-circle" size={18} color="#15803d" />
+                            <Ionicons name="checkmark-circle" size={18} color={colors.successText} />
                             <Text style={styles.resendInfoText}>{resendInfo}</Text>
                         </View>
                     )}
@@ -158,10 +158,10 @@ export default function RegisterScreen() {
                         style={[styles.resendButton, (resending || cooldown > 0) && styles.buttonDisabled]}
                         onPress={handleResendConfirmation}
                         disabled={resending || cooldown > 0}
-                        activeOpacity={0.85}
+                        activeOpacity={0.7}
                     >
                         {resending ? (
-                            <ActivityIndicator color="#2563eb" />
+                            <ActivityIndicator color={colors.primary} />
                         ) : (
                             <Text style={styles.resendButtonText}>
                                 {cooldown > 0
@@ -171,7 +171,7 @@ export default function RegisterScreen() {
                         )}
                     </TouchableOpacity>
                     <Link href="/login" asChild>
-                        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.85}>
+                        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.7}>
                             <Text style={styles.primaryButtonText}>Ir a iniciar sesión</Text>
                         </TouchableOpacity>
                     </Link>
@@ -192,7 +192,7 @@ export default function RegisterScreen() {
             >
                 <View style={styles.logoContainer}>
                     <View style={styles.logoCircle}>
-                        <Ionicons name="person-add" size={28} color="#ffffff" />
+                        <Ionicons name="person-add" size={28} color={colors.onPrimary} />
                     </View>
                     <Text style={styles.title}>Crear cuenta</Text>
                     <Text style={styles.subtitle}>
@@ -202,7 +202,7 @@ export default function RegisterScreen() {
 
                 {error && (
                     <View style={styles.errorBox}>
-                        <Ionicons name="alert-circle" size={18} color="#b91c1c" />
+                        <Ionicons name="alert-circle" size={18} color={colors.errorText} />
                         <Text style={styles.errorText}>{error}</Text>
                     </View>
                 )}
@@ -210,10 +210,10 @@ export default function RegisterScreen() {
                 <View style={styles.form}>
                     <Text style={styles.label}>Nombre</Text>
                     <View style={styles.inputWrapper}>
-                        <Ionicons name="person-outline" size={18} color="#94a3b8" style={styles.inputIcon} />
+                        <Ionicons name="person-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                         <TextInput
                             placeholder="Tu nombre"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={colors.textMuted}
                             value={fullName}
                             onChangeText={setFullName}
                             style={styles.input}
@@ -223,10 +223,10 @@ export default function RegisterScreen() {
 
                     <Text style={styles.label}>Email</Text>
                     <View style={styles.inputWrapper}>
-                        <Ionicons name="mail-outline" size={18} color="#94a3b8" style={styles.inputIcon} />
+                        <Ionicons name="mail-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                         <TextInput
                             placeholder="tu@email.com"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={colors.textMuted}
                             autoCapitalize="none"
                             autoCorrect={false}
                             keyboardType="email-address"
@@ -239,10 +239,10 @@ export default function RegisterScreen() {
 
                     <Text style={styles.label}>Contraseña</Text>
                     <View style={styles.inputWrapper}>
-                        <Ionicons name="lock-closed-outline" size={18} color="#94a3b8" style={styles.inputIcon} />
+                        <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                         <TextInput
                             placeholder="Mínimo 6 caracteres"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={colors.textMuted}
                             secureTextEntry={!showPassword}
                             value={password}
                             onChangeText={setPassword}
@@ -250,6 +250,7 @@ export default function RegisterScreen() {
                             autoComplete="new-password"
                         />
                         <TouchableOpacity
+                            activeOpacity={0.7}
                             onPress={() => setShowPassword((v) => !v)}
                             style={styles.eyeButton}
                             accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
@@ -257,17 +258,17 @@ export default function RegisterScreen() {
                             <Ionicons
                                 name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                                 size={20}
-                                color="#94a3b8"
+                                color={colors.textMuted}
                             />
                         </TouchableOpacity>
                     </View>
 
                     <Text style={styles.label}>Confirmar contraseña</Text>
                     <View style={styles.inputWrapper}>
-                        <Ionicons name="shield-checkmark-outline" size={18} color="#94a3b8" style={styles.inputIcon} />
+                        <Ionicons name="shield-checkmark-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                         <TextInput
                             placeholder="Repite tu contraseña"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={colors.textMuted}
                             secureTextEntry={!showPassword}
                             value={confirmPassword}
                             onChangeText={setConfirmPassword}
@@ -277,12 +278,13 @@ export default function RegisterScreen() {
                     </View>
 
                     <TouchableOpacity
+                        activeOpacity={0.7}
                         style={[styles.button, loading && styles.buttonDisabled]}
                         onPress={handleRegister}
                         disabled={loading}
                     >
                         {loading ? (
-                            <ActivityIndicator color="#ffffff" />
+                            <ActivityIndicator color={colors.onPrimary} />
                         ) : (
                             <Text style={styles.buttonText}>Crear cuenta</Text>
                         )}
@@ -292,7 +294,7 @@ export default function RegisterScreen() {
                 <View style={styles.footer}>
                     <Text style={styles.footerText}>¿Ya tienes una cuenta?</Text>
                     <Link href="/login" asChild>
-                        <TouchableOpacity style={styles.loginLink}>
+                        <TouchableOpacity activeOpacity={0.7} style={styles.loginLink}>
                             <Text style={styles.loginLinkText}>Iniciar sesión</Text>
                         </TouchableOpacity>
                     </Link>
@@ -302,7 +304,7 @@ export default function RegisterScreen() {
     );
 }
 
-const getStyles = (colors: ThemeColors) => StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
     flex: {
         flex: 1,
         backgroundColor: colors.background,
@@ -331,7 +333,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 14,
-        shadowColor: '#2563eb',
+        shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -397,19 +399,22 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     },
     eyeButton: {
         padding: 4,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     button: {
         backgroundColor: colors.primary,
-        borderRadius: 12,
+        borderRadius: 16,
         paddingVertical: 14,
         alignItems: 'center',
         marginTop: 4,
+        justifyContent: 'center',
     },
     buttonDisabled: {
         opacity: 0.7,
     },
     buttonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '700',
         fontSize: 15,
     },
@@ -439,7 +444,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: colors.border,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 6,
@@ -503,7 +508,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         backgroundColor: colors.primarySoft,
         borderWidth: 1,
         borderColor: colors.primary,
-        borderRadius: 12,
+        borderRadius: 16,
         paddingVertical: 12,
         paddingHorizontal: 20,
         width: '100%',
@@ -516,15 +521,16 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     },
     primaryButton: {
         backgroundColor: colors.primary,
-        borderRadius: 12,
+        borderRadius: 16,
         paddingVertical: 14,
         paddingHorizontal: 28,
         width: '100%',
         alignItems: 'center',
+        justifyContent: 'center',
     },
     primaryButtonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '700',
         fontSize: 15,
     },
-});
+}));

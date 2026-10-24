@@ -11,7 +11,7 @@ interface SkeletonProps {
 }
 
 export function SkeletonItem({ width = '100%', height = 20, borderRadius = 8, style }: SkeletonProps) {
-  const { isDark } = useTheme();
+  const { colors, isDark } = useTheme();
   const animValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -38,8 +38,9 @@ export function SkeletonItem({ width = '100%', height = 20, borderRadius = 8, st
     outputRange: [0.3, 0.7],
   });
 
-  const baseColor = isDark ? '#1b2740' : '#e2e8f0';
-  const highlightColor = isDark ? '#243044' : '#f1f5f9';
+  // Tokens del tema: base y brillo del shimmer.
+  const baseColor = isDark ? colors.chip : colors.border;
+  const highlightColor = isDark ? colors.border : colors.chip;
 
   return (
     <Animated.View style={[{ width, height, borderRadius, overflow: 'hidden' }, style, { opacity }]}>

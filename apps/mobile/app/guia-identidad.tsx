@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { calcProgressPercent } from '@trami-espana/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../constants/theme';
+import { useTheme, createThemedStyles } from '../constants/theme';
 import { useStackBackHandler, createGoBackSafely } from '../src/hooks/useBackHandler';
 import {
   IDENTITY_METHODS,
@@ -31,6 +31,7 @@ import { OfflineToast } from '../components/OfflineToast';
  */
 export default function GuiaIdentidadScreen() {
   const { colors } = useTheme();
+  const styles = getStyles(colors);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -83,6 +84,7 @@ export default function GuiaIdentidadScreen() {
             const isActive = m.id === selectedId;
             return (
               <TouchableOpacity
+                activeOpacity={0.7}
                 key={m.id}
                 onPress={() => setSelectedId(m.id)}
                 style={[
@@ -104,7 +106,7 @@ export default function GuiaIdentidadScreen() {
                   <Ionicons
                     name={m.icon as never}
                     size={20}
-                    color={isActive ? '#ffffff' : colors.primary}
+                    color={isActive ? colors.onPrimary : colors.primary}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -174,6 +176,7 @@ export default function GuiaIdentidadScreen() {
           </View>
           {progress > 0 && (
             <TouchableOpacity
+              activeOpacity={0.7}
               onPress={resetProgress}
               style={styles.resetBtn}
               accessibilityRole="button"
@@ -205,7 +208,7 @@ export default function GuiaIdentidadScreen() {
               <TouchableOpacity
                 style={styles.stepHeader}
                 onPress={() => toggleStep(stepId)}
-                activeOpacity={0.75}
+                activeOpacity={0.7}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: isDone }}
                 accessibilityLabel={`Paso ${step.order}: ${step.title}`}
@@ -217,7 +220,7 @@ export default function GuiaIdentidadScreen() {
                   ]}
                 >
                   {isDone ? (
-                    <Ionicons name="checkmark" size={16} color="#ffffff" />
+                    <Ionicons name="checkmark" size={16} color={colors.onPrimary} />
                   ) : (
                     <Text style={styles.stepBadgeText}>{step.order}</Text>
                   )}
@@ -258,6 +261,7 @@ export default function GuiaIdentidadScreen() {
 
               {step.helpUrl ? (
                 <TouchableOpacity
+                  activeOpacity={0.7}
                   style={styles.helpBtn}
                   onPress={() => void Linking.openURL(step.helpUrl as string)}
                   accessibilityRole="link"
@@ -273,12 +277,13 @@ export default function GuiaIdentidadScreen() {
         })}
 
         <TouchableOpacity
+          activeOpacity={0.7}
           onPress={() => void Linking.openURL(method.requestUrl)}
           style={[styles.ctaBtn, { backgroundColor: colors.primary }]}
           accessibilityRole="button"
           accessibilityLabel={`Solicitar ${method.label} en la sede`}
         >
-          <Ionicons name="open-outline" size={17} color="#ffffff" />
+          <Ionicons name="open-outline" size={17} color={colors.onPrimary} />
           <Text style={styles.ctaText}>Solicitar en la sede oficial</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -289,7 +294,7 @@ export default function GuiaIdentidadScreen() {
 }
 
 /** Estilos de la guía. Los colores se inyectan en línea por ser dinámicos. */
-const styles = StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
   container: { flex: 1 },
   scroll: { padding: 16, gap: 12 },
   sectionTitle: { fontSize: 11, fontWeight: '800', letterSpacing: 0.8, marginTop: 6 },
@@ -331,7 +336,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepBadgeText: { color: '#ffffff', fontSize: 13, fontWeight: '800' },
+  stepBadgeText: { color: colors.onPrimary, fontSize: 13, fontWeight: '800' },
   stepTitle: { flex: 1, fontSize: 14, fontWeight: '700', lineHeight: 20 },
   stepDetail: { fontSize: 13, lineHeight: 19 },
   tipBox: {
@@ -350,9 +355,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    borderRadius: 12,
+    borderRadius: 16,
     paddingVertical: 14,
     marginTop: 6,
   },
-  ctaText: { color: '#ffffff', fontSize: 15, fontWeight: '700' },
-});
+  ctaText: { color: colors.onPrimary, fontSize: 15, fontWeight: '700' },
+}));

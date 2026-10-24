@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Linking,
+  ScrollView,
   useWindowDimensions,
   type ListRenderItemInfo,
 } from "react-native";
@@ -17,7 +18,9 @@ import { Link, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { authService, assistantService, AssistantChatMessage, ASSISTANT_DISCLAIMER } from "@trami-espana/shared";
-import { useTheme, ThemeColors } from "../../constants/theme";
+import { useTheme, createThemedStyles } from "../../constants/theme";
+import { useKeyboardOverlap } from "../../src/hooks/useKeyboardOverlap";
+import { resolveOfficialUrl } from "../../src/officialSources";
 
 const MAX_CHARS = 1000;
 const SLOW_THRESHOLD_MS = 6000;
@@ -37,6 +40,45 @@ interface EnhancedMessage extends AssistantChatMessage {
 // recrea en cada render del padre (requisito del FlatList PureComponent).
 // ============================================================
 const chatKeyExtractor = (msg: EnhancedMessage): string => msg.id;
+
+// ============================================================
+// FASE 3 — Chips de acceso rápido (consulta con UN toque, sin teclear).
+// Consultas predefinidas y realistas que el motor de IA responde con
+// grounding oficial. El id es estable para el `keyExtractor` del ScrollView.
+// ============================================================
+interface QuickChipData {
+  id: string;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  query: string;
+}
+
+const QUICK_CHIPS: readonly QuickChipData[] = [
+  {
+    id: 'cita-sepe',
+    label: 'Cita SEPE',
+    icon: 'calendar-outline',
+    query: '¿Cómo pedir cita previa con el SEPE?',
+  },
+  {
+    id: 'vida-laboral',
+    label: 'Vida Laboral',
+    icon: 'document-text-outline',
+    query: '¿Cómo obtener mi informe de vida laboral?',
+  },
+  {
+    id: 'certificado-digital',
+    label: 'Certificado Digital',
+    icon: 'shield-checkmark-outline',
+    query: '¿Cómo obtener el Certificado Digital de la FNMT?',
+  },
+  {
+    id: 'renovar-dni',
+    label: 'Renovar DNI',
+    icon: 'card-outline',
+    query: '¿Qué necesito para renovar el DNI?',
+  },
+] as const;
 
 function detectStatus(msg: AssistantChatMessage): MessageStatus {
   if (!msg.content) return "error";
@@ -234,6 +276,7 @@ const ChatBubble = memo(function ChatBubble({
           msg.status === "error" &&
           lastFailedQuery !== "" && (
             <TouchableOpacity
+              activeOpacity={0.7}
               style={styles.retryButton}
               onPress={onRetry}
               disabled={isLoading}
@@ -249,7 +292,7 @@ const ChatBubble = memo(function ChatBubble({
               <Text style={styles.boxTitle}>Trámites relacionados:</Text>
               {msg.referenced_procedures.map((proc) => (
                 <Link key={proc.id} href={`/procedure/${proc.slug}`} asChild>
-                  <TouchableOpacity style={styles.procLink}>
+                  <TouchableOpacity activeOpacity={0.7} style={styles.procLink}>
                     <Text style={styles.procTitle}>{proc.title} ↗</Text>
                   </TouchableOpacity>
                 </Link>
@@ -261,14 +304,21 @@ const ChatBubble = memo(function ChatBubble({
         {msg.sources && msg.sources.length > 0 && (
           <View style={styles.sourcesBox}>
             <Text style={styles.boxTitle}>Fuentes oficiales:</Text>
-            {msg.sources.map((src, idx) => (
-              <TouchableOpacity
-                key={idx}
-                onPress={() => Linking.openURL(src.url)}
-              >
-                <Text style={styles.sourceUrl}>{src.title} 🌐</Text>
-              </TouchableOpacity>
-            ))}
+            {msg.sources.map((src, idx) => {
+              // Solo se abren portales oficiales primarios (src/officialSources.ts).
+              const officialUrl = resolveOfficialUrl(src.url);
+              return (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  key={idx}
+                  onPress={() => void Linking.openURL(officialUrl).catch(() => undefined)}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Abrir ${src.title}: ${officialUrl}`}
+                >
+                  <Text style={styles.sourceUrl}>{src.title} 🌐</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
 
@@ -306,6 +356,10 @@ export default function AssistantScreen() {
   const [inputHeight, setInputHeight] = useState(MIN_INPUT_HEIGHT);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollViewRef = useRef<FlatList<EnhancedMessage>>(null);
+  // v1.5.1 — Compensación del teclado en Android 15/16 (edge-to-edge forzado).
+  // Vale 0 cuando el sistema ya redimensiona la ventana (adjustResize).
+  const chatContainerRef = useRef<View>(null);
+  const { keyboardOverlap, onContainerLayout } = useKeyboardOverlap(chatContainerRef);
   const router = useRouter();
 
   const init = useCallback(async () => {
@@ -520,6 +574,20 @@ export default function AssistantScreen() {
   handleRetryRef.current = handleRetry;
   const handleRetryStable = useCallback(() => handleRetryRef.current(), []);
 
+  // ============================================================
+  // FASE 3 — Chips de acceso rápido: reutilizan el MISMO flujo
+  // (handleSend) que el input, así que heredan la detección de
+  // saludos, el flujo directo y el manejo de errores sin duplicar
+  // lógica. Deshabilitados mientras el asistente responde.
+  // ============================================================
+  const handleQuickChip = useCallback(
+    (query: string) => {
+      if (isLoading) return;
+      void handleSend(query);
+    },
+    [handleSend, isLoading],
+  );
+
   const charsLeft = MAX_CHARS - inputQuery.length;
 
   // ============================================================
@@ -559,7 +627,7 @@ export default function AssistantScreen() {
     () =>
       isLoading ? (
         <View style={styles.loadingBubble}>
-          <ActivityIndicator size="small" color="#2563eb" />
+          <ActivityIndicator size="small" color={colors.primary} />
           <View>
             <Text style={styles.loadingText}>
               Consultando base de datos y respondiendo...
@@ -600,13 +668,18 @@ export default function AssistantScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={0}
     >
+      <View
+        ref={chatContainerRef}
+        onLayout={onContainerLayout}
+        style={[styles.keyboardFrame, { paddingBottom: keyboardOverlap }]}
+      >
       {/* Header — `paddingTop` inyectado desde `insets.top` para no
           solaparse con la muesca de cámara ni con la barra de estado
           en dispositivos con Punch-hole / Dynamic Island. */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerContent}>
           <View style={styles.headerIcon}>
-            <Ionicons name="sparkles" size={24} color="#ffffff" />
+            <Ionicons name="sparkles" size={24} color={colors.onPrimary} />
           </View>
           <View>
             <Text style={styles.headerTitle}>Asistente IA</Text>
@@ -621,7 +694,7 @@ export default function AssistantScreen() {
       {/* Offline Warning Banner */}
       {isOffline && (
         <View style={styles.offlineBanner}>
-          <Ionicons name="cloud-offline-outline" size={20} color="#92400e" />
+          <Ionicons name="cloud-offline-outline" size={20} color={colors.warningText} />
           <View style={styles.offlineTextContainer}>
             <Text style={styles.offlineTitle}>Problemas de conexión a internet</Text>
             <Text style={styles.offlineSubtitle}>
@@ -629,6 +702,7 @@ export default function AssistantScreen() {
             </Text>
           </View>
           <TouchableOpacity
+            activeOpacity={0.7}
             style={styles.offlineRetryBtn}
             onPress={handleRetry}
             disabled={isLoading}
@@ -666,6 +740,38 @@ export default function AssistantScreen() {
         ListFooterComponent={chatListFooter}
       />
 
+      {/* ============================================================
+          FASE 3 — Chips de acceso rápido bajo los mensajes.
+          Scroll horizontal con consultas predefinidas ("Cita SEPE",
+          "Vida Laboral", "Certificado Digital", "Renovar DNI"):
+          consulta con UN toque, sin teclear. `flexShrink: 0` en la
+          fila evita que el Yoga los comprima cuando el teclado
+          encoge la ventana (HyperOS/adjustResize).
+      ============================================================ */}
+      <View style={styles.chipsRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.chipsContent}
+        >
+          {QUICK_CHIPS.map((chip) => (
+            <TouchableOpacity
+              key={chip.id}
+              style={[styles.chip, isLoading && styles.chipDisabled]}
+              onPress={() => handleQuickChip(chip.query)}
+              disabled={isLoading}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Consulta rápida: ${chip.label}`}
+            >
+              <Ionicons name={chip.icon} size={15} color={colors.primary} />
+              <Text style={styles.chipText}>{chip.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
       {/* Input Bar — `paddingBottom: Math.max(insets.bottom, 12)` mantiene
           el campo por encima de la barra de gestos (Android 14/15, HyperOS)
           y añade 12 px de aire en dispositivos sin barra inferior. */}
@@ -691,7 +797,7 @@ export default function AssistantScreen() {
                 setInputHeight(e.nativeEvent.contentSize.height);
               }}
               placeholder="Escribe..."
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textMuted}
               maxLength={MAX_CHARS}
               multiline
               returnKeyType="send"
@@ -721,18 +827,20 @@ export default function AssistantScreen() {
             activeOpacity={0.7}
           >
             {isLoading ? (
-              <ActivityIndicator color="#ffffff" size="small" />
+              <ActivityIndicator color={colors.onPrimary} size="small" />
             ) : (
-              <Ionicons name="send" size={22} color="#ffffff" />
+              <Ionicons name="send" size={22} color={colors.onPrimary} />
             )}
           </TouchableOpacity>
         </View>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
-const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
-  container: { flex: 1, minHeight: 0, backgroundColor: colors.background },
+const getStyles = createThemedStyles((colors, isDark) => StyleSheet.create({
+  container: { flex: 1, minHeight: 0, flexShrink: 1, backgroundColor: colors.background },
+  keyboardFrame: { flex: 1, minHeight: 0 },
   header: {
     // `paddingTop` NO va aquí: se inyecta desde `insets.top` en el JSX
     // (un 48 px fijo se solapaba con la muesca en pantallas de 2340 px).
@@ -784,9 +892,11 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   userContainer: { alignItems: "flex-end" },
   assistantContainer: { alignItems: "flex-start" },
   messageBubble: { maxWidth: "88%", borderRadius: 16, padding: 14 },
-  userBubble: { backgroundColor: colors.primary },
+  // Esquina de "cola" hacia el emisor: lectura de chat más natural.
+  userBubble: { backgroundColor: colors.primary, borderBottomRightRadius: 6 },
   assistantBubble: {
     backgroundColor: colors.card,
+    borderBottomLeftRadius: 6,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -819,7 +929,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     marginBottom: 6,
   },
   messageText: { fontSize: 15, lineHeight: 22 },
-  userText: { color: "#ffffff" },
+  userText: { color: colors.onPrimary },
   assistantText: { color: colors.text },
   badge: {
     fontSize: 10,
@@ -849,7 +959,9 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     backgroundColor: colors.errorBackground,
-    borderRadius: 8,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   retryText: { fontSize: 13, fontWeight: "600", color: colors.danger },
   proceduresBox: {
@@ -891,12 +1003,50 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     alignSelf: "flex-start",
     backgroundColor: colors.card,
     padding: 12,
-    borderRadius: 14,
+    borderRadius: 16,
+    borderBottomLeftRadius: 6,
     borderWidth: 1,
     borderColor: colors.border,
   },
   loadingText: { fontSize: 13, color: colors.textSecondary },
   loadingSlowText: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
+  // ============================================================
+  // FASE 3 — Chips de acceso rápido (debajo del chat).
+  // ============================================================
+  chipsRow: {
+    flexShrink: 0,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  chipsContent: {
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: colors.chip,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 22,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: isDark ? 0.3 : 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  chipDisabled: { opacity: 0.5 },
+  chipText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.text,
+  },
   inputContainer: {
     flexDirection: "row",
     // La barra de escritura NUNCA debe comprimirse: si el contenedor padre
@@ -913,7 +1063,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     borderTopColor: colors.border,
     gap: 12,
     alignItems: "flex-end",
-    shadowColor: "#000",
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -947,7 +1097,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   charCounterWarning: { color: colors.danger },
   sendButton: {
     backgroundColor: colors.primary,
-    borderRadius: 24,
+    borderRadius: 26,
     width: 52,
     height: 52,
     justifyContent: "center",
@@ -992,6 +1142,8 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   offlineRetryText: {
     fontSize: 11,
@@ -1011,7 +1163,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     alignItems: "center",
   },
   avatarGreeting: {
-    backgroundColor: "#7c3aed",
+    backgroundColor: colors.accent,
   },
   avatarUser: {
     width: 32,
@@ -1024,12 +1176,12 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   },
   // Greeting bubble
   greetingBubble: {
-    backgroundColor: isDark ? "#1e1b4b" : "#f5f3ff",
+    backgroundColor: colors.accentSoft,
     borderWidth: 1,
-    borderColor: isDark ? "#3730a3" : "#ddd6fe",
+    borderColor: colors.accentBorder,
   },
   greetingText: {
-    color: isDark ? "#a78bfa" : "#4c1d95",
+    color: colors.accentText,
     fontStyle: "italic",
   },
-});
+}));

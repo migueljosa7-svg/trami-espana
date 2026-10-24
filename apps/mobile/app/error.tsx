@@ -2,10 +2,11 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTheme } from '../constants/theme';
+import { useTheme, createThemedStyles } from '../constants/theme';
 
 export default function ErrorScreen() {
     const { colors, isDark } = useTheme();
+    const styles = getStyles(colors);
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
             <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -16,7 +17,7 @@ export default function ErrorScreen() {
                     Lo sentimos, la página que buscas no existe o ha sido movida.
                 </Text>
                 <Link href="/" asChild>
-                    <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]}>
+                    <TouchableOpacity activeOpacity={0.7} style={[styles.button, { backgroundColor: colors.primary }]}>
                         <Text style={styles.buttonText}>Volver al inicio</Text>
                     </TouchableOpacity>
                 </Link>
@@ -25,7 +26,7 @@ export default function ErrorScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
     container: {
         flex: 1,
     },
@@ -52,11 +53,13 @@ const styles = StyleSheet.create({
     button: {
         paddingVertical: 12,
         paddingHorizontal: 24,
-        borderRadius: 8
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     buttonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontSize: 16,
         fontWeight: '600'
     }
-});
+}));

@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import { authService, isEmailNotConfirmedError } from '@trami-espana/shared';
 import { clearUserCaches } from '../src/localCache';
-import { useTheme, ThemeColors } from '../constants/theme';
+import { useTheme, createThemedStyles } from '../constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Deep link de Expo al que apunta el email de activación (misma URL que el registro).
@@ -109,7 +109,7 @@ export default function LoginScreen() {
             >
                 <View style={styles.logoContainer}>
                     <View style={styles.logoCircle}>
-                        <Ionicons name="document-text" size={30} color="#ffffff" />
+                        <Ionicons name="document-text" size={30} color={colors.onPrimary} />
                     </View>
                     <Text style={styles.title}>Iniciar sesión</Text>
                     <Text style={styles.subtitle}>
@@ -119,14 +119,14 @@ export default function LoginScreen() {
 
                 {confirmationNotice && (
                     <View style={styles.successBox}>
-                        <Ionicons name="checkmark-circle" size={18} color="#15803d" />
+                        <Ionicons name="checkmark-circle" size={18} color={colors.successText} />
                         <Text style={styles.successText}>{confirmationNotice}</Text>
                     </View>
                 )}
 
                 {error && (
                     <View style={styles.errorBox}>
-                        <Ionicons name="alert-circle" size={18} color="#b91c1c" />
+                        <Ionicons name="alert-circle" size={18} color={colors.errorText} />
                         <Text style={styles.errorText}>{error}</Text>
                     </View>
                 )}
@@ -136,13 +136,13 @@ export default function LoginScreen() {
                         style={styles.resendButton}
                         onPress={handleResendConfirmation}
                         disabled={resending}
-                        activeOpacity={0.8}
+                        activeOpacity={0.7}
                     >
                         {resending ? (
-                            <ActivityIndicator size="small" color="#2563eb" />
+                            <ActivityIndicator size="small" color={colors.primary} />
                         ) : (
                             <>
-                                <Ionicons name="mail-outline" size={16} color="#2563eb" />
+                                <Ionicons name="mail-outline" size={16} color={colors.primary} />
                                 <Text style={styles.resendButtonText}>
                                     Reenviar email de confirmación
                                 </Text>
@@ -154,10 +154,10 @@ export default function LoginScreen() {
                 <View style={styles.form}>
                     <Text style={styles.label}>Email</Text>
                     <View style={styles.inputWrapper}>
-                        <Ionicons name="mail-outline" size={18} color="#94a3b8" style={styles.inputIcon} />
+                        <Ionicons name="mail-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                         <TextInput
                             placeholder="tu@email.com"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={colors.textMuted}
                             autoCapitalize="none"
                             autoCorrect={false}
                             keyboardType="email-address"
@@ -171,10 +171,10 @@ export default function LoginScreen() {
 
                     <Text style={styles.label}>Contraseña</Text>
                     <View style={styles.inputWrapper}>
-                        <Ionicons name="lock-closed-outline" size={18} color="#94a3b8" style={styles.inputIcon} />
+                        <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                         <TextInput
                             placeholder="Tu contraseña"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={colors.textMuted}
                             secureTextEntry={!showPassword}
                             value={password}
                             onChangeText={setPassword}
@@ -183,6 +183,7 @@ export default function LoginScreen() {
                             testID="input-password"
                         />
                         <TouchableOpacity
+                            activeOpacity={0.7}
                             onPress={() => setShowPassword((v) => !v)}
                             style={styles.eyeButton}
                             accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
@@ -190,25 +191,26 @@ export default function LoginScreen() {
                             <Ionicons
                                 name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                                 size={20}
-                                color="#94a3b8"
+                                color={colors.textMuted}
                             />
                         </TouchableOpacity>
                     </View>
 
                     <Link href="/recuperar-contrasena" asChild>
-                        <TouchableOpacity style={styles.forgotButton}>
+                        <TouchableOpacity activeOpacity={0.7} style={styles.forgotButton}>
                             <Text style={styles.forgotButtonText}>¿Olvidaste tu contraseña?</Text>
                         </TouchableOpacity>
                     </Link>
 
                     <TouchableOpacity
+                        activeOpacity={0.7}
                         style={[styles.button, loading && styles.buttonDisabled]}
                         onPress={handleLogin}
                         disabled={loading}
                         testID="button-login"
                     >
                         {loading ? (
-                            <ActivityIndicator color="#ffffff" />
+                            <ActivityIndicator color={colors.onPrimary} />
                         ) : (
                             <Text style={styles.buttonText}>Entrar</Text>
                         )}
@@ -218,7 +220,7 @@ export default function LoginScreen() {
                 <View style={styles.footer}>
                     <Text style={styles.footerText}>¿No tienes cuenta todavía?</Text>
                     <Link href="/registro" asChild>
-                        <TouchableOpacity style={styles.registerLink}>
+                        <TouchableOpacity activeOpacity={0.7} style={styles.registerLink}>
                             <Text style={styles.registerLinkText}>Crear una cuenta</Text>
                         </TouchableOpacity>
                     </Link>
@@ -228,7 +230,7 @@ export default function LoginScreen() {
     );
 }
 
-const getStyles = (colors: ThemeColors) => StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
     flex: {
         flex: 1,
         backgroundColor: colors.background,
@@ -259,7 +261,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 16,
-        shadowColor: '#2563eb',
+        shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -321,7 +323,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         backgroundColor: colors.primarySoft,
         borderWidth: 1,
         borderColor: colors.primary,
-        borderRadius: 12,
+        borderRadius: 16,
         paddingVertical: 11,
         marginBottom: 12,
     },
@@ -360,11 +362,15 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     },
     eyeButton: {
         padding: 4,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     forgotButton: {
         alignSelf: 'flex-end',
         paddingVertical: 2,
         marginBottom: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     forgotButtonText: {
         color: colors.primary,
@@ -373,15 +379,16 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     },
     button: {
         backgroundColor: colors.primary,
-        borderRadius: 12,
+        borderRadius: 16,
         paddingVertical: 14,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     buttonDisabled: {
         opacity: 0.7,
     },
     buttonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '700',
         fontSize: 15,
     },
@@ -402,4 +409,4 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         fontSize: 14,
         fontWeight: '700',
     },
-});
+}));

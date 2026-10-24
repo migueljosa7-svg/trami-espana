@@ -1,16 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { memo, useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Link, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FlashList } from '@shopify/flash-list';
+import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
 import { authService, favoriteService, FavoriteWithProcedure } from '@trami-espana/shared';
 import { cacheFavorites, readCachedFavorites } from '../../src/localCache';
-import { useTheme } from '../../constants/theme';
+import { useTheme, createThemedStyles, type ThemeColors } from '../../constants/theme';
 import { SkeletonItem } from '../../components/SkeletonLoader';
 
 export default function FavoritesScreen() {
     const { colors } = useTheme();
+    const styles = getStyles(colors);
     const { width } = useWindowDimensions();
     const isTablet = width >= 768;
     // FASE 1 — `insets.top` sustituye al `paddingTop: 48` fijo del header.
@@ -62,6 +63,35 @@ export default function FavoritesScreen() {
         }, [loadFavs])
     );
 
+    // Eliminación estable (useCallback): las tarjetas memoizadas no se repintan.
+    const handleRemove = useCallback(
+        async (item: FavoriteWithProcedure) => {
+            try {
+                const currentUser = await authService.getCurrentUser();
+                if (!currentUser) {
+                    type CachedFav = { procedure?: { id: string }; id: string };
+                    const cached = await readCachedFavorites<CachedFav[]>([]);
+                    const favs: CachedFav[] = Array.isArray(cached) ? cached : [];
+                    const updated = favs.filter((f) => f.procedure?.id !== item.procedure?.id && f.id !== item.procedure?.id);
+                    await cacheFavorites(updated);
+                } else {
+                    await favoriteService.removeFavorite(item.procedure.id);
+                }
+                void loadFavs();
+            } catch {
+                // Silencioso
+            }
+        },
+        [loadFavs]
+    );
+
+    const renderFavorite = useCallback(
+        ({ item }: ListRenderItemInfo<FavoriteWithProcedure>) => (
+            <FavoriteCard item={item} colors={colors} onRemove={handleRemove} />
+        ),
+        [colors, handleRemove]
+    );
+
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             <View style={[styles.header, { paddingTop: insets.top + 16, backgroundColor: colors.card, borderBottomColor: colors.border }]}>
@@ -86,7 +116,7 @@ export default function FavoritesScreen() {
                         Guarda tus trámites más consultados para acceder a ellos rápidamente.
                     </Text>
                     <Link href="/(tabs)/buscar" asChild>
-                        <TouchableOpacity style={[styles.browseButton, { backgroundColor: colors.primary }]}>
+                        <TouchableOpacity activeOpacity={0.7} style={[styles.browseButton, { backgroundColor: colors.primary }]}>
                             <Text style={styles.browseButtonText}>Explorar trámites</Text>
                         </TouchableOpacity>
                     </Link>
@@ -94,56 +124,8 @@ export default function FavoritesScreen() {
             ) : (
                 <FlashList
                     data={favorites}
-                    renderItem={({ item }) => (
-                        <Link key={item.id} href={`/procedure/${item.procedure.slug}`} asChild>
-                            <TouchableOpacity style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]} accessibilityLabel={`Favorito: ${item.procedure.title}`}>
-                                <View style={[styles.cardIcon, { backgroundColor: colors.primarySoft }]}>
-                                    {item.procedure.category?.icon ? (
-                                        <Text style={styles.cardIconEmoji}>{item.procedure.category.icon}</Text>
-                                    ) : (
-                                        <Ionicons name="heart" size={22} color={colors.primary} />
-                                    )}
-                                </View>
-                                <View style={styles.cardBody}>
-                                    <View style={styles.cardHeader}>
-                                    <Text style={[styles.cardScope, { color: colors.primary, backgroundColor: colors.primarySoft }]}>{item.procedure.scope.toUpperCase()}</Text>
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            void (async () => {
-                                                try {
-                                                    const currentUser = await authService.getCurrentUser();
-                                                    if (!currentUser) {
-                                                        type CachedFav = { procedure?: { id: string }; id: string };
-                                                        const cached = await readCachedFavorites<CachedFav[]>([]);
-                                                        const favs: CachedFav[] = Array.isArray(cached) ? cached : [];
-                                                        const updated = favs.filter((f) => f.procedure?.id !== item.procedure?.id && f.id !== item.procedure?.id);
-                                                        await cacheFavorites(updated);
-                                                    } else {
-                                                        await favoriteService.removeFavorite(item.procedure.id);
-                                                    }
-                                                    void loadFavs();
-                                                } catch {
-                                                    // Silencioso
-                                                }
-                                            })();
-                                        }}
-                                        style={styles.removeBtn}
-                                    >
-                                        <Ionicons name="heart" size={20} color={colors.danger} />
-                                    </TouchableOpacity>
-                                </View>
-                                    <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>{item.procedure.title}</Text>
-                                    <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={2}>
-                                        {item.procedure.short_description}
-                                    </Text>
-                                </View>
-                                <View style={styles.cardChevron}>
-                                    <Ionicons name="chevron-forward" size={20} color={colors.primary} />
-                                </View>
-                            </TouchableOpacity>
-                        </Link>
-                    )}
-                    keyExtractor={(item) => item.id}
+                    renderItem={renderFavorite}
+                    keyExtractor={favoriteKeyExtractor}
                     estimatedItemSize={100}
                     contentContainerStyle={{ padding: isTablet ? 32 : 16 }}
                 />
@@ -152,7 +134,56 @@ export default function FavoritesScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const favoriteKeyExtractor = (item: FavoriteWithProcedure) => item.id;
+
+/** Tarjeta de favorito memoizada: solo se repinta si cambian sus props. */
+const FavoriteCard = memo(function FavoriteCard({
+    item,
+    colors,
+    onRemove,
+}: {
+    item: FavoriteWithProcedure;
+    colors: ThemeColors;
+    onRemove: (item: FavoriteWithProcedure) => Promise<void>;
+}) {
+    const styles = getStyles(colors);
+    return (
+        <Link href={`/procedure/${item.procedure.slug}`} asChild>
+            <TouchableOpacity activeOpacity={0.7} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]} accessibilityLabel={`Favorito: ${item.procedure.title}`}>
+                <View style={[styles.cardIcon, { backgroundColor: colors.primarySoft }]}>
+                    {item.procedure.category?.icon ? (
+                        <Text style={styles.cardIconEmoji}>{item.procedure.category.icon}</Text>
+                    ) : (
+                        <Ionicons name="heart" size={22} color={colors.primary} />
+                    )}
+                </View>
+                <View style={styles.cardBody}>
+                    <View style={styles.cardHeader}>
+                        <Text style={[styles.cardScope, { color: colors.primary, backgroundColor: colors.primarySoft }]}>{item.procedure.scope.toUpperCase()}</Text>
+                        <TouchableOpacity
+                            activeOpacity={0.7}
+                            onPress={() => void onRemove(item)}
+                            style={styles.removeBtn}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Quitar ${item.procedure.title} de favoritos`}
+                        >
+                            <Ionicons name="heart" size={20} color={colors.danger} />
+                        </TouchableOpacity>
+                    </View>
+                    <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>{item.procedure.title}</Text>
+                    <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={2}>
+                        {item.procedure.short_description}
+                    </Text>
+                </View>
+                <View style={styles.cardChevron}>
+                    <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+                </View>
+            </TouchableOpacity>
+        </Link>
+    );
+});
+
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
     container: {
         flex: 1,
     },
@@ -196,12 +227,14 @@ const styles = StyleSheet.create({
         marginBottom: 20
     },
     browseButton: {
-        borderRadius: 10,
+        borderRadius: 16,
         paddingVertical: 12,
-        paddingHorizontal: 20
+        paddingHorizontal: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     browseButtonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '600',
         fontSize: 14
     },
@@ -246,6 +279,8 @@ const styles = StyleSheet.create({
     },
     removeBtn: {
         padding: 4,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     cardTitle: {
         fontSize: 16,
@@ -259,4 +294,4 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         flexShrink: 0,
     }
-});
+}));

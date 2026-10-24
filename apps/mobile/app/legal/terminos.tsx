@@ -1,8 +1,15 @@
 import { Text, View, StyleSheet } from 'react-native';
 import { TERMS_SECTIONS, sanitizeLegalText, ASSISTANT_DISCLAIMER, LEGAL_DISCLAIMER, LEGAL_PENDING_NOTICE } from '@trami-espana/shared';
 import LegalScreen, { LegalSection } from '../../components/LegalScreen';
+import { useTheme, createThemedStyles } from '../../constants/theme';
 
 export default function TermsScreen() {
+    // FASE 4 — Tematización estricta: la caja del asistente usa los
+    // tokens `warning*` del design system (antes `#fffbeb` fijo rompía
+    // el modo oscuro con un salto cromático claro sobre fondo oscuro).
+    const { colors } = useTheme();
+    const styles = getStyles(colors);
+
     const sections: LegalSection[] = TERMS_SECTIONS.map((s) => ({
         title: s.title,
         body: sanitizeLegalText(s.body),
@@ -24,11 +31,11 @@ export default function TermsScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
     aiBox: {
-        backgroundColor: '#fffbeb',
+        backgroundColor: colors.warningBackground,
         borderLeftWidth: 4,
-        borderLeftColor: '#f59e0b',
+        borderLeftColor: colors.warning,
         padding: 12,
         marginTop: 4,
         marginBottom: 12,
@@ -37,18 +44,18 @@ const styles = StyleSheet.create({
     aiTitle: {
         fontSize: 15,
         fontWeight: '600',
-        color: '#78350f',
+        color: colors.warningText,
         marginBottom: 4,
     },
     aiBody: {
         fontSize: 13,
-        color: '#78350f',
+        color: colors.warningText,
         lineHeight: 19,
     },
     footer: {
         fontSize: 12,
-        color: '#94a3b8',
+        color: colors.textMuted,
         lineHeight: 17,
         marginTop: 8,
     },
-});
+}));

@@ -23,7 +23,7 @@ import {
     type AppLanguage,
 } from '../../src/i18n';
 import { clearUserCaches } from '../../src/localCache';
-import { useTheme, type ThemeColors, type ThemePreference } from '../../constants/theme';
+import { useTheme, type ThemePreference, createThemedStyles } from '../../constants/theme';
 import { useAuth } from '../../src/context/AuthContext';
 
 export default function ProfileScreen() {
@@ -162,21 +162,21 @@ export default function ProfileScreen() {
             subtitle: t('profile.tools.carpetaSub'),
             href: '/mi-carpeta' as const,
             icon: 'folder-open-outline',
-            color: '#f59e0b',
+            color: colors.warning,
         },
         {
             label: t('profile.tools.fees'),
             subtitle: t('profile.tools.feesSub'),
             href: '/tasas' as const,
             icon: 'pricetag-outline',
-            color: '#10b981',
+            color: colors.success,
         },
         {
             label: t('profile.tools.identity'),
             subtitle: t('profile.tools.identitySub'),
             href: '/guia-identidad' as const,
             icon: 'key-outline',
-            color: '#8b5cf6',
+            color: colors.accent,
         },
     ];
 
@@ -194,7 +194,7 @@ export default function ProfileScreen() {
 
             {isLoading ? (
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#2563eb" />
+                    <ActivityIndicator size="large" color={colors.primary} />
                 </View>
             ) : (
                 <View style={[styles.content, { paddingHorizontal: horizontalPadding }]}>
@@ -210,7 +210,7 @@ export default function ProfileScreen() {
                             <Text style={styles.name}>{user.user_metadata?.full_name || 'Usuario'}</Text>
                             <Text style={styles.email}>{user.email}</Text>
                             <View style={styles.verifiedBadge}>
-                                <Ionicons name="checkmark-circle" size={14} color="#10b981" />
+                                <Ionicons name="checkmark-circle" size={14} color={colors.success} />
                                 <Text style={styles.verifiedText}>{t('profile.verified')}</Text>
                             </View>
                         </View>
@@ -218,7 +218,7 @@ export default function ProfileScreen() {
                         /* ===== GUEST BANNER ===== */
                         <View style={styles.guestCard}>
                             <View style={styles.guestIconContainer}>
-                                <Ionicons name="person-outline" size={36} color="#2563eb" />
+                                <Ionicons name="person-outline" size={36} color={colors.primary} />
                             </View>
                             <Text style={styles.guestTitle}>{t('profile.guest.title')}</Text>
                             <Text style={styles.guestSubtitle}>
@@ -226,13 +226,13 @@ export default function ProfileScreen() {
                             </Text>
                             <View style={styles.guestActions}>
                                 <Link href="/login" asChild>
-                                    <TouchableOpacity style={styles.loginBtn} activeOpacity={0.85}>
-                                        <Ionicons name="log-in-outline" size={18} color="#ffffff" />
+                                    <TouchableOpacity style={styles.loginBtn} activeOpacity={0.7}>
+                                        <Ionicons name="log-in-outline" size={18} color={colors.onPrimary} />
                                         <Text style={styles.loginBtnText}>{t('profile.guest.login')}</Text>
                                     </TouchableOpacity>
                                 </Link>
                                 <Link href="/registro" asChild>
-                                    <TouchableOpacity style={styles.registerBtn} activeOpacity={0.85}>
+                                    <TouchableOpacity style={styles.registerBtn} activeOpacity={0.7}>
                                         <Text style={styles.registerBtnText}>{t('profile.guest.register')}</Text>
                                     </TouchableOpacity>
                                 </Link>
@@ -244,20 +244,20 @@ export default function ProfileScreen() {
                     {user && (
                         <View style={styles.statsRow}>
                             <Link href="/(tabs)/favoritos" asChild>
-                                <TouchableOpacity style={styles.statCard} activeOpacity={0.8}>
-                                    <Ionicons name="heart" size={22} color="#ef4444" />
+                                <TouchableOpacity style={styles.statCard} activeOpacity={0.7}>
+                                    <Ionicons name="heart" size={22} color={colors.danger} />
                                     <Text style={styles.statLabel}>{t('profile.stats.favorites')}</Text>
                                 </TouchableOpacity>
                             </Link>
                             <Link href="/(tabs)/recordatorios" asChild>
-                                <TouchableOpacity style={styles.statCard} activeOpacity={0.8}>
-                                    <Ionicons name="notifications" size={22} color="#f59e0b" />
+                                <TouchableOpacity style={styles.statCard} activeOpacity={0.7}>
+                                    <Ionicons name="notifications" size={22} color={colors.warning} />
                                     <Text style={styles.statLabel}>{t('profile.stats.reminders')}</Text>
                                 </TouchableOpacity>
                             </Link>
                             <Link href="/(tabs)/asistente" asChild>
-                                <TouchableOpacity style={styles.statCard} activeOpacity={0.8}>
-                                    <Ionicons name="chatbubbles" size={22} color="#2563eb" />
+                                <TouchableOpacity style={styles.statCard} activeOpacity={0.7}>
+                                    <Ionicons name="chatbubbles" size={22} color={colors.primary} />
                                     <Text style={styles.statLabel}>{t('profile.stats.assistant')}</Text>
                                 </TouchableOpacity>
                             </Link>
@@ -280,7 +280,7 @@ export default function ProfileScreen() {
                                             borderColor: colors.border,
                                         },
                                     ]}
-                                    activeOpacity={0.8}
+                                    activeOpacity={0.7}
                                     accessibilityRole="link"
                                     accessibilityLabel={tool.label}
                                 >
@@ -345,7 +345,7 @@ export default function ProfileScreen() {
                     <TouchableOpacity
                         style={styles.languagePickerButton}
                         onPress={() => setShowLanguageModal(true)}
-                        activeOpacity={0.75}
+                        activeOpacity={0.7}
                         accessibilityRole="button"
                         accessibilityLabel={t('profile.languagePicker') ?? `Idioma actual: ${currentLangLabel}`}
                     >
@@ -408,7 +408,7 @@ export default function ProfileScreen() {
                                                 handleSwitchLanguage(lang.code);
                                                 setShowLanguageModal(false);
                                             }}
-                                            activeOpacity={0.75}
+                                            activeOpacity={0.7}
                                             accessibilityRole="button"
                                             accessibilityLabel={`${lang.flag} ${lang.label}${language === lang.code ? ' (actual)' : ''}`}
                                         >
@@ -438,7 +438,7 @@ export default function ProfileScreen() {
                                                 handleSwitchLanguage(lang.code);
                                                 setShowLanguageModal(false);
                                             }}
-                                            activeOpacity={0.75}
+                                            activeOpacity={0.7}
                                             accessibilityRole="button"
                                             accessibilityLabel={`${lang.flag} ${lang.label}${language === lang.code ? ' (actual)' : ''}`}
                                         >
@@ -475,7 +475,7 @@ export default function ProfileScreen() {
                                 accessibilityRole="button"
                                 accessibilityLabel={option.label}
                             >
-                                <Ionicons name={option.icon} size={18} color="#64748b" style={styles.menuIcon} />
+                                <Ionicons name={option.icon} size={18} color={colors.textSecondary} style={styles.menuIcon} />
                                 <Text
                                     style={[styles.menuLabel, { color: colors.text }]}
                                     numberOfLines={1}
@@ -485,7 +485,7 @@ export default function ProfileScreen() {
                                 </Text>
                                 {preference === option.key && (
                                     <View style={styles.menuChevronFixed}>
-                                        <Ionicons name="checkmark" size={18} color="#2563eb" />
+                                        <Ionicons name="checkmark" size={18} color={colors.primary} />
                                     </View>
                                 )}
                             </TouchableOpacity>
@@ -495,8 +495,8 @@ export default function ProfileScreen() {
                     {/* ===== ACCOUNT ACTIONS (Authenticated) ===== */}
                     {user && (
                         <>
-                            <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut} activeOpacity={0.85}>
-                                <Ionicons name="log-out-outline" size={18} color="#ffffff" />
+                            <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut} activeOpacity={0.7}>
+                                <Ionicons name="log-out-outline" size={18} color={colors.onPrimary} />
                                 <Text style={styles.signOutText}>{t('profile.auth.signOutConfirm')}</Text>
                             </TouchableOpacity>
 
@@ -504,9 +504,9 @@ export default function ProfileScreen() {
                                 style={styles.deleteButton}
                                 onPress={confirmDeleteAccount}
                                 disabled={deleting}
-                                activeOpacity={0.85}
+                                activeOpacity={0.7}
                             >
-                                <Ionicons name="trash-outline" size={16} color="#b91c1c" />
+                                <Ionicons name="trash-outline" size={16} color={colors.errorText} />
                                 <Text style={styles.deleteText}>
                                     {deleting ? t('profile.auth.signOut') : t('profile.auth.deleteAccount')}
                                 </Text>
@@ -526,7 +526,7 @@ export default function ProfileScreen() {
     );
 }
 
-const getStyles = (colors: ThemeColors) => StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background,
@@ -567,7 +567,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         borderWidth: 1,
         borderColor: colors.border,
         marginBottom: 16,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 6,
@@ -581,14 +581,14 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 14,
-        shadowColor: '#2563eb',
+        shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 4,
     },
     avatarText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontSize: 30,
         fontWeight: 'bold',
     },
@@ -629,7 +629,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         borderWidth: 1,
         borderColor: colors.border,
         marginBottom: 16,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 6,
@@ -669,18 +669,18 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         justifyContent: 'center',
         gap: 8,
         backgroundColor: colors.primary,
-        borderRadius: 12,
+        borderRadius: 16,
         paddingVertical: 14,
     },
     loginBtnText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '700',
         fontSize: 15,
     },
     registerBtn: {
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 12,
+        borderRadius: 16,
         paddingVertical: 13,
         borderWidth: 1.5,
         borderColor: colors.primary,
@@ -845,12 +845,12 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         justifyContent: 'center',
         gap: 8,
         backgroundColor: colors.danger,
-        borderRadius: 14,
+        borderRadius: 16,
         paddingVertical: 14,
         marginBottom: 12,
     },
     signOutText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '700',
         fontSize: 15,
     },
@@ -860,7 +860,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         justifyContent: 'center',
         gap: 8,
         backgroundColor: colors.errorBackground,
-        borderRadius: 14,
+        borderRadius: 16,
         paddingVertical: 14,
         borderWidth: 1,
         borderColor: colors.errorBorder,
@@ -895,7 +895,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         backgroundColor: colors.chip,
-        borderRadius: 14,
+        borderRadius: 16,
         paddingHorizontal: 16,
         paddingVertical: 14,
         marginTop: 8,
@@ -969,4 +969,4 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         borderColor: colors.primary,
     },
 
-});
+}));

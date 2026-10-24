@@ -9,7 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../constants/theme';
+import { useTheme, createThemedStyles } from '../constants/theme';
 
 export interface ExitConfirmationModalProps {
     visible: boolean;
@@ -29,6 +29,7 @@ export const ExitConfirmationModal: React.FC<ExitConfirmationModalProps> = ({
 }) => {
     const { t } = useTranslation();
     const { colors } = useTheme();
+    const styles = getStyles(colors);
     const insets = useSafeAreaInsets();
 
     return (
@@ -83,7 +84,7 @@ export const ExitConfirmationModal: React.FC<ExitConfirmationModalProps> = ({
                                 { backgroundColor: colors.chip },
                             ]}
                             onPress={onCancel}
-                            activeOpacity={0.8}
+                            activeOpacity={0.7}
                             accessibilityRole="button"
                             accessibilityLabel={t('exitApp.cancel')}
                         >
@@ -99,11 +100,11 @@ export const ExitConfirmationModal: React.FC<ExitConfirmationModalProps> = ({
                                 { backgroundColor: colors.danger },
                             ]}
                             onPress={onConfirm}
-                            activeOpacity={0.8}
+                            activeOpacity={0.7}
                             accessibilityRole="button"
                             accessibilityLabel={t('exitApp.exit')}
                         >
-                            <Ionicons name="exit-outline" size={16} color="#ffffff" />
+                            <Ionicons name="exit-outline" size={16} color={colors.onPrimary} />
                             <Text style={styles.exitText}>
                                 {t('exitApp.exit')}
                             </Text>
@@ -115,7 +116,7 @@ export const ExitConfirmationModal: React.FC<ExitConfirmationModalProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
         overlay: {
             flex: 1,
             alignItems: 'center',
@@ -131,7 +132,7 @@ const styles = StyleSheet.create({
             paddingTop: 24,
             paddingBottom: 20,
             alignItems: 'center',
-            shadowColor: '#000',
+            shadowColor: colors.shadow,
             shadowOffset: { width: 0, height: 8 },
             shadowOpacity: 0.25,
             shadowRadius: 16,
@@ -170,7 +171,7 @@ const styles = StyleSheet.create({
             justifyContent: 'center',
             gap: 6,
             paddingVertical: 12,
-            borderRadius: 12,
+            borderRadius: 16,
         },
         cancelButton: {},
         exitButton: {},
@@ -181,8 +182,8 @@ const styles = StyleSheet.create({
         exitText: {
             fontSize: 15,
             fontWeight: '700',
-            color: '#ffffff',
+            color: colors.onPrimary,
         },
-    });
+    }));
 
 export default ExitConfirmationModal;

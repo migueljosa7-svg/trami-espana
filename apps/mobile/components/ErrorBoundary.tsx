@@ -9,6 +9,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { darkColors, designTokens, lightColors } from '../constants/theme';
 
 interface ErrorBoundaryProps {
     children: ReactNode;
@@ -54,26 +55,33 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
 function ErrorFallback({ error, onReset }: { error: Error | null; onReset: () => void }): ReactNode {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
-    const bg = isDark ? '#0b1220' : '#f8fafc';
-    const cardBg = isDark ? '#111a2c' : '#ffffff';
-    const borderColor = isDark ? '#243044' : '#e2e8f0';
-    const titleColor = isDark ? '#f1f5f9' : '#0f172a';
-    const textColor = isDark ? '#7c8aa5' : '#64748b';
+    // El ErrorBoundary envuelve al ThemeProvider, así que lee las paletas
+    // directamente (mismos tokens que el resto de la app).
+    const colors = isDark ? darkColors : lightColors;
+    const bg = colors.background;
+    const cardBg = colors.card;
+    const borderColor = colors.border;
+    const titleColor = colors.text;
+    const textColor = colors.textSecondary;
 
     return (
         <View style={[styles.container, { backgroundColor: bg }]}>
             <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
-                <Ionicons name="warning" size={48} color="#f59e0b" />
+                <Ionicons name="warning" size={48} color={colors.warning} />
                 <Text style={[styles.title, { color: titleColor }]}>Algo ha ido mal</Text>
                 <Text style={[styles.subtitle, { color: textColor }]}>
                     Se ha producido un error inesperado, pero tus datos están a salvo.
                     Pulsa el botón para volver a la aplicación.
                 </Text>
                 {__DEV__ && error ? (
-                    <Text style={styles.debug}>{String(error.message)}</Text>
+                    <Text style={[styles.debug, { color: colors.danger }]}>{String(error.message)}</Text>
                 ) : null}
-                <TouchableOpacity style={styles.button} onPress={onReset} activeOpacity={0.85}>
-                    <Text style={styles.buttonText}>Volver a intentarlo</Text>
+                <TouchableOpacity
+                    style={[styles.button, { backgroundColor: colors.primary }]}
+                    onPress={onReset}
+                    activeOpacity={designTokens.activeOpacity}
+                >
+                    <Text style={[styles.buttonText, { color: colors.onPrimary }]}>Volver a intentarlo</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -109,19 +117,18 @@ const styles = StyleSheet.create({
     },
     debug: {
         fontSize: 11,
-        color: '#ef4444',
         fontFamily: 'monospace',
         marginBottom: 16,
         textAlign: 'center',
     },
     button: {
-        backgroundColor: '#2563eb',
         paddingVertical: 12,
         paddingHorizontal: 28,
-        borderRadius: 12,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     buttonText: {
-        color: '#ffffff',
         fontWeight: '700',
         fontSize: 15,
     },

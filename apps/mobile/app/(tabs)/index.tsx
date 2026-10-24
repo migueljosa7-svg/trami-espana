@@ -2,10 +2,12 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensio
 import { Link } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PROCEDURE_CATEGORIES } from '@trami-espana/shared';
-import { useTheme } from '../../constants/theme';
+import { useTheme, createThemedStyles } from '../../constants/theme';
+import OfficialPhones from '../../components/OfficialPhones';
 
 export default function HomeScreen() {
     const { colors } = useTheme();
+    const styles = getStyles(colors);
     const { width } = useWindowDimensions();
     const isTablet = width >= 768;
     // FASE 1 — Insets reales en lugar del `paddingTop: 48` fijo anterior,
@@ -34,7 +36,7 @@ export default function HomeScreen() {
                         Guía clara y sencilla para entender trámites con la administración pública española
                     </Text>
                     <Link href="/(tabs)/buscar" asChild>
-                        <TouchableOpacity style={styles.heroButton} activeOpacity={0.8}>
+                        <TouchableOpacity style={styles.heroButton} activeOpacity={0.7}>
                             <Text style={styles.heroButtonText}>
                                 Buscar trámites
                             </Text>
@@ -63,6 +65,10 @@ export default function HomeScreen() {
                     </View>
                 </View>
 
+                {/* FASE 3 — Módulo de teléfonos oficiales y urgencias:
+                    acceso con UN toque al discador del sistema. */}
+                <OfficialPhones />
+
                 {/* Quick Assistant Callout */}
                 <View style={[styles.assistantCallout, { backgroundColor: colors.primarySoft, borderColor: colors.primary }]}>
                     <Text style={[styles.assistantCalloutTitle, { color: colors.primary }]}>🤖 ¿Dudas con un trámite?</Text>
@@ -70,7 +76,7 @@ export default function HomeScreen() {
                         Pregunta a nuestro Asistente de IA. Orientación rápida con información oficial validada.
                     </Text>
                     <Link href="/(tabs)/asistente" asChild>
-                        <TouchableOpacity style={styles.assistantButton} activeOpacity={0.8}>
+                        <TouchableOpacity style={styles.assistantButton} activeOpacity={0.7}>
                             <Text style={styles.assistantButtonText}>Abrir Asistente</Text>
                         </TouchableOpacity>
                     </Link>
@@ -80,7 +86,7 @@ export default function HomeScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
     container: {
         flex: 1,
     },
@@ -102,7 +108,7 @@ const styles = StyleSheet.create({
         lineHeight: 16
     },
     hero: {
-        backgroundColor: '#2563eb',
+        backgroundColor: colors.primary,
         borderRadius: 16,
         padding: 20,
         marginBottom: 20
@@ -110,24 +116,32 @@ const styles = StyleSheet.create({
     heroTitle: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#ffffff',
+        color: colors.onPrimary,
         marginBottom: 8
     },
     heroSubtitle: {
         fontSize: 14,
-        color: '#dbeafe',
+        color: colors.onPrimaryMuted,
         marginBottom: 16,
         lineHeight: 20
     },
     heroButton: {
-        backgroundColor: '#ffffff',
-        borderRadius: 10,
+        backgroundColor: colors.onPrimary,
+        // FASE 4 — Radio moderno + centrado estricto + sombra suave.
+        borderRadius: 16,
         paddingVertical: 12,
         paddingHorizontal: 20,
-        alignSelf: 'flex-start'
+        alignSelf: 'flex-start',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: colors.shadow,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 3,
     },
     heroButtonText: {
-        color: '#2563eb',
+        color: colors.primary,
         fontWeight: '600',
         fontSize: 14
     },
@@ -148,7 +162,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderRadius: 16,
         padding: 16,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
         shadowRadius: 4,
@@ -188,15 +202,23 @@ const styles = StyleSheet.create({
         lineHeight: 18
     },
     assistantButton: {
-        backgroundColor: '#2563eb',
-        borderRadius: 8,
+        backgroundColor: colors.primary,
+        // FASE 4 — Radio moderno + centrado estricto + sombra suave.
+        borderRadius: 16,
         paddingVertical: 10,
         paddingHorizontal: 16,
-        alignSelf: 'flex-start'
+        alignSelf: 'flex-start',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 3,
     },
     assistantButtonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '600',
         fontSize: 13
     }
-});
+}));

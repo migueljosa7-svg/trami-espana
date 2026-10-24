@@ -2,14 +2,14 @@ import { Stack } from 'expo-router';
 import { useTheme } from '../../constants/theme';
 
 export default function LegalLayout() {
-    const { colors, isDark } = useTheme();
+    const { colors } = useTheme();
     return (
         <Stack
             screenOptions={{
                 headerShown: true,
                 headerBackTitle: 'Volver',
                 headerTintColor: colors.primary,
-                headerStyle: { backgroundColor: isDark ? '#0F172A' : '#ffffff' },
+                headerStyle: { backgroundColor: colors.header },
                 headerTitleStyle: { color: colors.text },
                 contentStyle: { backgroundColor: colors.background },
             }}

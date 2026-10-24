@@ -19,7 +19,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import { cacheReminders } from '../../src/localCache';
 import { scheduleDeadlineNotifications, syncUpcomingDeadlineNotifications } from '../../src/services/notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme, ThemeColors } from '../../constants/theme';
+import { useTheme, createThemedStyles } from '../../constants/theme';
 import { useAuth } from '../../src/context/AuthContext';
 
 // Lazy-load expo-calendar (permisos gestionados al usarlo). Las
@@ -450,7 +450,7 @@ export default function RemindersScreen() {
                     <TouchableOpacity
                         style={styles.calendarBtn}
                         onPress={() => setShowCalendar(true)}
-                        activeOpacity={0.75}
+                        activeOpacity={0.7}
                         accessibilityLabel="Ver calendario de citas"
                     >
                         <Ionicons name="calendar-outline" size={20} color={colors.primary} />
@@ -460,7 +460,7 @@ export default function RemindersScreen() {
 
             {isLoading ? (
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#2563eb" />
+                    <ActivityIndicator size="large" color={colors.primary} />
                 </View>
             ) : reminders.length === 0 ? (
                 <View style={styles.emptyState}>
@@ -469,8 +469,8 @@ export default function RemindersScreen() {
                     <Text style={styles.emptySubtitle}>
                         Crea alertas para renovación de documentos o plazos de solicitudes.
                     </Text>
-                    <TouchableOpacity style={styles.emptyCreateBtn} onPress={() => setShowModal(true)} activeOpacity={0.8}>
-                        <Ionicons name="add-circle" size={20} color="#ffffff" />
+                    <TouchableOpacity style={styles.emptyCreateBtn} onPress={() => setShowModal(true)} activeOpacity={0.7}>
+                        <Ionicons name="add-circle" size={20} color={colors.onPrimary} />
                         <Text style={styles.emptyCreateBtnText}>Crear recordatorio</Text>
                     </TouchableOpacity>
                 </View>
@@ -492,12 +492,12 @@ export default function RemindersScreen() {
                                     key={rem.id}
                                     style={styles.card}
                                     onPress={() => handleMarkDone(rem)}
-                                    activeOpacity={0.85}
+                                    activeOpacity={0.7}
                                     accessibilityLabel={`Recordatorio: ${rem.title}`}
                                 >
                                     <View style={styles.cardLeft}>
                                         <View style={styles.checkbox}>
-                                            <Ionicons name="ellipse-outline" size={22} color="#2563eb" />
+                                            <Ionicons name="ellipse-outline" size={22} color={colors.primary} />
                                         </View>
                                     </View>
                                     <View style={styles.cardBody}>
@@ -517,6 +517,7 @@ export default function RemindersScreen() {
                                             {/* v1.2.5: sin boton manual de calendario. La sincronizacion
                                                 es automatica al guardar (ver handleCreateReminder). */}
                                             <TouchableOpacity
+                                                activeOpacity={0.7}
                                                 style={[styles.actionBtn, { backgroundColor: colors.chip }]}
                                                 onPress={() => {
                                                     const date = new Date(rem.reminder_date);
@@ -543,11 +544,11 @@ export default function RemindersScreen() {
                                     key={rem.id}
                                     style={[styles.card, styles.cardDone]}
                                     onPress={() => handleMarkDone(rem)}
-                                    activeOpacity={0.85}
+                                    activeOpacity={0.7}
                                 >
                                     <View style={styles.cardLeft}>
                                         <View style={styles.checkbox}>
-                                            <Ionicons name="checkmark-circle" size={22} color="#10b981" />
+                                            <Ionicons name="checkmark-circle" size={22} color={colors.success} />
                                         </View>
                                     </View>
                                     <View style={styles.cardBody}>
@@ -568,10 +569,10 @@ export default function RemindersScreen() {
                 <TouchableOpacity
                     style={[styles.fab, { bottom: Math.max(insets.bottom, 16) + 16 }]}
                     onPress={() => setShowModal(true)}
-                    activeOpacity={0.85}
+                    activeOpacity={0.7}
                     accessibilityLabel="Añadir recordatorio"
                 >
-                    <Ionicons name="add" size={28} color="#ffffff" />
+                    <Ionicons name="add" size={28} color={colors.onPrimary} />
                 </TouchableOpacity>
             )}
 
@@ -593,7 +594,7 @@ export default function RemindersScreen() {
                             value={formTitle}
                             onChangeText={setFormTitle}
                             placeholder="Ej. Renovar DNI"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={colors.textMuted}
                             maxLength={100}
                             autoFocus
                         />
@@ -602,7 +603,7 @@ export default function RemindersScreen() {
                         <TouchableOpacity
                             style={styles.timeField}
                             onPress={() => setShowDatePicker(true)}
-                            activeOpacity={0.75}
+                            activeOpacity={0.7}
                             accessibilityLabel="Elegir fecha del recordatorio"
                             accessibilityRole="button"
                         >
@@ -633,7 +634,7 @@ export default function RemindersScreen() {
                         <TouchableOpacity
                             style={styles.timeField}
                             onPress={() => setShowTimePicker(true)}
-                            activeOpacity={0.75}
+                            activeOpacity={0.7}
                         >
                             <Ionicons name="time-outline" size={20} color={colors.primary} />
                             <Text style={styles.timeFieldText}>{formatTimeForDisplay(formTime)}</Text>
@@ -665,7 +666,7 @@ export default function RemindersScreen() {
                             value={formNotes}
                             onChangeText={setFormNotes}
                             placeholder="Documentación necesaria, cita previa..."
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={colors.textMuted}
                             multiline
                             numberOfLines={3}
                             maxLength={300}
@@ -680,7 +681,7 @@ export default function RemindersScreen() {
                                 style={styles.cancelBtn}
                                 onPress={() => setShowModal(false)}
                                 disabled={saving}
-                                activeOpacity={0.8}
+                                activeOpacity={0.7}
                             >
                                 <Text style={styles.cancelBtnText}>Cancelar</Text>
                             </TouchableOpacity>
@@ -688,10 +689,10 @@ export default function RemindersScreen() {
                                 style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
                                 onPress={handleCreateReminder}
                                 disabled={saving}
-                                activeOpacity={0.8}
+                                activeOpacity={0.7}
                             >
                                 {saving ? (
-                                    <ActivityIndicator size="small" color="#ffffff" />
+                                    <ActivityIndicator size="small" color={colors.onPrimary} />
                                 ) : (
                                     <Text style={styles.saveBtnText}>Guardar</Text>
                                 )}
@@ -718,7 +719,7 @@ export default function RemindersScreen() {
                             <TouchableOpacity
                                 style={styles.calendarCloseBtn}
                                 onPress={() => setShowCalendar(false)}
-                                activeOpacity={0.75}
+                                activeOpacity={0.7}
                             >
                                 <Ionicons name="close" size={22} color={colors.textSecondary} />
                             </TouchableOpacity>
@@ -794,7 +795,7 @@ export default function RemindersScreen() {
     );
 }
 
-const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background
@@ -891,6 +892,8 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     },
     calendarCloseBtn: {
         padding: 6,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     calendarNav: {
         flexDirection: 'row',
@@ -1013,10 +1016,11 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         backgroundColor: colors.primary,
         paddingHorizontal: 24,
         paddingVertical: 14,
-        borderRadius: 14,
+        borderRadius: 16,
+        justifyContent: 'center',
     },
     emptyCreateBtnText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '700',
         fontSize: 15,
     },
@@ -1040,7 +1044,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'flex-start',
         gap: 12,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.04,
         shadowRadius: 3,
@@ -1119,7 +1123,8 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         gap: 4,
         paddingHorizontal: 10,
         paddingVertical: 6,
-        borderRadius: 8,
+        borderRadius: 16,
+        justifyContent: 'center',
     },
     actionBtnText: {
         fontSize: 11,
@@ -1205,11 +1210,12 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     cancelBtn: {
         flex: 1,
         paddingVertical: 14,
-        borderRadius: 12,
+        borderRadius: 16,
         borderWidth: 1,
         borderColor: colors.border,
         alignItems: 'center',
         backgroundColor: colors.background,
+        justifyContent: 'center',
     },
     cancelBtnText: {
         fontSize: 15,
@@ -1219,16 +1225,17 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     saveBtn: {
         flex: 1,
         paddingVertical: 14,
-        borderRadius: 12,
+        borderRadius: 16,
         backgroundColor: colors.primary,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     saveBtnDisabled: {
-        backgroundColor: isDark ? '#1e3a5f' : '#93c5fd',
+        backgroundColor: colors.primaryDisabled,
     },
     saveBtnText: {
         fontSize: 15,
         fontWeight: '700',
-        color: '#ffffff',
+        color: colors.onPrimary,
     },
-});
+}));

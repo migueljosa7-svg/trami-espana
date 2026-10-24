@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef } from 'react';
 import { AppState, BackHandler, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useForegroundRevision } from '../context/ForegroundRevisionContext';
-export { useAppExitModal, type UseAppExitModalOptions, type UseAppExitModalReturn } from './useAppExitModal';
 
 // ============================================================
 // Hooks unificados de interceptación del botón/gesto atrás (Android)

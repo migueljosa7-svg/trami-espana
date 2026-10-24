@@ -7,7 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { procedureService, favoriteService, ProcedureWithDetails } from '@trami-espana/shared';
 import { generateProcedurePdf, sharePdf } from '../../src/utils/exportPdf';
 import { readCachedFavorites } from '../../src/localCache';
-import { useTheme, ThemeColors } from '../../constants/theme';
+import { useTheme, createThemedStyles } from '../../constants/theme';
 import { useAuth } from '../../src/context/AuthContext';
 import { useChecklist } from '../../src/hooks/useChecklist';
 import { createGoBackSafely, useStackBackHandler } from '../../src/hooks/useBackHandler';
@@ -60,7 +60,7 @@ export default function ProcedureDetailScreen() {
     } = useChecklist(slug ?? '', checklistIds);
     // Cabecera adaptada al tema: fondo dinámico (blanco en claro, oscuro en dark)
     // para que el SafeArea/Header no quede en #FFFFFF con el modo oscuro activo.
-    const topBackground = isDark ? '#0F172A' : '#FFFFFF';
+    const topBackground = colors.header;
 
     // Determinar si el usuario es invitado (no autenticado)
     const isGuest = !user && !authLoading;
@@ -221,7 +221,7 @@ export default function ProcedureDetailScreen() {
         // muestra blanco mientras se obtiene el trámite.
         return (
             <View style={[styles.center, { backgroundColor: colors.background }]}>
-                <ActivityIndicator size="large" color="#2563eb" />
+                <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={styles.loadingText}>Cargando trámite...</Text>
             </View>
         );
@@ -231,7 +231,7 @@ export default function ProcedureDetailScreen() {
         return (
             <View style={[styles.center, { backgroundColor: colors.background }]}>
                 <Text style={styles.errorText}>No se ha encontrado el trámite solicitado.</Text>
-                <TouchableOpacity style={styles.backBtn} onPress={() => goBackSafely()}>
+                <TouchableOpacity activeOpacity={0.7} style={styles.backBtn} onPress={() => goBackSafely()}>
                     <Text style={styles.backBtnText}>← Volver</Text>
                 </TouchableOpacity>
             </View>
@@ -249,13 +249,14 @@ export default function ProcedureDetailScreen() {
                     headerShown: true,
                     title: 'Detalle del trámite',
                     headerBackTitle: 'Atrás',
-                    headerStyle: { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' },
-                    headerTintColor: isDark ? '#FFFFFF' : '#0F172A',
-                    headerTitleStyle: { color: isDark ? '#FFFFFF' : '#0F172A' },
+                    headerStyle: { backgroundColor: colors.header },
+                    headerTintColor: colors.headerText,
+                    headerTitleStyle: { color: colors.headerText },
                     headerShadowVisible: false,
                     // Botón atrás explícito en la cabecera (v1.2.9)
                     headerLeft: () => (
                         <TouchableOpacity
+                            activeOpacity={0.7}
                             onPress={() => goBackSafely()}
                             style={{ marginLeft: 4, padding: 8 }}
                             accessibilityLabel="Volver"
@@ -264,7 +265,7 @@ export default function ProcedureDetailScreen() {
                             <Ionicons
                                 name="chevron-back"
                                 size={24}
-                                color={isDark ? '#FFFFFF' : '#0F172A'}
+                                color={colors.headerText}
                             />
                         </TouchableOpacity>
                     ),
@@ -278,33 +279,33 @@ export default function ProcedureDetailScreen() {
             {/* Back + Bookmark header row */}
             <View style={styles.topBar}>
                 <TouchableOpacity style={styles.backButton} onPress={() => goBackSafely()} activeOpacity={0.7}>
-                    <Ionicons name="chevron-back" size={20} color="#2563eb" />
+                    <Ionicons name="chevron-back" size={20} color={colors.primary} />
                     <Text style={styles.backButtonText}>Volver</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={styles.pdfButton}
                     onPress={handleExportPdf}
                     disabled={exportingPdf}
-                    activeOpacity={0.75}
+                    activeOpacity={0.7}
                     accessibilityLabel="Exportar trámite a PDF"
                 >
                     {exportingPdf ? (
-                        <ActivityIndicator size="small" color="#2563eb" />
+                        <ActivityIndicator size="small" color={colors.primary} />
                     ) : (
-                        <Ionicons name="download-outline" size={22} color="#2563eb" />
+                        <Ionicons name="download-outline" size={22} color={colors.primary} />
                     )}
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={styles.bookmarkButton}
                     onPress={() => handleToggleFavorite(procedure)}
                     disabled={favLoading}
-                    activeOpacity={0.75}
+                    activeOpacity={0.7}
                     accessibilityLabel={isFavorite ? 'Eliminar de favoritos' : 'Añadir a favoritos'}
                 >
                     <Ionicons
                         name={isFavorite ? 'heart' : 'heart-outline'}
                         size={26}
-                        color={isFavorite ? '#ef4444' : '#64748b'}
+                        color={isFavorite ? colors.danger : colors.textSecondary}
                     />
                 </TouchableOpacity>
             </View>
@@ -449,7 +450,7 @@ export default function ProcedureDetailScreen() {
                             >
                                 <View style={[styles.stepNumber, done && styles.stepNumberDone]}>
                                     {done ? (
-                                        <Ionicons name="checkmark" size={16} color="#ffffff" />
+                                        <Ionicons name="checkmark" size={16} color={colors.onPrimary} />
                                     ) : (
                                         <Text style={styles.stepNumberText}>{step.order_index || idx + 1}</Text>
                                     )}
@@ -473,7 +474,7 @@ export default function ProcedureDetailScreen() {
                             key={link.id || idx}
                             style={styles.linkButton}
                             onPress={() => Linking.openURL(link.url)}
-                            activeOpacity={0.8}
+                            activeOpacity={0.7}
                         >
                             <Text style={styles.linkButtonText}>{link.title}</Text>
                             <Text style={styles.linkSub}>Abrir en web oficial ↗</Text>
@@ -487,15 +488,15 @@ export default function ProcedureDetailScreen() {
                 style={[styles.favBanner, isFavorite && styles.favBannerActive]}
                 onPress={() => handleToggleFavorite(procedure)}
                 disabled={favLoading}
-                activeOpacity={0.8}
+                activeOpacity={0.7}
             >
                 {favLoading ? (
-                    <ActivityIndicator size="small" color={isFavorite ? '#ef4444' : '#2563eb'} />
+                    <ActivityIndicator size="small" color={isFavorite ? colors.danger : colors.primary} />
                 ) : (
                     <Ionicons
                         name={isFavorite ? 'heart' : 'heart-outline'}
                         size={20}
-                        color={isFavorite ? '#ef4444' : '#2563eb'}
+                        color={isFavorite ? colors.danger : colors.primary}
                     />
                 )}
                 <Text style={[styles.favBannerText, isFavorite && styles.favBannerTextActive]}>
@@ -530,22 +531,22 @@ export default function ProcedureDetailScreen() {
                     de cámara en los `pageSheet` a pantalla completa. */}
                 <View style={[styles.pdfModalHeader, { paddingTop: insets.top + 12 }]}>
                     <Text style={styles.pdfModalTitle}>Vista previa del PDF</Text>
-                    <TouchableOpacity onPress={() => setShowPdfPreview(false)} style={styles.pdfCloseButton}>
-                        <Ionicons name="close" size={24} color="#64748b" />
+                    <TouchableOpacity activeOpacity={0.7} onPress={() => setShowPdfPreview(false)} style={styles.pdfCloseButton}>
+                        <Ionicons name="close" size={24} color={colors.textSecondary} />
                     </TouchableOpacity>
                 </View>
                 <View style={styles.pdfPreviewPlaceholder}>
-                    <Ionicons name="document-text" size={64} color="#2563eb" />
+                    <Ionicons name="document-text" size={64} color={colors.primary} />
                     <Text style={styles.pdfPreviewText}>PDF generado correctamente</Text>
                     <Text style={styles.pdfPreviewSubtext}>Usa los botones para guardar o compartir</Text>
                 </View>
                 <View style={styles.pdfModalActions}>
-                    <TouchableOpacity style={styles.pdfShareButton} onPress={handleSharePdf}>
-                        <Ionicons name="share-outline" size={20} color="#ffffff" />
+                    <TouchableOpacity activeOpacity={0.7} style={styles.pdfShareButton} onPress={handleSharePdf}>
+                        <Ionicons name="share-outline" size={20} color={colors.onPrimary} />
                         <Text style={styles.pdfShareButtonText}>Compartir</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.pdfDownloadButton} onPress={handleSharePdf}>
-                        <Ionicons name="download-outline" size={20} color="#2563eb" />
+                    <TouchableOpacity activeOpacity={0.7} style={styles.pdfDownloadButton} onPress={handleSharePdf}>
+                        <Ionicons name="download-outline" size={20} color={colors.primary} />
                         <Text style={styles.pdfDownloadButtonText}>Guardar</Text>
                     </TouchableOpacity>
                 </View>
@@ -557,7 +558,7 @@ export default function ProcedureDetailScreen() {
     );
 }
 
-const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
     safeArea: {
         flex: 1,
     },
@@ -585,12 +586,14 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     backBtn: {
         paddingHorizontal: 20,
         paddingVertical: 10,
-        borderRadius: 8,
+        borderRadius: 16,
         backgroundColor: colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     backBtnText: {
         fontWeight: '600',
-        color: '#ffffff',
+        color: colors.onPrimary,
     },
     topBar: {
         flexDirection: 'row',
@@ -616,7 +619,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         alignItems: 'center',
         borderRadius: 22,
         borderWidth: 1,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
         shadowRadius: 2,
@@ -631,7 +634,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         alignItems: 'center',
         borderRadius: 22,
         borderWidth: 1,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
         shadowRadius: 2,
@@ -692,7 +695,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         padding: 14,
         marginBottom: 14,
         borderWidth: 1,
-        backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+        backgroundColor: colors.surfaceMuted,
         borderColor: colors.border,
     },
     progressHeader: {
@@ -712,7 +715,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         height: 10,
         borderRadius: 5,
         overflow: 'hidden',
-        backgroundColor: isDark ? '#334155' : '#E2E8F0',
+        backgroundColor: colors.surfaceStrong,
     },
     progressFill: {
         height: '100%',
@@ -721,11 +724,11 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     },
     // Trámite 100% completado: refuerza el color e indica éxito visual.
     progressCardComplete: {
-        backgroundColor: isDark ? '#0D2818' : '#F0FDF4',
-        borderColor: isDark ? '#1A4A2E' : '#BBF7D0',
+        backgroundColor: colors.successBackground,
+        borderColor: colors.successBorder,
     },
     progressFillComplete: {
-        backgroundColor: isDark ? '#34D399' : '#059669',
+        backgroundColor: colors.successStrong,
     },
     progressDoneBadge: {
         flexDirection: 'row',
@@ -834,7 +837,7 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     stepNumberText: {
         fontSize: 13,
         fontWeight: 'bold',
-        color: '#ffffff',
+        color: colors.onPrimary,
     },
     stepTitle: {
         fontSize: 15,
@@ -848,12 +851,14 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         color: colors.textSecondary,
     },
     linkButton: {
-        borderRadius: 12,
+        borderRadius: 16,
         padding: 14,
         marginBottom: 8,
         borderWidth: 1,
         backgroundColor: colors.primarySoft,
-        borderColor: isDark ? '#1e3a5f' : '#bfdbfe',
+        borderColor: colors.infoBorder,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     linkButtonText: {
         fontSize: 14,
@@ -922,6 +927,8 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
     },
     pdfCloseButton: {
         padding: 4,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     pdfPreviewPlaceholder: {
         flex: 1,
@@ -956,11 +963,11 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         justifyContent: 'center',
         gap: 8,
         backgroundColor: colors.primary,
-        borderRadius: 12,
+        borderRadius: 16,
         paddingVertical: 14,
     },
     pdfShareButtonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '600',
         fontSize: 15,
     },
@@ -971,14 +978,14 @@ const getStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
         justifyContent: 'center',
         gap: 8,
         backgroundColor: colors.primarySoft,
-        borderRadius: 12,
+        borderRadius: 16,
         paddingVertical: 14,
         borderWidth: 1,
-        borderColor: isDark ? '#1e3a5f' : '#bfdbfe',
+        borderColor: colors.infoBorder,
     },
     pdfDownloadButtonText: {
         color: colors.primary,
         fontWeight: '600',
         fontSize: 15,
     },
-});
+}));

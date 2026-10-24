@@ -11,7 +11,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../constants/theme';
+import { useTheme, createThemedStyles } from '../constants/theme';
 import { useStackBackHandler, createGoBackSafely } from '../src/hooks/useBackHandler';
 import {
   OFFICIAL_FEES,
@@ -39,6 +39,7 @@ import { OfflineToast } from '../components/OfflineToast';
  */
 export default function TasasScreen() {
   const { colors } = useTheme();
+  const styles = getStyles(colors);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -113,6 +114,7 @@ export default function TasasScreen() {
             const isActive = fee.id === selectedId;
             return (
               <TouchableOpacity
+                activeOpacity={0.7}
                 key={fee.id}
                 onPress={() => {
                   setSelectedId(fee.id);
@@ -132,7 +134,7 @@ export default function TasasScreen() {
                 <Text
                   style={[
                     styles.feeChipText,
-                    { color: isActive ? '#ffffff' : colors.text },
+                    { color: isActive ? colors.onPrimary : colors.text },
                   ]}
                 >
                   {fee.label}
@@ -140,7 +142,7 @@ export default function TasasScreen() {
                 <Text
                   style={[
                     styles.feeChipAmount,
-                    { color: isActive ? '#E0EAFF' : colors.textSecondary },
+                    { color: isActive ? colors.onPrimaryMuted : colors.textSecondary },
                   ]}
                 >
                   {formatFeeAmount(fee.amount)}
@@ -214,6 +216,7 @@ export default function TasasScreen() {
             </Text>
 
             <TouchableOpacity
+              activeOpacity={0.7}
               onPress={() => setShowExemptions(true)}
               style={[
                 styles.exemptionBtn,
@@ -230,16 +233,18 @@ export default function TasasScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
+              activeOpacity={0.7}
               onPress={openPay}
               style={[styles.payBtn, { backgroundColor: colors.primary }]}
               accessibilityRole="button"
               accessibilityLabel={`Pagar modelo 790 de ${check.fee.label}`}
             >
-              <Ionicons name="card-outline" size={17} color="#ffffff" />
+              <Ionicons name="card-outline" size={17} color={colors.onPrimary} />
               <Text style={styles.payBtnText}>Pagar Modelo 790</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
+              activeOpacity={0.7}
               onPress={openSede}
               style={[styles.sedeBtn, { borderColor: colors.border }]}
               accessibilityRole="button"
@@ -283,6 +288,7 @@ function MetaRow({
   value: string;
   colors: ReturnType<typeof useTheme>['colors'];
 }) {
+  const styles = getStyles(colors);
   return (
     <View style={styles.metaRow}>
       <Text style={[styles.metaLabel, { color: colors.textMuted }]}>{label}</Text>
@@ -311,6 +317,7 @@ function ExemptionsModal({
   onClose: () => void;
   bottomInset: number;
 }) {
+  const styles = getStyles(colors);
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -325,6 +332,7 @@ function ExemptionsModal({
               Comprueba tu exención
             </Text>
             <TouchableOpacity
+              activeOpacity={0.7}
               onPress={onClose}
               accessibilityRole="button"
               accessibilityLabel="Cerrar"
@@ -341,6 +349,7 @@ function ExemptionsModal({
           <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 12 }}>
             {/* Opción "no exento" */}
             <TouchableOpacity
+              activeOpacity={0.7}
               onPress={() => onSelect(null)}
               style={[
                 styles.exemptItem,
@@ -365,6 +374,7 @@ function ExemptionsModal({
 
             {exemptions.map((ex) => (
               <TouchableOpacity
+                activeOpacity={0.7}
                 key={ex.id}
                 onPress={() => onSelect(selected === ex.id ? null : ex.id)}
                 style={[
@@ -412,6 +422,7 @@ function ExemptionsModal({
             ))}
 
             <TouchableOpacity
+              activeOpacity={0.7}
               onPress={onClose}
               style={[styles.applyBtn, { backgroundColor: colors.primary }]}
               accessibilityRole="button"
@@ -426,7 +437,7 @@ function ExemptionsModal({
 }
 
 /** Estilos de la pantalla. Los colores se inyectan en línea por ser dinámicos. */
-const styles = StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
   container: { flex: 1 },
   scroll: { padding: 16, gap: 12 },
   notice: {
@@ -467,11 +478,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    borderRadius: 11,
+    borderRadius: 16,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 12,
     marginTop: 6,
+    justifyContent: 'center',
   },
   exemptionBtnText: { flex: 1, fontSize: 13, fontWeight: '600' },
   payBtn: {
@@ -479,24 +491,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    borderRadius: 12,
+    borderRadius: 16,
     paddingVertical: 14,
     marginTop: 8,
   },
-  payBtnText: { color: '#ffffff', fontSize: 15, fontWeight: '700' },
+  payBtnText: { color: colors.onPrimary, fontSize: 15, fontWeight: '700' },
   sedeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     paddingVertical: 12,
   },
   sedeBtnText: { fontSize: 13, fontWeight: '700' },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.55)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
   modalCard: {
@@ -519,6 +531,6 @@ const styles = StyleSheet.create({
   exemptItemLegal: { fontSize: 11, paddingLeft: 26 },
   fullTag: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
   fullTagText: { fontSize: 10, fontWeight: '800' },
-  applyBtn: { borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 6 },
-  applyBtnText: { color: '#ffffff', fontSize: 15, fontWeight: '700' },
-});
+  applyBtn: { borderRadius: 16, paddingVertical: 14, alignItems: 'center', marginTop: 6, justifyContent: 'center' },
+  applyBtnText: { color: colors.onPrimary, fontSize: 15, fontWeight: '700' },
+}));

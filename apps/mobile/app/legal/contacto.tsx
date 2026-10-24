@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { LEGAL_EMAIL_CONTACT, LEGAL_CONTACT_NOTICE, LEGAL_DISCLAIMER } from '@trami-espana/shared';
 import LegalScreen from '../../components/LegalScreen';
-import { useTheme, ThemeColors } from '../../constants/theme';
+import { useTheme, createThemedStyles } from '../../constants/theme';
 
 export default function ContactoScreen() {
     const { colors } = useTheme();
@@ -21,6 +21,7 @@ export default function ContactoScreen() {
             <View style={styles.card}>
                 <Text style={styles.label}>Correo de contacto</Text>
                 <TouchableOpacity
+                    activeOpacity={0.7}
                     onPress={openMail}
                     accessibilityRole="link"
                     accessibilityLabel={`Escribir a ${LEGAL_EMAIL_CONTACT}`}
@@ -37,7 +38,7 @@ export default function ContactoScreen() {
                     onPress={openMail}
                     accessibilityRole="button"
                     accessibilityLabel="Abrir el cliente de correo para escribir a Trami España"
-                    activeOpacity={0.85}
+                    activeOpacity={0.7}
                 >
                     <Text style={styles.buttonText}>Enviar correo</Text>
                 </TouchableOpacity>
@@ -55,7 +56,7 @@ export default function ContactoScreen() {
     );
 }
 
-const getStyles = (colors: ThemeColors) => StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
     card: {
         backgroundColor: colors.card,
         borderWidth: 1,
@@ -78,12 +79,13 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     },
     button: {
         backgroundColor: colors.primary,
-        borderRadius: 10,
+        borderRadius: 16,
         paddingVertical: 12,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     buttonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '600',
         fontSize: 14,
     },
@@ -108,4 +110,4 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         color: colors.textSecondary,
         lineHeight: 19,
     },
-});
+}));

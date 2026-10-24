@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { APP_NAME, COOKIE_TECHNOLOGIES } from '@trami-espana/shared';
 import LegalScreen from '../../components/LegalScreen';
-import { useTheme, ThemeColors } from '../../constants/theme';
+import { useTheme, createThemedStyles } from '../../constants/theme';
 
 export default function CookiesScreen() {
     const { colors } = useTheme();
@@ -43,7 +43,7 @@ export default function CookiesScreen() {
     );
 }
 
-const getStyles = (colors: ThemeColors) => StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
     list: {
         marginBottom: 16,
     },
@@ -78,4 +78,4 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         color: colors.successText,
         lineHeight: 18,
     },
-});
+}));

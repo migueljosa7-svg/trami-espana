@@ -13,7 +13,7 @@ import {
 import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { authService } from '@trami-espana/shared';
-import { useTheme, ThemeColors } from '../constants/theme';
+import { useTheme, createThemedStyles } from '../constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -57,7 +57,7 @@ export default function ForgotPasswordScreen() {
             <View style={styles.container}>
                 <View style={styles.successCard}>
                     <View style={styles.successIcon}>
-                        <Ionicons name="paper-plane-outline" size={34} color="#2563eb" />
+                        <Ionicons name="paper-plane-outline" size={34} color={colors.primary} />
                     </View>
                     <Text style={styles.successTitle}>Email enviado</Text>
                     <Text style={styles.successText}>
@@ -69,7 +69,7 @@ export default function ForgotPasswordScreen() {
                         24 horas.
                     </Text>
                     <Link href="/login" asChild>
-                        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.85}>
+                        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.7}>
                             <Text style={styles.primaryButtonText}>Volver a iniciar sesión</Text>
                         </TouchableOpacity>
                     </Link>
@@ -90,7 +90,7 @@ export default function ForgotPasswordScreen() {
             >
                 <View style={styles.logoContainer}>
                     <View style={styles.logoCircle}>
-                        <Ionicons name="key-outline" size={28} color="#ffffff" />
+                        <Ionicons name="key-outline" size={28} color={colors.onPrimary} />
                     </View>
                     <Text style={styles.title}>Recuperar contraseña</Text>
                     <Text style={styles.subtitle}>
@@ -101,7 +101,7 @@ export default function ForgotPasswordScreen() {
 
                 {error && (
                     <View style={styles.errorBox}>
-                        <Ionicons name="alert-circle" size={18} color="#b91c1c" />
+                        <Ionicons name="alert-circle" size={18} color={colors.errorText} />
                         <Text style={styles.errorText}>{error}</Text>
                     </View>
                 )}
@@ -109,10 +109,10 @@ export default function ForgotPasswordScreen() {
                 <View style={styles.form}>
                     <Text style={styles.label}>Email</Text>
                     <View style={styles.inputWrapper}>
-                        <Ionicons name="mail-outline" size={18} color="#94a3b8" style={styles.inputIcon} />
+                        <Ionicons name="mail-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                         <TextInput
                             placeholder="tu@email.com"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={colors.textMuted}
                             autoCapitalize="none"
                             autoCorrect={false}
                             keyboardType="email-address"
@@ -124,12 +124,13 @@ export default function ForgotPasswordScreen() {
                     </View>
 
                     <TouchableOpacity
+                        activeOpacity={0.7}
                         style={[styles.button, loading && styles.buttonDisabled]}
                         onPress={handleReset}
                         disabled={loading}
                     >
                         {loading ? (
-                            <ActivityIndicator color="#ffffff" />
+                            <ActivityIndicator color={colors.onPrimary} />
                         ) : (
                             <Text style={styles.buttonText}>Enviar enlace de recuperación</Text>
                         )}
@@ -138,8 +139,8 @@ export default function ForgotPasswordScreen() {
 
                 <View style={styles.footer}>
                     <Link href="/login" asChild>
-                        <TouchableOpacity style={styles.backLink}>
-                            <Ionicons name="arrow-back" size={16} color="#2563eb" />
+                        <TouchableOpacity activeOpacity={0.7} style={styles.backLink}>
+                            <Ionicons name="arrow-back" size={16} color={colors.primary} />
                             <Text style={styles.backLinkText}>Volver a iniciar sesión</Text>
                         </TouchableOpacity>
                     </Link>
@@ -149,7 +150,7 @@ export default function ForgotPasswordScreen() {
     );
 }
 
-const getStyles = (colors: ThemeColors) => StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
     flex: {
         flex: 1,
         backgroundColor: colors.background,
@@ -178,7 +179,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 14,
-        shadowColor: '#2563eb',
+        shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -245,16 +246,17 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     },
     button: {
         backgroundColor: colors.primary,
-        borderRadius: 12,
+        borderRadius: 16,
         paddingVertical: 14,
         alignItems: 'center',
         marginTop: 4,
+        justifyContent: 'center',
     },
     buttonDisabled: {
         opacity: 0.7,
     },
     buttonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '700',
         fontSize: 15,
     },
@@ -282,7 +284,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: colors.border,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 6,
@@ -323,15 +325,16 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     },
     primaryButton: {
         backgroundColor: colors.primary,
-        borderRadius: 12,
+        borderRadius: 16,
         paddingVertical: 14,
         paddingHorizontal: 28,
         width: '100%',
         alignItems: 'center',
+        justifyContent: 'center',
     },
     primaryButtonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '700',
         fontSize: 15,
     },
-});
+}));

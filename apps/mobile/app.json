@@ -3,7 +3,7 @@
     "name": "Trami España",
     "slug": "trami-espana",
     "scheme": "tramiespana",
-    "version": "1.4.3",
+    "version": "1.5.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -26,8 +26,8 @@
         "backgroundColor": "#2563eb"
       },
       "package": "es.tramiespana.app",
-      "versionCode": 35,
-      "versionName": "1.4.3",
+      "versionCode": 38,
+      "versionName": "1.5.1",
       "supportsTablet": true
     },
     "web": {
@@ -53,11 +53,14 @@
             "extractNativeLibs": false,
             "enableProguardInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
-            "newArchEnabled": false
+            "newArchEnabled": false,
+            "extraProguardRules": "# --- Atributos necesarios para reflexión, Kotlin y trazas legibles ---\n-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod,Exceptions\n-keepattributes SourceFile,LineNumberTable\n-renamesourcefileattribute SourceFile\n-keep class kotlin.Metadata { *; }\n\n# --- React Native (bridge, TurboModules, Fabric, JNI, Hermes) ---\n-keep class com.facebook.react.** { *; }\n-keep class com.facebook.hermes.** { *; }\n-keep class com.facebook.jni.** { *; }\n-keep class com.facebook.soloader.** { *; }\n-keep class com.facebook.yoga.** { *; }\n-keep class com.facebook.fbreact.specs.** { *; }\n-keep @com.facebook.proguard.annotations.DoNotStrip class *\n-keep @com.facebook.common.internal.DoNotStrip class *\n-keepclassmembers class * {\n    @com.facebook.proguard.annotations.DoNotStrip *;\n    @com.facebook.common.internal.DoNotStrip *;\n    @com.facebook.react.bridge.ReactMethod *;\n    @com.facebook.react.uimanager.annotations.ReactProp *;\n    @com.facebook.react.uimanager.annotations.ReactPropGroup *;\n}\n-keepclassmembers class * implements com.facebook.react.bridge.JavaScriptModule { *; }\n-keepclasseswithmembernames,includedescriptorclasses class * { native <methods>; }\n\n# --- Expo Modules (definiciones por reflexión de Kotlin) ---\n-keep class expo.modules.** { *; }\n-keep class * extends expo.modules.kotlin.modules.Module { *; }\n-keep class * implements expo.modules.kotlin.records.Record { *; }\n\n# --- Librerías nativas autolinkadas ---\n-keep class com.swmansion.rnscreens.** { *; }\n-keep class com.th3rdwave.safeareacontext.** { *; }\n-keep class com.shopify.reactnative.flash_list.** { *; }\n-keep class com.reactnativecommunity.** { *; }\n-keep class com.reactcommunity.rndatetimepicker.** { *; }\n\n# --- Avisos inocuos de dependencias transitivas ---\n-dontwarn com.facebook.react.**\n-dontwarn expo.modules.**\n-dontwarn okhttp3.**\n-dontwarn okio.**\n-dontwarn org.conscrypt.**\n-dontwarn org.bouncycastle.**\n-dontwarn org.openjsse.**\n-dontwarn javax.annotation.**\n"
           }
         }
       ],
       "./plugins/withReleaseSigning",
+      "./plugins/withReleaseOptimizations",
+      "./plugins/withLegacyBackHandling",
       "expo-localization"
     ],
     "experiments": {

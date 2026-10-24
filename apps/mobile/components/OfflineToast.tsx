@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../constants/theme';
+import { useTheme, createThemedStyles } from '../constants/theme';
 import { OFFLINE_TOAST_MESSAGE, useNetworkStatus } from '../src/hooks/useNetworkStatus';
 
 interface OfflineToastProps {
@@ -22,6 +22,7 @@ interface OfflineToastProps {
  */
 export function OfflineToast({ durationMs = 4000 }: OfflineToastProps) {
   const { colors } = useTheme();
+  const styles = getStyles(colors);
   const { isOffline } = useNetworkStatus();
   // ============================================================
   // FASE 3 — El aviso es `position: absolute` sobre toda la app: sin
@@ -87,7 +88,7 @@ export function OfflineToast({ durationMs = 4000 }: OfflineToastProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
   wrapper: {
     position: 'absolute',
     top: 0,
@@ -111,7 +112,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     maxWidth: 520,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
@@ -122,4 +123,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-});
+}));

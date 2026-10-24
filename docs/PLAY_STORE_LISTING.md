@@ -1,5 +1,10 @@
 # Trami España — Preparación de Google Play Console (FASE 7)
 
+> **ACTUALIZADO 2026-10-17 (v1.4.4):** URLs de fuentes oficiales revisadas y verificadas
+> para cumplir los requisitos de transparencia de Google Play (sin enlaces rotos ni
+> redirecciones que bloqueen bots WAF). Ver §1.2 para el listado completo de fuentes.
+
+
 > **ACTUALIZADO 2026-08-23:** cuenta Play Console **Personal creada**. Ejecución paso a paso
 > en **`docs/PLAY_CONSOLE_LAUNCH_GUIDE.md`** (Render, Supabase, App Access, Data Safety).
 > El AAB definitivo está firmado y verificado (`targetSdk 36`; SHA-256
@@ -49,6 +54,22 @@ FUNCIONES PRINCIPALES
 • Recordatorios: crea avisos para no perder plazos ni renovaciones.
 • Cuenta opcional para sincronizar tus datos entre dispositivos, con eliminación
   de cuenta disponible desde la propia aplicación.
+
+FUENTES OFICIALES DE INFORMACIÓN
+
+Toda la información de trámites enlaza a sedes electrónicas oficiales del
+Gobierno de España:
+
+• SEPE (desempleo y empleo): https://www.sepe.es
+  Sede electrónica: https://sede.sepe.gob.es
+• Seguridad Social: https://www.seg-social.es
+  Sede electrónica: https://sede.seg-social.gob.es
+• Agencia Tributaria (IRPF y fiscalidad): https://www.agenciatributaria.gob.es
+  Sede electrónica: https://sede.agenciatributaria.gob.es
+• DGT (carné y vehículos): https://www.dgt.es
+  Sede electrónica: https://sede.dgt.es
+• FNMT (certificado digital): https://www.fnmt.es
+  Sede electrónica: https://sede.fnmt.gob.es
 
 AVISO IMPORTANTE
 
@@ -124,3 +145,23 @@ Declarar en Play Console:
 4. Rellenar listing (§1.1 listo), gráficos (`docs/play-assets/` listo), clasificación (IARC),
    data safety (§5) y enlaces legales (pendientes de dominio: EXTERNAL_BLOCKER_DOMAIN).
 5. Revisión y publicación.
+
+---
+
+### 1.2 URLs oficiales verificadas (Requisito Google Play — Transparencia)
+
+Todas las URLs deben comenzar por `https://www.` o `https://sede.` para que los bots
+de revisión de Google Play (y las pasarelas WAF de dominios `.gob.es`) no devuelvan
+error 403/404. Listado canónico:
+
+| Organismo | Portal principal | Sede electrónica |
+|---|---|---|
+| SEPE (paro/empleo) | https://www.sepe.es | https://sede.sepe.gob.es |
+| Seguridad Social | https://www.seg-social.es | https://sede.seg-social.gob.es |
+| Agencia Tributaria | https://www.agenciatributaria.gob.es | https://sede.agenciatributaria.gob.es |
+| DGT (tráfico) | https://www.dgt.es | https://sede.dgt.es |
+| FNMT (certificado digital) | https://www.fnmt.es | https://sede.fnmt.gob.es |
+
+> **Nota de implementación:** estas URLs deben aparecer literales (no como redirecciones
+> cortas ni como texto plano sin protocolo) en cualquier pantalla de la app que las
+> enlace, en la descripción de Play Store y en la Política de Privacidad publicada.

@@ -7,7 +7,7 @@ import { FlashList } from '@shopify/flash-list';
 import { procedureService, ProcedureWithDetails } from '@trami-espana/shared';
 import { useTranslation } from 'react-i18next';
 import { cacheProcedures, readCachedProcedures } from '../../src/localCache';
-import { useTheme, ThemeColors } from '../../constants/theme';
+import { useTheme, createThemedStyles } from '../../constants/theme';
 import { useSearchHistory } from '../../src/hooks/useSearchHistory';
 import { SkeletonItem } from '../../components/SkeletonLoader';
 
@@ -103,7 +103,7 @@ const ProcedureCard = memo(function ProcedureCard({
 }: ProcedureCardProps) {
     return (
         <Link href={`/procedure/${proc.slug}`} asChild>
-            <TouchableOpacity style={styles.card} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.card} activeOpacity={0.7}>
                 <View style={styles.cardIcon}>
                     {proc.category?.icon ? (
                         <Text style={styles.cardIconEmoji}>{proc.category.icon}</Text>
@@ -371,7 +371,7 @@ export default function SearchScreen() {
                         onSubmitEditing={handleSearchSubmit}
                     />
                     {searchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
+                        <TouchableOpacity activeOpacity={0.7} onPress={() => setSearchQuery('')} style={styles.clearButton}>
                             <Ionicons name="close-circle" size={20} color={colors.textMuted} />
                         </TouchableOpacity>
                     )}
@@ -388,7 +388,7 @@ export default function SearchScreen() {
                             key={chip.label}
                             style={[styles.quickChip, { backgroundColor: colors.chip, borderColor: colors.border }]}
                             onPress={() => handleQuickChipPress(chip.query)}
-                            activeOpacity={0.75}
+                            activeOpacity={0.7}
                         >
                             <Text style={[styles.quickChipText, { color: colors.textSecondary }]}>{chip.label}</Text>
                         </TouchableOpacity>
@@ -400,19 +400,20 @@ export default function SearchScreen() {
                     <View style={[styles.historyDropdown, { backgroundColor: colors.card, borderColor: colors.border }]}>
                         <View style={styles.historyHeader}>
                             <Text style={[styles.historyTitle, { color: colors.textSecondary }]}>Búsquedas recientes</Text>
-                            <TouchableOpacity onPress={clearHistory}>
+                            <TouchableOpacity activeOpacity={0.7} onPress={clearHistory}>
                                 <Text style={[styles.historyClear, { color: colors.primary }]}>Borrar todo</Text>
                             </TouchableOpacity>
                         </View>
                         {history.map((item) => (
                             <TouchableOpacity
+                                activeOpacity={0.7}
                                 key={item}
                                 style={styles.historyItem}
                                 onPress={() => handleHistoryItemPress(item)}
                             >
                                 <Ionicons name="time-outline" size={16} color={colors.textMuted} />
                                 <Text style={[styles.historyItemText, { color: colors.text }]} numberOfLines={1}>{item}</Text>
-                                <TouchableOpacity onPress={() => removeFromHistory(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                <TouchableOpacity activeOpacity={0.7} onPress={() => removeFromHistory(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                                     <Ionicons name="close" size={14} color={colors.textMuted} />
                                 </TouchableOpacity>
                             </TouchableOpacity>
@@ -434,7 +435,7 @@ export default function SearchScreen() {
                                 selectedCategory === chip.slug && styles.chipActive,
                             ]}
                             onPress={() => handleChipPress(chip.slug)}
-                            activeOpacity={0.75}
+                            activeOpacity={0.7}
                         >
                             <Text
                                 style={[
@@ -465,7 +466,7 @@ export default function SearchScreen() {
                             key={chip.key}
                             style={[styles.chip, selectedAdmin === chip.key && styles.chipActive]}
                             onPress={() => setSelectedAdmin(chip.key)}
-                            activeOpacity={0.75}
+                            activeOpacity={0.7}
                         >
                             <Text style={[styles.chipText, selectedAdmin === chip.key && styles.chipTextActive]}>
                                 {chip.label}
@@ -490,7 +491,7 @@ export default function SearchScreen() {
                             key={chip.key}
                             style={[styles.chip, selectedCost === chip.key && styles.chipActive]}
                             onPress={() => setSelectedCost(chip.key)}
-                            activeOpacity={0.75}
+                            activeOpacity={0.7}
                         >
                             <Text style={[styles.chipText, selectedCost === chip.key && styles.chipTextActive]}>
                                 {chip.label}
@@ -514,7 +515,7 @@ export default function SearchScreen() {
             ) : error ? (
                 <View style={styles.errorBox}>
                     <Text style={styles.errorText}>{error}</Text>
-                    <TouchableOpacity style={styles.retryBtn} onPress={fetchProcedures}>
+                    <TouchableOpacity activeOpacity={0.7} style={styles.retryBtn} onPress={fetchProcedures}>
                         <Text style={styles.retryBtnText}>Reintentar</Text>
                     </TouchableOpacity>
                 </View>
@@ -566,7 +567,7 @@ export default function SearchScreen() {
     );
 }
 
-const getStyles = (colors: ThemeColors, _isDark: boolean) => StyleSheet.create({
+const getStyles = createThemedStyles((colors, _isDark) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background,
@@ -609,6 +610,8 @@ const getStyles = (colors: ThemeColors, _isDark: boolean) => StyleSheet.create({
     clearButton: {
         padding: 4,
         marginLeft: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     chipsContainer: {
         paddingBottom: 12,
@@ -706,7 +709,7 @@ const getStyles = (colors: ThemeColors, _isDark: boolean) => StyleSheet.create({
         borderColor: colors.primary,
     },
     chipTextActive: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '600',
     },
     center: {
@@ -741,7 +744,7 @@ const getStyles = (colors: ThemeColors, _isDark: boolean) => StyleSheet.create({
         padding: 16,
         marginBottom: 14,
         borderWidth: 1,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 4,
@@ -838,10 +841,12 @@ const getStyles = (colors: ThemeColors, _isDark: boolean) => StyleSheet.create({
         backgroundColor: colors.danger,
         paddingHorizontal: 20,
         paddingVertical: 8,
-        borderRadius: 8,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     retryBtnText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '600',
         fontSize: 13,
     },
@@ -865,4 +870,4 @@ const getStyles = (colors: ThemeColors, _isDark: boolean) => StyleSheet.create({
         lineHeight: 20,
         color: colors.textSecondary,
     },
-});
+}));

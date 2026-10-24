@@ -1,6 +1,6 @@
 import React from 'react';
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
-import { useTheme, ThemeColors } from '../constants/theme';
+import { useTheme, createThemedStyles } from '../constants/theme';
 
 export interface LegalSection {
     title: string;
@@ -60,7 +60,7 @@ export default function LegalScreen({
     );
 }
 
-const getStyles = (colors: ThemeColors) => StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background,
@@ -115,4 +115,4 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
         lineHeight: 17,
         marginTop: 12,
     },
-});
+}));

@@ -14,6 +14,7 @@ import { ENV, validateEnv } from '../config/env';
 import { ThemeProvider, useTheme } from '../constants/theme';
 import { AuthProvider } from '../src/context/AuthContext';
 import { ForegroundRevisionProvider } from '../src/context/ForegroundRevisionContext';
+import { ExitModalProvider } from '../src/context/ExitModalContext';
 import { useBackHandlerResync } from '../src/hooks/useBackHandler';
 import ErrorBoundary from '../components/ErrorBoundary';
 
@@ -196,13 +197,15 @@ function RootNavigation() {
             <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={colors.background} />
             <I18nextProvider i18n={getI18nInstance()}>
                 <AuthProvider>
+                    {/* v1.5.1 — Interceptor global del botón Atrás + modal de salida. */}
+                    <ExitModalProvider>
                     <Stack screenOptions={{
                         headerShown: false,
                         contentStyle: { backgroundColor: colors.background },
-                        headerStyle: { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' },
-                        headerTintColor: isDark ? '#FFFFFF' : '#0F172A',
+                        headerStyle: { backgroundColor: colors.header },
+                        headerTintColor: colors.headerText,
                         headerTitleStyle: {
-                            color: isDark ? '#FFFFFF' : '#0F172A',
+                            color: colors.headerText,
                             fontFamily: Platform.select({ android: 'sans-serif-medium', ios: 'System', default: 'System' }),
                             fontWeight: '600',
                         },
@@ -221,10 +224,10 @@ function RootNavigation() {
                                 // Tema oscuro total: la cabecera superior ("Detalle
                                 // del trámite") y la flecha de regreso ya no quedan
                                 // con fondo blanco en modo oscuro.
-                                headerStyle: { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' },
-                                headerTintColor: isDark ? '#FFFFFF' : '#0F172A',
+                                headerStyle: { backgroundColor: colors.header },
+                                headerTintColor: colors.headerText,
                                 headerTitleStyle: {
-                            color: isDark ? '#FFFFFF' : '#0F172A',
+                            color: colors.headerText,
                             fontFamily: Platform.select({ android: 'sans-serif-medium', ios: 'System', default: 'System' }),
                             fontWeight: '600',
                         },
@@ -243,8 +246,8 @@ function RootNavigation() {
                                 headerShown: true,
                                 title: 'Mi Carpeta de Caducidades',
                                 headerBackTitle: 'Atras',
-                                headerStyle: { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' },
-                                headerTintColor: isDark ? '#FFFFFF' : '#0F172A',
+                                headerStyle: { backgroundColor: colors.header },
+                                headerTintColor: colors.headerText,
                             }}
                         />
                         <Stack.Screen
@@ -253,8 +256,8 @@ function RootNavigation() {
                                 headerShown: true,
                                 title: 'Tasas y Modelo 790',
                                 headerBackTitle: 'Atras',
-                                headerStyle: { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' },
-                                headerTintColor: isDark ? '#FFFFFF' : '#0F172A',
+                                headerStyle: { backgroundColor: colors.header },
+                                headerTintColor: colors.headerText,
                             }}
                         />
                         <Stack.Screen
@@ -263,11 +266,12 @@ function RootNavigation() {
                                 headerShown: true,
                                 title: 'Cl@ve y Certificado Digital',
                                 headerBackTitle: 'Atras',
-                                headerStyle: { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' },
-                                headerTintColor: isDark ? '#FFFFFF' : '#0F172A',
+                                headerStyle: { backgroundColor: colors.header },
+                                headerTintColor: colors.headerText,
                             }}
                         />
                     </Stack>
+                    </ExitModalProvider>
                 </AuthProvider>
             </I18nextProvider>
             </ForegroundRevisionProvider>

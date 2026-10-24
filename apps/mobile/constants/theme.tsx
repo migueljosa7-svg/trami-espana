@@ -8,7 +8,7 @@
 // ThemeProvider envuelve la app en app/_layout.tsx y expone el tema
 // activo mediante el hook useTheme().
 
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useColorScheme, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -45,6 +45,27 @@ export const lightColors = {
   warningBackground: '#fffbeb',
   warningBorder: '#fde68a',
   warningText: '#92400e',
+  // Tokens extendidos (v1.5.1): sustituyen todos los colores hardcodeados.
+  onPrimary: '#ffffff',
+  onPrimaryMuted: '#dbeafe',
+  primaryDisabled: '#93c5fd',
+  infoBorder: '#bfdbfe',
+  shadow: '#000000',
+  header: '#ffffff',
+  headerText: '#0f172a',
+  surfaceMuted: '#f1f5f9',
+  surfaceStrong: '#e2e8f0',
+  track: 'rgba(148, 163, 184, 0.28)',
+  successStrong: '#059669',
+  accent: '#7c3aed',
+  accentSoft: '#f5f3ff',
+  accentBorder: '#ddd6fe',
+  accentText: '#4c1d95',
+  // Semáforo de caducidades (Mi Carpeta).
+  statusValid: '#16a34a',
+  statusWarning: '#d97706',
+  statusUrgent: '#dc2626',
+  statusExpired: '#991b1b',
   // Tipografía unificada: fuente del sistema limpia (evita la degenerada
   // «RobotoRegular» de Xiaomi/MIUI/HyperOS que recortaba pesos y curvas).
   fontFamily: Platform.select({
@@ -79,6 +100,27 @@ export const darkColors = {
   warningBackground: '#2d2210',
   warningBorder: '#4a3818',
   warningText: '#fcd34d',
+  // Tokens extendidos (v1.5.1): sustituyen todos los colores hardcodeados.
+  onPrimary: '#ffffff',
+  onPrimaryMuted: '#dbeafe',
+  primaryDisabled: '#1e3a5f',
+  infoBorder: '#1e3a5f',
+  shadow: '#000000',
+  header: '#0f172a',
+  headerText: '#ffffff',
+  surfaceMuted: '#1e293b',
+  surfaceStrong: '#334155',
+  track: 'rgba(148, 163, 184, 0.28)',
+  successStrong: '#34d399',
+  accent: '#8b5cf6',
+  accentSoft: '#1e1b4b',
+  accentBorder: '#3730a3',
+  accentText: '#a78bfa',
+  // Semáforo de caducidades (Mi Carpeta).
+  statusValid: '#4ade80',
+  statusWarning: '#fbbf24',
+  statusUrgent: '#f87171',
+  statusExpired: '#fca5a5',
   // Tipografía unificada: misma familia de fuente en modo oscuro.
   fontFamily: Platform.select({
     android: 'sans-serif-medium',
@@ -88,6 +130,47 @@ export const darkColors = {
 };
 
 export type ThemeColors = typeof lightColors;
+
+/**
+ * Tokens de diseño no cromáticos compartidos por toda la app.
+ * Radio, opacidad de pulsación y sombra suave unificados.
+ */
+export const designTokens = {
+  radius: 16,
+  radiusSm: 12,
+  activeOpacity: 0.7,
+} as const;
+
+/**
+ * Crea una factoría de estilos tematizados con caché por paleta.
+ * Como solo existen dos paletas (objetos estables), `StyleSheet.create` se
+ * ejecuta como máximo dos veces en toda la vida de la app, en lugar de en
+ * cada render. Se puede llamar desde cualquier componente sin hooks.
+ */
+export function createThemedStyles<T>(
+  factory: (colors: ThemeColors, isDark: boolean) => T,
+): (colors: ThemeColors, _isDark?: boolean) => T {
+  const cache = new WeakMap<ThemeColors, T>();
+  return (colors: ThemeColors): T => {
+    let styles = cache.get(colors);
+    if (!styles) {
+      styles = factory(colors, colors === darkColors);
+      cache.set(colors, styles);
+    }
+    return styles;
+  };
+}
+
+/** Sombra suave estándar (elevation 2 en Android, sombra difusa en iOS). */
+export function softShadow(colors: ThemeColors) {
+  return {
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  } as const;
+}
 
 // -------------------------------------------
 // Resolución de tema
@@ -168,15 +251,18 @@ export function ThemeProvider({ children }: ThemeProviderProps): React.ReactElem
     void storeThemePreference(next);
   }, []);
 
-  const { colors, isDark } = resolveTheme(preference, systemScheme);
-
-  const value: AppTheme = {
-    colors,
-    isDark,
-    systemScheme: systemScheme === 'dark' ? 'dark' : 'light',
-    preference,
-    setPreference,
-  };
+  // Valor memoizado: evita re-renderizar TODOS los consumidores del tema
+  // cada vez que el provider se renderiza sin que cambie nada.
+  const value = useMemo<AppTheme>(() => {
+    const { colors, isDark } = resolveTheme(preference, systemScheme);
+    return {
+      colors,
+      isDark,
+      systemScheme: systemScheme === 'dark' ? 'dark' : 'light',
+      preference,
+      setPreference,
+    };
+  }, [preference, systemScheme, setPreference]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

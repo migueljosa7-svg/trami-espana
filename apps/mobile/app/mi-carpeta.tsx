@@ -14,13 +14,14 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../constants/theme';
+import { useTheme, createThemedStyles } from '../constants/theme';
 import { useStackBackHandler, createGoBackSafely } from '../src/hooks/useBackHandler';
 import {
   DOCUMENT_KINDS,
   DocumentKind,
   TrackedDocument,
   addDocument,
+  daysUntilExpiry,
   formatDaysRemaining,
   formatExpiryDate,
   getDocumentKindInfo,
@@ -53,15 +54,16 @@ import { SkeletonCard } from '../components/SkeletonLoader';
  *   rojo     -> 30 dias o menos
  *   granate  -> ya caducado
  */
-const STATUS_COLORS: Record<ExpiryStatus, { light: string; dark: string }> = {
-  valid: { light: '#16a34a', dark: '#4ade80' },
-  warning: { light: '#d97706', dark: '#fbbf24' },
-  urgent: { light: '#dc2626', dark: '#f87171' },
-  expired: { light: '#991b1b', dark: '#fca5a5' },
+const STATUS_TOKEN: Record<ExpiryStatus, 'statusValid' | 'statusWarning' | 'statusUrgent' | 'statusExpired'> = {
+  valid: 'statusValid',
+  warning: 'statusWarning',
+  urgent: 'statusUrgent',
+  expired: 'statusExpired',
 };
 
 export default function MiCarpetaScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -97,8 +99,8 @@ export default function MiCarpetaScreen() {
 
   const summary = useMemo(() => summarizeDocuments(documents), [documents]);
   const accentOf = useCallback(
-    (status: ExpiryStatus) => STATUS_COLORS[status][isDark ? 'dark' : 'light'],
-    [isDark],
+    (status: ExpiryStatus) => colors[STATUS_TOKEN[status]],
+    [colors],
   );
 
   const handleSave = useCallback(async () => {
@@ -235,11 +237,12 @@ export default function MiCarpetaScreen() {
               conducir y te avisaremos 3 meses y 1 mes antes de que caduque.
             </Text>
             <TouchableOpacity
+              activeOpacity={0.7}
               style={[styles.emptyCta, { backgroundColor: colors.primary }]}
               onPress={() => setShowForm(true)}
               accessibilityRole="button"
             >
-              <Ionicons name="add" size={20} color="#ffffff" />
+              <Ionicons name="add" size={20} color={colors.onPrimary} />
               <Text style={styles.emptyCtaText}>Añadir mi primer documento</Text>
             </TouchableOpacity>
           </View>
@@ -248,6 +251,17 @@ export default function MiCarpetaScreen() {
             const status = getExpiryStatus(doc.expiresAt);
             const accent = accentOf(status);
             const info = getDocumentKindInfo(doc.kind);
+            // ============================================================
+            // FASE 3 — Barra de progreso de vigencia y alerta roja.
+            // `days` son días naturales restantes (granularidad de día,
+            // ya normalizada a medianoche en daysUntilExpiry). La barra
+            // usa una ventana de referencia de UN AÑO: 365 días = barra
+            // llena, 0 días = vacía. Documento caducado => barra a 0.
+            // ============================================================
+            const remainingDays = daysUntilExpiry(doc.expiresAt);
+            const progressPct =
+              remainingDays <= 0 ? 0 : Math.min(remainingDays / 365, 1);
+            const isUrgentAlert = status === 'urgent' || status === 'expired';
             return (
               <View
                 key={doc.id}
@@ -272,6 +286,7 @@ export default function MiCarpetaScreen() {
                       </Text>
                     </View>
                     <TouchableOpacity
+                      activeOpacity={0.7}
                       onPress={() => handleDelete(doc)}
                       accessibilityRole="button"
                       accessibilityLabel={`Eliminar ${doc.label}`}
@@ -287,17 +302,67 @@ export default function MiCarpetaScreen() {
                     </Text>
                   </View>
 
+                  {/* FASE 3 — Alerta destacada en ROJO si expira en
+                      menos de 30 días (o ya caducó). Accesible. */}
+                  {isUrgentAlert && (
+                    <View
+                      style={[
+                        styles.urgentAlert,
+                        {
+                          backgroundColor: colors.errorBackground,
+                          borderColor: colors.errorBorder,
+                        },
+                      ]}
+                      accessibilityLiveRegion="polite"
+                    >
+                      <Ionicons name="warning-outline" size={16} color={colors.errorText} />
+                      <Text style={[styles.urgentAlertText, { color: colors.errorText }]}>
+                        {remainingDays < 0
+                          ? 'Documento CADUCADO: renueva ya para evitar bloqueos.'
+                          : remainingDays === 0
+                            ? '¡Caduca HOY! Acude hoy mismo o solicita cita previa.'
+                            : `¡Quedan solo ${remainingDays} ${
+                                remainingDays === 1 ? 'día' : 'días'
+                              }! Pide cita previa cuanto antes.`}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* FASE 3 — Barra de progreso visual de vigencia
+                      (ventana de referencia: 365 días). */}
+                  <View
+                    style={styles.progressTrack}
+                    accessibilityRole="progressbar"
+                    accessibilityValue={{
+                      min: 0,
+                      max: 100,
+                      now: Math.round(progressPct * 100),
+                    }}
+                  >
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${Math.round(progressPct * 100)}%`,
+                          backgroundColor: accent,
+                        },
+                      ]}
+                    />
+                  </View>
+
                   <View style={styles.cardActions}>
                     <TouchableOpacity
+                      activeOpacity={0.7}
                       style={[styles.actionBtn, { backgroundColor: colors.primary }]}
                       onPress={() => void Linking.openURL(info.appointmentUrl)}
                       accessibilityRole="button"
                       accessibilityLabel={`Pedir cita previa para ${doc.label}`}
                     >
-                      <Ionicons name="calendar-outline" size={15} color="#ffffff" />
+                      <Ionicons name="calendar-outline" size={15} color={colors.onPrimary} />
                       <Text style={styles.actionBtnText}>Pedir cita previa</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
+                      activeOpacity={0.7}
                       style={[styles.actionGhost, { borderColor: colors.border }]}
                       onPress={() => router.push(`/procedure/${info.procedureSlug}`)}
                       accessibilityRole="button"
@@ -316,6 +381,7 @@ export default function MiCarpetaScreen() {
 
       {documents.length > 0 && (
         <TouchableOpacity
+          activeOpacity={0.7}
           style={[
             styles.fab,
             { backgroundColor: colors.primary, bottom: insets.bottom + 20 },
@@ -324,7 +390,7 @@ export default function MiCarpetaScreen() {
           accessibilityRole="button"
           accessibilityLabel="Añadir documento"
         >
-          <Ionicons name="add" size={26} color="#ffffff" />
+          <Ionicons name="add" size={26} color={colors.onPrimary} />
         </TouchableOpacity>
       )}
 
@@ -362,6 +428,7 @@ function SummaryChip({
   color: string;
   colors: ReturnType<typeof useTheme>['colors'];
 }) {
+  const styles = getStyles(colors);
   
   return (
     <View style={[styles.summaryChip, { backgroundColor: colors.chip }]}>
@@ -403,6 +470,7 @@ function FormModal({
   onClose: () => void;
   onSave: () => void;
 }) {
+  const styles = getStyles(colors);
   
   return (
     <Modal
@@ -423,6 +491,7 @@ function FormModal({
               Nuevo documento
             </Text>
             <TouchableOpacity
+              activeOpacity={0.7}
               onPress={onClose}
               accessibilityRole="button"
               accessibilityLabel="Cerrar"
@@ -438,6 +507,7 @@ function FormModal({
             <View style={styles.kindGrid}>
               {DOCUMENT_KINDS.map((k) => (
                 <TouchableOpacity
+                  activeOpacity={0.7}
                   key={k.kind}
                   onPress={() => setFormKind(k.kind)}
                   style={[
@@ -455,12 +525,12 @@ function FormModal({
                   <Ionicons
                     name={k.icon as never}
                     size={15}
-                    color={formKind === k.kind ? '#ffffff' : colors.textSecondary}
+                    color={formKind === k.kind ? colors.onPrimary : colors.textSecondary}
                   />
                   <Text
                     style={[
                       styles.kindChipText,
-                      { color: formKind === k.kind ? '#ffffff' : colors.text },
+                      { color: formKind === k.kind ? colors.onPrimary : colors.text },
                     ]}
                   >
                     {k.shortLabel}
@@ -492,6 +562,7 @@ function FormModal({
               Fecha de caducidad
             </Text>
             <TouchableOpacity
+              activeOpacity={0.7}
               onPress={() => setShowPicker(true)}
               style={[
                 styles.dateBtn,
@@ -508,6 +579,7 @@ function FormModal({
           </ScrollView>
 
           <TouchableOpacity
+            activeOpacity={0.7}
             style={[
               styles.saveBtn,
               { backgroundColor: colors.primary, opacity: saving ? 0.6 : 1 },
@@ -537,7 +609,7 @@ function FormModal({
 }
 
 /** Estilos de "Mi Carpeta". Los colores se inyectan en línea por ser dinámicos. */
-const styles = StyleSheet.create({
+const getStyles = createThemedStyles((colors) => StyleSheet.create({
     container: { flex: 1 },
     scroll: { padding: 16, gap: 12 },
     summary: { borderRadius: 16, borderWidth: 1, padding: 14, marginBottom: 4 },
@@ -560,10 +632,11 @@ const styles = StyleSheet.create({
       gap: 6,
       paddingHorizontal: 18,
       paddingVertical: 12,
-      borderRadius: 12,
+      borderRadius: 16,
       marginTop: 6,
+      justifyContent: 'center',
     },
-    emptyCtaText: { color: '#ffffff', fontWeight: '700', fontSize: 14 },
+    emptyCtaText: { color: colors.onPrimary, fontWeight: '700', fontSize: 14 },
     card: { borderRadius: 16, borderWidth: 1, flexDirection: 'row', overflow: 'hidden' },
     cardAccent: { width: 5 },
     cardBody: { flex: 1, padding: 14, gap: 10 },
@@ -579,6 +652,32 @@ const styles = StyleSheet.create({
     cardDate: { fontSize: 12, marginTop: 2 },
     badge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
     badgeText: { fontSize: 12, fontWeight: '700' },
+    // FASE 3 — Alerta de caducidad inminente (< 30 días) y barra de progreso.
+    urgentAlert: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      borderWidth: 1,
+      borderRadius: 10,
+      paddingVertical: 9,
+      paddingHorizontal: 10,
+    },
+    urgentAlertText: {
+      flex: 1,
+      fontSize: 12,
+      fontWeight: '700',
+      lineHeight: 16,
+    },
+    progressTrack: {
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.track,
+      overflow: 'hidden',
+    },
+    progressFill: {
+      height: 8,
+      borderRadius: 4,
+    },
     cardActions: { flexDirection: 'row', gap: 8 },
     actionBtn: {
       flex: 1,
@@ -587,9 +686,9 @@ const styles = StyleSheet.create({
       justifyContent: 'center',
       gap: 5,
       paddingVertical: 10,
-      borderRadius: 10,
+      borderRadius: 16,
     },
-    actionBtnText: { color: '#ffffff', fontWeight: '700', fontSize: 13 },
+    actionBtnText: { color: colors.onPrimary, fontWeight: '700', fontSize: 13 },
     actionGhost: {
       paddingHorizontal: 14,
       paddingVertical: 10,
@@ -607,14 +706,14 @@ const styles = StyleSheet.create({
       alignItems: 'center',
       justifyContent: 'center',
       elevation: 6,
-      shadowColor: '#000',
+      shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 3 },
       shadowOpacity: 0.25,
       shadowRadius: 6,
     },
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(15,23,42,0.55)',
+      backgroundColor: colors.overlay,
       justifyContent: 'flex-end',
     },
     modalCard: {
@@ -643,7 +742,7 @@ const styles = StyleSheet.create({
     },
     kindChipText: { fontSize: 12, fontWeight: '600' },
     input: {
-      borderRadius: 11,
+      borderRadius: 12,
       borderWidth: 1,
       paddingHorizontal: 13,
       paddingVertical: 11,
@@ -653,12 +752,14 @@ const styles = StyleSheet.create({
       flexDirection: 'row',
       alignItems: 'center',
       gap: 9,
-      borderRadius: 11,
+      // Campo de formulario: mismo radio que el TextInput y contenido a la izquierda.
+      borderRadius: 12,
       borderWidth: 1,
       paddingHorizontal: 13,
       paddingVertical: 12,
+      justifyContent: 'flex-start',
     },
     dateBtnText: { fontSize: 15, fontWeight: '600' },
-    saveBtn: { marginTop: 18, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-    saveBtnText: { color: '#ffffff', fontSize: 15, fontWeight: '700' },
-  });
+    saveBtn: { marginTop: 18, borderRadius: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+    saveBtnText: { color: colors.onPrimary, fontSize: 15, fontWeight: '700' },
+  }));
